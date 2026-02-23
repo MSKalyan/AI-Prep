@@ -3,7 +3,7 @@ __pycache__/
 *.pyc
 .env
 venv/
-
+.env.example
 # Node
 node_modules/
 .next/

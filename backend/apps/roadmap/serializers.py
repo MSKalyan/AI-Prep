@@ -1,0 +1,104 @@
+from rest_framework import serializers
+from .models import Roadmap, RoadmapTopic, Exam
+
+
+# =====================================================
+# EXAM SERIALIZER (Dropdown API)
+# =====================================================
+
+class ExamSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Exam
+        fields = (
+            "id",
+            "name",
+            "category",
+            "total_marks",
+        )
+
+
+# =====================================================
+# ROADMAP TOPIC SERIALIZER
+# =====================================================
+
+class RoadmapTopicSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = RoadmapTopic
+        fields = (
+            "id",
+            "week_number",
+            "title",
+            "description",
+            "estimated_hours",
+            "resources",
+            "priority",
+            "is_completed",
+            "completed_at",
+            "created_at",
+        )
+
+        read_only_fields = (
+            "id",
+            "created_at",
+        )
+
+
+# =====================================================
+# ROADMAP SERIALIZER (MAIN RESPONSE)
+# =====================================================
+
+class RoadmapSerializer(serializers.ModelSerializer):
+
+    topics = RoadmapTopicSerializer(many=True, read_only=True)
+
+    # Show exam details instead of raw FK
+    exam = ExamSerializer(read_only=True)
+
+    class Meta:
+        model = Roadmap
+        fields = (
+            "id",
+            "exam",
+            "target_date",
+            "difficulty_level",
+            "total_weeks",
+            "description",
+            "topics",
+            "created_at",
+            "updated_at",
+        )
+
+        read_only_fields = (
+            "id",
+            "created_at",
+            "updated_at",
+        )
+
+
+# =====================================================
+# ROADMAP GENERATE SERIALIZER (INPUT ONLY)
+# =====================================================
+
+class RoadmapGenerateSerializer(serializers.Serializer):
+
+    exam_id = serializers.IntegerField()
+
+    target_date = serializers.DateField()
+
+    target_marks = serializers.IntegerField(min_value=1)
+
+    difficulty_level = serializers.ChoiceField(
+        choices=["beginner", "intermediate", "advanced"]
+    )
+
+    study_hours_per_day = serializers.IntegerField(
+        min_value=1,
+        max_value=24
+    )
+
+    current_knowledge = serializers.CharField(
+        required=False,
+        allow_blank=True
+    )
