@@ -87,19 +87,45 @@ class MockTestCreateView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-
 class MockTestDetailView(APIView):
-    """Get mock test details"""
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request, pk):
+
         try:
-            mock_test = MockTest.objects.get(pk=pk, user=request.user)
+
+            mock_test = MockTest.objects.get(
+                pk=pk,
+                user=request.user
+            )
+
+            # Find active attempt
+            attempt = TestAttempt.objects.filter(
+                mock_test=mock_test,
+                user=request.user,
+                submitted_at__isnull=True
+            ).first()
+
             serializer = MockTestDetailSerializer(mock_test)
-            return Response(serializer.data)
+
+            answers = []
+
+            if attempt:
+                answers = attempt.answers.values(
+                    "question",
+                    "user_answer"
+                )
+
+            return Response({
+                **serializer.data,
+                "attempt_id": attempt.id if attempt else None,
+                "answers": list(answers)
+            })
+
         except MockTest.DoesNotExist:
+
             return Response(
-                {'error': 'Mock test not found'},
+                {"error": "Mock test not found"},
                 status=status.HTTP_404_NOT_FOUND
             )
 

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Exam, Roadmap, RoadmapTopic, RoadmapGenerationJob
+from .models import Exam, Roadmap, RoadmapTopic, RoadmapGenerationJob, Topic
 
 
 class RoadmapTopicInline(admin.TabularInline):
@@ -21,8 +21,8 @@ class RoadmapGenerationJobAdmin(admin.ModelAdmin):
 
 @admin.register(Roadmap)
 class RoadmapAdmin(admin.ModelAdmin):
-    list_display = ('exam', 'user', 'target_date', 'difficulty_level', 'total_weeks', 'created_at')
-    list_filter = ('difficulty_level', 'created_at')
+    list_display = ('exam', 'user', 'target_date', 'total_weeks', 'created_at')
+    list_filter = ('created_at',)
     search_fields = ('exam__name', 'user__email')
     inlines = [RoadmapTopicInline]
     date_hierarchy = 'created_at'
@@ -30,6 +30,13 @@ class RoadmapAdmin(admin.ModelAdmin):
 
 @admin.register(RoadmapTopic)
 class RoadmapTopicAdmin(admin.ModelAdmin):
-    list_display = ('title', 'roadmap', 'week_number', 'estimated_hours', 'is_completed')
+    list_display = ( 'roadmap', 'topic', 'week_number', 'estimated_hours', 'is_completed')
     list_filter = ('is_completed', 'week_number')
-    search_fields = ('title', 'description', 'roadmap__exam__name')
+    search_fields = ('topic__name', 'roadmap__exam__name')
+
+@admin.register(Topic)
+class TopicAdmin(admin.ModelAdmin):
+    list_display = ("name", "exam", "parent", "weightage", "pyq_count")
+    list_filter = ("exam", "parent")
+    search_fields = ("name",)
+    ordering = ("exam", "parent", "order")

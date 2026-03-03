@@ -30,6 +30,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({
                 "password": "Passwords do not match"
             })
+            
         return attrs
 
     def create(self, validated_data):

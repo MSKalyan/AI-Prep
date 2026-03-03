@@ -11,9 +11,10 @@ from .serializers import (
     RoadmapGenerateSerializer,
     RoadmapSerializer,
     RoadmapTopicSerializer,
-    ExamSerializer
+    ExamSerializer,
+    DeterministicRoadmapGenerateSerializer
 )
-from .services import RoadmapService, Exam
+from .services.roadmap_service import RoadmapService
 
 
 
@@ -188,4 +189,32 @@ class RoadmapDetailView(APIView):
         return Response(
             {"message": "Roadmap deleted successfully"},
             status=status.HTTP_204_NO_CONTENT
+        )
+class DeterministicRoadmapGenerateView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        print("DETERMINISTIC VIEW HIT")
+        serializer = DeterministicRoadmapGenerateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        data = serializer.validated_data
+
+        exam = get_object_or_404(Exam, id=data["exam_id"])
+
+        roadmap = RoadmapService.generate_deterministic_roadmap(
+            user=request.user,
+            exam_id=exam.id,
+            target_date=data["target_date"],
+            study_hours_per_day=data["study_hours_per_day"]
+        )
+
+        return Response(
+            {
+                "roadmap_id": roadmap.id,
+                "total_weeks": roadmap.total_weeks,
+                "message": "Roadmap generated successfully"
+            },
+            status=status.HTTP_201_CREATED
         )

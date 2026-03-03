@@ -29,12 +29,6 @@ export default function Navbar() {
               Dashboard
             </Link>
 
-            <Link
-              href="/roadmap"
-              className="text-gray-600 hover:text-blue-600"
-            >
-              Roadmap
-            </Link>
 
             <Link
               href="/profile"

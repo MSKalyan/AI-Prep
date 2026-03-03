@@ -1,26 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
-import { getRoadmapJob } from "../services/roadmap.service";
+import * as roadmap from "../services/roadmap.service";
 
-export function useRoadmapJob(jobId?: number){
+// export function useRoadmapJob(jobId?: number) {
 
+//   return useQuery({
+//     queryKey: ["roadmap-job", jobId],
+//     queryFn: () => roadmap.getRoadmapJob(jobId!),
+//     enabled: !!jobId,
+
+//     refetchInterval: (query) =>
+//       query.state.data?.status === "completed"
+//         ? false
+//         : 3000
+//   });
+// }
+
+export function useRoadmaps() {
   return useQuery({
-
-    queryKey:["roadmap-job", jobId],
-
-    queryFn: () => getRoadmapJob(jobId!),
-
-    enabled: !!jobId,
-
-    refetchInterval: (query) => {
-
-      const data = query.state.data;
-
-      if(!data) return 2000;
-
-      if(data.status === "completed") return false;
-      if(data.status === "failed") return false;
-
-      return 2000;
-    }
+    queryKey:["roadmaps"],
+    queryFn: roadmap.getRoadmaps
   });
 }

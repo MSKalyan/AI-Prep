@@ -23,22 +23,28 @@ class ExamSerializer(serializers.ModelSerializer):
 # =====================================================
 
 class RoadmapTopicSerializer(serializers.ModelSerializer):
-
+    topic_name = serializers.CharField(source="topic.name", read_only=True)
+    subject_name = serializers.SerializerMethodField()
+    def get_subject_name(self, obj):
+            if obj.topic.parent:
+                return obj.topic.parent.name
+            return obj.topic.name
     class Meta:
         model = RoadmapTopic
         fields = (
             "id",
             "week_number",
-            "title",
-            "description",
+            "topic_name",
             "estimated_hours",
             "resources",
             "priority",
             "is_completed",
             "completed_at",
             "created_at",
+            "subject_name",
         )
 
+        
         read_only_fields = (
             "id",
             "created_at",
@@ -51,7 +57,7 @@ class RoadmapTopicSerializer(serializers.ModelSerializer):
 
 class RoadmapSerializer(serializers.ModelSerializer):
 
-    topics = RoadmapTopicSerializer(many=True, read_only=True)
+    topics = RoadmapTopicSerializer(many=True, read_only=True) 
 
     # Show exam details instead of raw FK
     exam = ExamSerializer(read_only=True)
@@ -62,7 +68,6 @@ class RoadmapSerializer(serializers.ModelSerializer):
             "id",
             "exam",
             "target_date",
-            "difficulty_level",
             "total_weeks",
             "description",
             "topics",
@@ -89,9 +94,7 @@ class RoadmapGenerateSerializer(serializers.Serializer):
 
     target_marks = serializers.IntegerField(min_value=1)
 
-    difficulty_level = serializers.ChoiceField(
-        choices=["beginner", "intermediate", "advanced"]
-    )
+
 
     study_hours_per_day = serializers.IntegerField(
         min_value=1,
@@ -101,4 +104,19 @@ class RoadmapGenerateSerializer(serializers.Serializer):
     current_knowledge = serializers.CharField(
         required=False,
         allow_blank=True
+    )
+
+# =====================================================
+# DETERMINISTIC ROADMAP GENERATE SERIALIZER (SPRINT 3)
+# =====================================================
+
+class DeterministicRoadmapGenerateSerializer(serializers.Serializer):
+
+    exam_id = serializers.IntegerField()
+
+    target_date = serializers.DateField()
+
+    study_hours_per_day = serializers.IntegerField(
+        min_value=1,
+        max_value=24
     )

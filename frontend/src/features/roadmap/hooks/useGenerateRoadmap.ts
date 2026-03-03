@@ -1,14 +1,40 @@
-import { useMutation } from "@tanstack/react-query";
-import { generateRoadmap } from "../services/roadmap.service";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import * as roadmap from "../services/roadmap.service";
 
-export function useGenerateRoadmap(){
+export function useGenerateRoadmap() {
+  const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: generateRoadmap,
+    mutationFn: roadmap.generateRoadmap,
+
+    onSuccess: (data) => {
+      // Invalidate roadmap list so new roadmap appears
+      queryClient.invalidateQueries({ queryKey: ["roadmaps"] });
+    },
+
+    onError: (error) => {
+      console.error("Roadmap generation failed:", error);
+    },
   });
 
   return {
-    createRoadmap: mutation.mutateAsync,
-    isGenerating: mutation.isPending
+    generateRoadmap: mutation.mutateAsync,
+    isLoading: mutation.isPending,
+    error: mutation.error,
+    data: mutation.data, // useful if needed
   };
+}
+
+export function useDeleteRoadmap() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: roadmap.deleteRoadmap,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["roadmaps"] });
+    },
+    onError: (error) => {
+      console.error("Failed to delete roadmap:", error);
+    },
+  });
 }

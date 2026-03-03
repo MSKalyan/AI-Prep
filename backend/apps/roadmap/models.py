@@ -39,10 +39,15 @@ class Topic(models.Model):
 
     order = models.PositiveIntegerField(default=0)
 
+      # NEW FIELDS
+    weightage = models.FloatField(default=0.0)  # percentage
+    total_marks = models.FloatField(default=0.0)  # sum of PYQ marks
+    pyq_count = models.PositiveIntegerField(default=0)
+    is_core = models.BooleanField(default=True)
     class Meta:
         db_table = "topics"
         ordering = ["order", "name"]
-        unique_together = ("exam", "name")
+        unique_together = ("exam","parent","name")
 
     def __str__(self):
         return f"{self.exam.name} - {self.name}"
@@ -55,11 +60,7 @@ class Roadmap(models.Model):
     Study roadmap generated for user's exam preparation
     """
 
-    DIFFICULTY_CHOICES = [
-        ("beginner", "Beginner"),
-        ("intermediate", "Intermediate"),
-        ("advanced", "Advanced"),
-    ]
+
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -78,11 +79,7 @@ class Roadmap(models.Model):
 
     target_date = models.DateField(db_index=True)
 
-    difficulty_level = models.CharField(
-        max_length=20,
-        choices=DIFFICULTY_CHOICES,
-        default="intermediate",
-    )
+   
 
     total_weeks = models.PositiveIntegerField(default=1)
 
@@ -117,11 +114,15 @@ class RoadmapTopic(models.Model):
         related_name="topics",
     )
 
+    topic = models.ForeignKey(
+            Topic,
+            on_delete=models.CASCADE,
+            related_name="roadmap_entries"
+        )
+
     week_number = models.IntegerField()
 
-    title = models.CharField(max_length=300)
-    description = models.TextField()
-
+  
     estimated_hours = models.PositiveIntegerField(default=10)
 
     resources = models.JSONField(default=list, blank=True)
@@ -132,15 +133,22 @@ class RoadmapTopic(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
-
+    phase = models.CharField(
+    max_length=20,
+    choices=[
+        ("coverage", "Coverage"),
+        ("practice", "Practice"),
+        ("revision", "Revision"),
+    ],
+)
     class Meta:
         db_table = "roadmap_topics"
         ordering = ["week_number", "priority"]
-        unique_together = ("roadmap", "week_number", "title")
+        unique_together = ("roadmap", "week_number", "topic")
 
 
     def __str__(self):
-        return f"Week {self.week_number}: {self.title}"
+        return f"Week {self.week_number}: {self.topic.name}"
 
 
 # =====================================================
@@ -191,3 +199,27 @@ class RoadmapGenerationJob(models.Model):
 
     def __str__(self):
         return f"Job {self.id} - {self.status}"
+
+class PYQ(models.Model):
+
+    exam = models.ForeignKey(
+        Exam,
+        on_delete=models.CASCADE,
+        related_name="pyqs"
+    )
+
+    topic = models.ForeignKey(
+        Topic,
+        on_delete=models.CASCADE,
+        related_name="pyqs"
+    )
+
+    year = models.IntegerField()
+    marks = models.FloatField()
+
+    class Meta:
+        db_table = "pyqs"
+        indexes = [
+            models.Index(fields=["exam", "year"]),
+            models.Index(fields=["topic"]),
+        ]
