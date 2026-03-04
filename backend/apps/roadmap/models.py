@@ -11,6 +11,7 @@ class Exam(models.Model):
     name = models.CharField(max_length=200,unique=True)
     category = models.CharField(max_length=100, blank=True)
     total_marks = models.IntegerField(default=100)
+    exam_date = models.DateField()  # NEW FIELD
 
     class Meta:
         db_table = "exams"
@@ -41,7 +42,7 @@ class Topic(models.Model):
 
       # NEW FIELDS
     weightage = models.FloatField(default=0.0)  # percentage
-    total_marks = models.FloatField(default=0.0)  # sum of PYQ marks
+    pyq_total_marks = models.FloatField(default=0.0)  # sum of PYQ marks
     pyq_count = models.PositiveIntegerField(default=0)
     is_core = models.BooleanField(default=True)
     class Meta:

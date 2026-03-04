@@ -223,21 +223,48 @@ CACHES = {
 }
 
 # AI Service Settings
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
-LLM_MODEL = os.environ.get('LLM_MODEL', 'gpt-4o-mini')
-LLM_TEMPERATURE = float(os.environ.get('LLM_TEMPERATURE', '0.7'))
-LLM_MAX_TOKENS = int(os.environ.get('LLM_MAX_TOKENS', '2000'))
+GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
-AI_MODE = os.environ.get("AI_MODE", "mock")  
-# options: "mock", "openai"
+LLM_MODEL = os.environ.get(
+    "LLM_MODEL",
+    "llama-3.1-8b-instant"
+)
 
-# RAG Settings
-VECTOR_DB_PATH = BASE_DIR / 'vector_store'
-EMBEDDING_MODEL = os.environ.get('EMBEDDING_MODEL', 'text-embedding-ada-002')
-CHUNK_SIZE = int(os.environ.get('CHUNK_SIZE', '1000'))
-CHUNK_OVERLAP = int(os.environ.get('CHUNK_OVERLAP', '200'))
-TOP_K_RESULTS = int(os.environ.get('TOP_K_RESULTS', '5'))
+LLM_TEMPERATURE = float(
+    os.environ.get("LLM_TEMPERATURE", "0.3")
+)
+
+LLM_MAX_TOKENS = int(
+    os.environ.get("LLM_MAX_TOKENS", "300")
+)
+
+AI_MODE = os.environ.get("AI_MODE", "groq")
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
+INTERNAL_IPS = [
+    # ...
+    "127.0.0.1",
+    # ...
+]
+
+
+
+
+
+# LOGGING = {
+#     "version": 1,
+#     "disable_existing_loggers": False,
+#     "handlers": {
+#         "console": {
+#             "class": "logging.StreamHandler",
+#         },
+#     },
+#     "loggers": {
+#         "django.db.backends": {
+#             "handlers": ["console"],
+#             "level": "DEBUG",
+#         },
+#     },
+# }

@@ -166,7 +166,7 @@ class MockTestService:
         Generate questions using AI
         This will be implemented with AI service integration
         """
-        from apps.ai_service.services import AIService
+        from backend.apps.ai_service.services.services import AIService
         
         prompt = f"""
         Generate {num_questions} {difficulty} level questions for {exam_type} exam.

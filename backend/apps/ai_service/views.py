@@ -8,7 +8,7 @@ from .serializers import (
     ConversationSerializer,
     MessageSerializer
 )
-from .services import AIService
+from .services.services import AIService
 from .models import Conversation
 
 

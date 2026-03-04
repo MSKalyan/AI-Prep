@@ -9,7 +9,7 @@ class WeightageService:
         """
         Computes topic-wise weightage based on PYQ marks.
         Updates:
-        - total_marks
+        - pyq_total_marks
         - pyq_count
         - weightage (%)
         """
@@ -27,12 +27,12 @@ class WeightageService:
                 total_pyqs=Count("id")
             )
 
-            topic.total_marks = aggregates["total_marks"] or 0
+            topic.pyq_total_marks = aggregates["total_marks"] or 0
             topic.pyq_count = aggregates["total_pyqs"] or 0
 
             if total_exam_marks > 0:
                 topic.weightage = (
-                    topic.total_marks / total_exam_marks
+                    topic.pyq_total_marks / total_exam_marks
                 ) * 100
             else:
                 topic.weightage = 0

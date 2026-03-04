@@ -1,6 +1,7 @@
 from django.core.management.base import BaseCommand
 from apps.roadmap.models import Exam, Topic, PYQ
 import random
+from apps.roadmap.services.weightage_service import WeightageService
 
 
 class Command(BaseCommand):
@@ -21,7 +22,7 @@ class Command(BaseCommand):
 
         # Approx realistic distribution %
         weight_distribution = {
-            "Engineering Mathematics": 15,
+            "Engineering Mathematics": 5,
             "Programming & Data Structures": 10,
             "Algorithms": 10,
             "Operating Systems": 10,
@@ -66,6 +67,10 @@ class Command(BaseCommand):
 
                     remaining -= mark
 
+        # After generating PYQs
+        WeightageService.compute_weightage(exam)
+
         self.stdout.write(
             self.style.SUCCESS("Synthetic PYQs generated successfully.")
         )
+

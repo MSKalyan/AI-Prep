@@ -4,12 +4,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ExamSelect from "./ExamSelect";
 import { useGenerateRoadmap } from "../hooks/useGenerateRoadmap";
-
+import { useExams } from "../hooks/useExams";
+interface Exam {
+  id: number;
+  name: string;
+  exam_date: string;
+}
 export default function CreateRoadmapForm() {
 
   const router = useRouter();
   const { generateRoadmap } = useGenerateRoadmap();
-
+  const {exams} = useExams();
   const [form, setForm] = useState({
     exam_id: "",
     target_date: "",
@@ -17,30 +22,55 @@ export default function CreateRoadmapForm() {
   });
 
   const [loading, setLoading] = useState(false);
+ const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError("");
 
-    if (!form.exam_id) return;
+  if (!form.exam_id) {
+    setError("Please select an exam.");
+    return;
+  }
 
-    try {
-      setLoading(true);
+  if (!form.target_date) {
+    setError("Please select a target date.");
+    return;
+  }
 
-      const response = await generateRoadmap({
-        exam_id: Number(form.exam_id),
-        target_date: form.target_date,
-        study_hours_per_day: form.study_hours_per_day,
-      });
+  const selectedDate = new Date(form.target_date);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // remove time part
 
-      // Redirect to roadmap detail page
-      router.push(`/dashboard/roadmap/${response.roadmap_id}`);
+  const selectedExam = exams?.find(
+    (exam:Exam) => exam.id === Number(form.exam_id)
+  );
+if (selectedDate <= today) {
+  setError("Target date must be in the future.");
+  return;
+}
 
-    } catch (error) {
-      console.error("Generation failed:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+if (selectedExam?.exam_date && selectedDate > new Date(selectedExam.exam_date)) {
+  setError(`Target date must be on or before the exam date (${selectedExam.exam_date}).`);
+  return;
+}
+  try {
+    setLoading(true);
+
+    const response = await generateRoadmap({
+      exam_id: Number(form.exam_id),
+      target_date: form.target_date,
+      study_hours_per_day: form.study_hours_per_day,
+    });
+
+    router.push(`/dashboard/roadmap/${response.roadmap_id}`);
+
+  } catch (err: any) {
+    setError("Failed to generate roadmap.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="flex justify-center p-6">
@@ -62,6 +92,11 @@ export default function CreateRoadmapForm() {
 
         {/* Target Date */}
         <div>
+          {error && (
+              <p className="mt-2 text-sm text-red-500">
+                {error}
+              </p>
+            )}
           <label className="mb-1 block text-sm text-gray-600">
             Target Date
           </label>

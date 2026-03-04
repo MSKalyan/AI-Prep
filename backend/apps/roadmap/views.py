@@ -1,3 +1,5 @@
+from urllib3 import request
+
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -8,7 +10,7 @@ from worker.tasks import generate_roadmap_async
 
 from .models import Roadmap, RoadmapGenerationJob, Exam
 from .serializers import (
-    RoadmapGenerateSerializer,
+    # RoadmapGenerateSerializer,
     RoadmapSerializer,
     RoadmapTopicSerializer,
     ExamSerializer,
@@ -31,46 +33,46 @@ class ExamListView(APIView):
         return Response(serializer.data)
 
 
-# ==================================================
-# GENERATE ROADMAP (ASYNC)
-# ==================================================
+# # ==================================================
+# # GENERATE ROADMAP (ASYNC)
+# # ==================================================
 
-class RoadmapGenerateView(APIView):
+# class RoadmapGenerateView(APIView):
 
-    permission_classes = [IsAuthenticated]
+#     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
+#     def post(self, request):
 
-        serializer = RoadmapGenerateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+#         serializer = RoadmapGenerateSerializer(data=request.data)
+#         serializer.is_valid(raise_exception=True)
 
-        data = serializer.validated_data
+#         data = serializer.validated_data
 
-        # Create async job record
-        job = RoadmapGenerationJob.objects.create(
-            user=request.user,
-            status="pending"
-        )
+#         # Create async job record
+#         job = RoadmapGenerationJob.objects.create(
+#             user=request.user,
+#             status="pending"
+#         )
 
-        # Send async celery task
-        generate_roadmap_async.delay(
-            job.id,
-            request.user.id,
-            data["exam_id"],
-            str(data["target_date"]),
-            data["difficulty_level"],
-            data["study_hours_per_day"],
-            data.get("current_knowledge", ""),
-            data.get("target_marks", None),
-        )
+#         # Send async celery task
+#         generate_roadmap_async.delay(
+#             job.id,
+#             request.user.id,
+#             data["exam_id"],
+#             str(data["target_date"]),
+#             data["difficulty_level"],
+#             data["study_hours_per_day"],
+#             data.get("current_knowledge", ""),
+#             data.get("target_marks", None),
+#         )
 
-        return Response(
-            {
-                "job_id": job.id,
-                "status": "pending"
-            },
-            status=status.HTTP_202_ACCEPTED
-        )
+#         return Response(
+#             {
+#                 "job_id": job.id,
+#                 "status": "pending"
+#             },
+#             status=status.HTTP_202_ACCEPTED
+#         )
 
 
 # ==================================================
@@ -107,8 +109,12 @@ class RoadmapListView(APIView):
 
     def get(self, request):
 
-        roadmaps = Roadmap.objects.filter(user=request.user)
-
+        roadmaps = (
+            Roadmap.objects
+            .filter(user=request.user)
+            .select_related("exam")      # if serializer includes exam
+            .prefetch_related("topics__topic__parent")  # reverse FK
+        )
         serializer = RoadmapSerializer(roadmaps, many=True)
 
         return Response(serializer.data)
@@ -125,7 +131,9 @@ class RoadmapDetailView(APIView):
     def get_object(self, request, pk):
 
         return get_object_or_404(
-            Roadmap,
+            Roadmap.objects
+        .select_related("exam")
+        .prefetch_related("topics__topic__parent"),
             pk=pk,
             user=request.user
         )

@@ -1,3 +1,5 @@
+from datetime import date
+
 from rest_framework import serializers
 from .models import Roadmap, RoadmapTopic, Exam
 
@@ -15,6 +17,7 @@ class ExamSerializer(serializers.ModelSerializer):
             "name",
             "category",
             "total_marks",
+            "exam_date",
         )
 
 
@@ -82,41 +85,72 @@ class RoadmapSerializer(serializers.ModelSerializer):
         )
 
 
-# =====================================================
-# ROADMAP GENERATE SERIALIZER (INPUT ONLY)
-# =====================================================
+# # =====================================================
+# # ROADMAP GENERATE SERIALIZER (INPUT ONLY)
+# # =====================================================
 
-class RoadmapGenerateSerializer(serializers.Serializer):
+# class RoadmapGenerateSerializer(serializers.Serializer):
 
-    exam_id = serializers.IntegerField()
+#     exam_id = serializers.IntegerField()
 
-    target_date = serializers.DateField()
+#     target_date = serializers.DateField()
 
-    target_marks = serializers.IntegerField(min_value=1)
+#     target_marks = serializers.IntegerField(min_value=1)
 
 
 
-    study_hours_per_day = serializers.IntegerField(
-        min_value=1,
-        max_value=24
-    )
+#     study_hours_per_day = serializers.IntegerField(
+#         min_value=1,
+#         max_value=24
+#     )
 
-    current_knowledge = serializers.CharField(
-        required=False,
-        allow_blank=True
-    )
+#     current_knowledge = serializers.CharField(
+#         required=False,
+#         allow_blank=True
+#     )
 
 # =====================================================
 # DETERMINISTIC ROADMAP GENERATE SERIALIZER (SPRINT 3)
 # =====================================================
-
+ 
 class DeterministicRoadmapGenerateSerializer(serializers.Serializer):
 
     exam_id = serializers.IntegerField()
-
     target_date = serializers.DateField()
-
     study_hours_per_day = serializers.IntegerField(
         min_value=1,
         max_value=24
     )
+
+    # Field-level validation
+    def validate_target_date(self, value):
+        if value <= date.today():
+            raise serializers.ValidationError(
+                "Target date must be a future date."
+            )
+        return value
+
+    # Object-level validation
+    def validate(self, data):
+        exam_id = data.get("exam_id")
+        target_date = data.get("target_date")
+
+        try:
+            exam = Exam.objects.get(id=exam_id)
+        except Exam.DoesNotExist:
+            raise serializers.ValidationError(
+                {"exam_id": "Invalid exam selected."}
+            )
+
+        if exam.exam_date and target_date > exam.exam_date:
+            raise serializers.ValidationError(
+                {
+                    "target_date":
+                        "Target date cannot exceed the official exam date."
+                }
+            )
+
+        # Store exam instance for later use
+        data["exam"] = exam
+
+        return data
