@@ -66,3 +66,64 @@ class DocumentSerializer(serializers.ModelSerializer):
                   'topic', 'exam_type', 'source_url', 'author', 'tags',
                   'created_at')
         read_only_fields = ('id', 'created_at', 'embedding')
+
+
+
+
+
+
+
+class TopicExplanationSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    hours = serializers.IntegerField()
+    explanation = serializers.CharField()
+
+
+class WeekExplanationSerializer(serializers.Serializer):
+    week = serializers.IntegerField()
+    phase = serializers.CharField()
+    topics = TopicExplanationSerializer(many=True)
+
+
+class RoadmapAIResponseSerializer(serializers.Serializer):
+    weeks = WeekExplanationSerializer(many=True)
+
+    def validate(self, data):
+
+        original = self.context["original"]
+
+        if len(data["weeks"]) != len(original["weeks"]):
+            raise serializers.ValidationError("Week count mismatch.")
+
+        for ai_week, orig_week in zip(data["weeks"], original["weeks"]):
+
+            if ai_week["week"] != orig_week["week"]:
+                raise serializers.ValidationError(
+                    f"Week number changed: {ai_week['week']}"
+                )
+
+            if ai_week["phase"] != orig_week["phase"]:
+                raise serializers.ValidationError(
+                    f"Phase changed in week {ai_week['week']}"
+                )
+
+            if len(ai_week["topics"]) != len(orig_week["topics"]):
+                raise serializers.ValidationError(
+                    f"Topic count mismatch in week {ai_week['week']}"
+                )
+
+            for ai_topic, orig_topic in zip(
+                ai_week["topics"], orig_week["topics"]
+            ):
+
+                if ai_topic["name"] != orig_topic["name"]:
+                    raise serializers.ValidationError(
+                        f"Topic name changed: {orig_topic['name']}"
+                    )
+
+                if ai_topic["hours"] != orig_topic["hours"]:
+                    raise serializers.ValidationError(
+                        f"Study hours changed for {orig_topic['name']}"
+                    )
+
+        return data

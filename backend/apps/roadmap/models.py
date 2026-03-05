@@ -60,9 +60,6 @@ class Roadmap(models.Model):
     """
     Study roadmap generated for user's exam preparation
     """
-
-
-
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -123,6 +120,7 @@ class RoadmapTopic(models.Model):
 
     week_number = models.IntegerField()
 
+    day_number = models.IntegerField(default=1) #1-7
   
     estimated_hours = models.PositiveIntegerField(default=10)
 
@@ -145,7 +143,7 @@ class RoadmapTopic(models.Model):
     class Meta:
         db_table = "roadmap_topics"
         ordering = ["week_number", "priority"]
-        unique_together = ("roadmap", "week_number", "topic")
+        unique_together = ("roadmap", "week_number","day_number", "topic")
 
 
     def __str__(self):

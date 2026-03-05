@@ -1,3 +1,5 @@
+import json
+
 from groq import Groq
 from django.conf import settings
 
@@ -13,7 +15,7 @@ class LLMService:
         self.temperature = settings.LLM_TEMPERATURE
         self.max_tokens = settings.LLM_MAX_TOKENS
 
-    def generate_response(self, prompt: str) -> str:
+    def generate_response(self, prompt: str, expect_json: bool = False) -> str:
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -24,8 +26,12 @@ class LLMService:
                 temperature=self.temperature,
                 max_tokens=self.max_tokens
             )
+            content = response.choices[0].message.content.strip()
 
-            return response.choices[0].message.content.strip()
+            if expect_json:
+                return json.loads(content)
+
+            return content
 
         except Exception as e:
             print(f"LLM Error: {e}")

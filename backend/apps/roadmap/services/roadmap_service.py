@@ -30,18 +30,45 @@ class RoadmapService:
             description=f"Deterministic roadmap for {exam.name}",
         )
 
-        # Single unified weekly structure
+        daily_limit = study_hours_per_day
+
+        # -----------------------------
+        # Convert weekly plan → daily plan
+        # -----------------------------
         for week_data in plan_result["plan"]:
+
+            week_number = week_data["week_number"]
+            phase = week_data["phase"]
+
+            current_day = 1
+            remaining_day_hours = daily_limit
 
             for item in week_data["items"]:
 
-                RoadmapTopic.objects.create(
-                    roadmap=roadmap,
-                    week_number=week_data["week_number"],
-                    topic=item["topic"],
-                    estimated_hours = int(round(item["hours"])) if item["hours"] > 0 else 1,  # Ensure at least 1 hour if 
-                    phase=week_data["phase"],
-                    priority=1
-                )
+                topic = item["topic"]
+                topic_hours = int(round(item["hours"])) if item["hours"] > 0 else 1
+
+                while topic_hours > 0:
+
+                    allocated = min(topic_hours, remaining_day_hours)
+
+                    RoadmapTopic.objects.create(
+                        roadmap=roadmap,
+                        week_number=week_number,
+                        day_number=current_day,
+                        topic=topic,
+                        estimated_hours=allocated,
+                        phase=phase,
+                        priority=1
+                    )
+
+                    topic_hours -= allocated
+                    remaining_day_hours -= allocated
+
+                    # Move to next day if limit reached
+                    if remaining_day_hours == 0:
+                        current_day += 1
+                        remaining_day_hours = daily_limit
 
         return roadmap
+        

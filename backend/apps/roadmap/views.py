@@ -1,5 +1,9 @@
+from django.utils import timezone
+
 from urllib3 import request
 
+from apps.roadmap.services.progress_service import ProgressService
+from apps.ai_service.services.llm_service import LLMService
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -8,7 +12,7 @@ from django.shortcuts import get_object_or_404
 
 from worker.tasks import generate_roadmap_async
 
-from .models import Roadmap, RoadmapGenerationJob, Exam
+from .models import Roadmap, RoadmapGenerationJob, Exam, RoadmapTopic
 from .serializers import (
     # RoadmapGenerateSerializer,
     RoadmapSerializer,
@@ -226,3 +230,114 @@ class DeterministicRoadmapGenerateView(APIView):
             },
             status=status.HTTP_201_CREATED
         )
+    
+class WeekPlanView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, roadmap_id, week_number):
+
+        topics = RoadmapTopic.objects.filter(
+            roadmap_id=roadmap_id,
+            week_number=week_number
+        ).order_by("day_number")
+
+        data = [
+            {
+                "id": t.id,
+                "day": t.day_number,
+                "topic": t.topic.name,
+                "hours": t.estimated_hours,
+                "completed": t.is_completed
+            }
+            for t in topics
+        ]
+
+        return Response(data)
+    
+
+class TopicCompleteView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, topic_id):
+
+        topic = get_object_or_404(RoadmapTopic, id=topic_id)
+
+        # toggle completion
+        topic.is_completed = not topic.is_completed
+
+        if topic.is_completed:
+            topic.completed_at = timezone.now()
+        else:
+            topic.completed_at = None
+
+        topic.save()
+
+        return Response({
+            "topic_id": topic.id,
+            "completed": topic.is_completed
+        })
+    
+class WeekProgressView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, roadmap_id, week_number):
+
+        progress = ProgressService.get_week_progress(
+            roadmap_id,
+            week_number
+        )
+
+        return Response(progress)
+    
+
+class RoadmapProgressView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, roadmap_id):
+
+        progress = ProgressService.get_overall_progress(roadmap_id)
+
+        return Response(progress)
+    
+class TopicExplanationView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+  
+    def get(self, request, topic_id):
+
+        topic = get_object_or_404(RoadmapTopic, id=topic_id)
+        hours = topic.estimated_hours
+        topic_name = topic.topic.name
+
+        prompt = f"""
+        You are an AI tutor helping students prepare for technical exams.
+
+        Explain the topic briefly and clearly.
+
+        Topic: {topic}
+        Recommended Study Time: {hours} hours
+
+        Instructions:
+        - Write a concise explanation suitable for exam preparation.
+        - Focus on the core concept and its importance.
+        - Avoid storytelling, analogies, or casual examples.
+        - Do not mention study time in the explanation.
+        - Use simple technical language.
+
+        Output requirements:
+        - 2–3 sentences only.
+        - Do not include headings, markdown, or bullet points.
+"""
+        llm = LLMService()
+
+        explanation = llm.generate_response(prompt)
+
+        return Response({
+            "topic": topic_name,
+            "explanation": explanation
+        })
