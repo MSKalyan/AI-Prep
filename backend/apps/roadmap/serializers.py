@@ -154,3 +154,17 @@ class DeterministicRoadmapGenerateSerializer(serializers.Serializer):
         data["exam"] = exam
 
         return data
+    
+
+    class StudyTopicSerializer(serializers.Serializer):
+
+        topic = serializers.CharField()
+        subject = serializers.CharField()
+        week = serializers.IntegerField()
+        phase = serializers.CharField()
+        estimated_hours = serializers.IntegerField()
+        ai_explanation = serializers.CharField(allow_blank=True)
+
+        pyqs = serializers.ListField(default=[])
+        youtube_resources = serializers.ListField(default=[])
+        mock_tests = serializers.ListField(default=[])

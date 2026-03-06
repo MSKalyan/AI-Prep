@@ -4,6 +4,7 @@ from urllib3 import request
 
 from apps.roadmap.services.progress_service import ProgressService
 from apps.ai_service.services.llm_service import LLMService
+from apps.roadmap.services.study_service import StudyService
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -341,3 +342,23 @@ class TopicExplanationView(APIView):
             "topic": topic_name,
             "explanation": explanation
         })
+    
+class TopicStudyView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, topic_id):
+
+        data = StudyService.get_topic_study_data(topic_id)
+
+        return Response(data)
+    
+class RoadmapTopicsView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, roadmap_id):
+
+        topics = StudyService.get_roadmap_topics(roadmap_id)
+
+        return Response(topics)

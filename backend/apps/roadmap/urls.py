@@ -5,7 +5,9 @@ from .views import (
     RoadmapListView,
     RoadmapDetailView,
     DeterministicRoadmapGenerateView,
+    RoadmapTopicsView,
     TopicExplanationView,
+    TopicStudyView,
     WeekPlanView,
     TopicCompleteView,
     WeekProgressView,
@@ -80,4 +82,12 @@ urlpatterns = [
     "roadmap/topic/<int:topic_id>/explanation/",
     TopicExplanationView.as_view(),
 ),
+
+  path("roadmap/topics/<int:topic_id>/study/", TopicStudyView.as_view(), name="topic_study"),
+  
+  path(
+    "roadmap/<int:roadmap_id>/topics/",
+    RoadmapTopicsView.as_view(),
+    name="roadmap_topics"
+)
 ]

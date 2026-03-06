@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useQuery,useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 import {
   getWeekTopics,
@@ -10,16 +11,28 @@ import {
   WeekTopic
 } from "@/features/roadmap/services/roadmap.service";
 
-import TopicExplanation from "./TopicExplanation";
+import {getTopicStudy} from "@/features/study/services/study.service";
 
 interface Props {
   roadmapId: number;
   week: number;
+  studyMode?: boolean;
+  selectedTopic?: number;
+  onSelectTopic?: (topicId: number) => void;
 }
 
-export default function WeekPlanner({ roadmapId, week }: Props) {
+export default function WeekPlanner({
+  roadmapId,
+  week,
+  studyMode = false,
+  selectedTopic,
+  onSelectTopic
+}: Props) {
+
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
+  const router = useRouter();
+
+  const [open, setOpen] = useState(studyMode);
   const [openTopic, setOpenTopic] = useState<number | null>(null);
 
   const { data: topics } = useQuery({
@@ -33,74 +46,66 @@ export default function WeekPlanner({ roadmapId, week }: Props) {
     queryFn: () => getWeekProgress(roadmapId, week),
   });
 
- async function handleToggle(id: number) {
+  async function handleToggle(id: number) {
 
-  const topics: any[] | undefined = queryClient.getQueryData([
-    "week-topics",
-    roadmapId,
-    week,
-  ]);
+    const topics: any[] | undefined = queryClient.getQueryData([
+      "week-topics",
+      roadmapId,
+      week,
+    ]);
 
-  const topic = topics?.find((t) => t.id === id);
+    const topic = topics?.find((t) => t.id === id);
+    const wasCompleted = topic?.completed;
 
-  const wasCompleted = topic?.completed;
+    await toggleTopic(id);
 
-  await toggleTopic(id);
+    queryClient.setQueryData(
+      ["week-topics", roadmapId, week],
+      (old: any[]) =>
+        old.map((t) =>
+          t.id === id ? { ...t, completed: !t.completed } : t
+        )
+    );
 
-  /* -------- Update week topics cache -------- */
+    queryClient.setQueryData(
+      ["roadmap-progress", roadmapId],
+      (old: any) => {
 
-  queryClient.setQueryData(
-    ["week-topics", roadmapId, week],
-    (old: any[]) =>
-      old.map((t) =>
-        t.id === id ? { ...t, completed: !t.completed } : t
-      )
-  );
+        if (!old) return old;
 
-  /* -------- Update overall roadmap progress -------- */
+        const change = wasCompleted ? -1 : +1;
+        const completed = old.completed_topics + change;
 
-  queryClient.setQueryData(
-    ["roadmap-progress", roadmapId],
-    (old: any) => {
+        return {
+          ...old,
+          completed_topics: completed,
+          progress: Math.round(
+            (completed / old.total_topics) * 100
+          ),
+        };
+      }
+    );
 
-      if (!old) return old;
+    queryClient.setQueryData(
+      ["week-progress", roadmapId, week],
+      (old: any) => {
 
-      const change = wasCompleted ? -1 : +1;
+        if (!old) return old;
 
-      const completed = old.completed_topics + change;
+        const change = wasCompleted ? -1 : +1;
+        const completed = old.completed_topics + change;
 
-      return {
-        ...old,
-        completed_topics: completed,
-        progress: Math.round(
-          (completed / old.total_topics) * 100
-        ),
-      };
-    }
-  );
+        return {
+          ...old,
+          completed_topics: completed,
+          progress: Math.round(
+            (completed / old.total_topics) * 100
+          ),
+        };
+      }
+    );
+  }
 
-  /* -------- Update week progress -------- */
-
-  queryClient.setQueryData(
-    ["week-progress", roadmapId, week],
-    (old: any) => {
-
-      if (!old) return old;
-
-      const change = wasCompleted ? -1 : +1;
-
-      const completed = old.completed_topics + change;
-
-      return {
-        ...old,
-        completed_topics: completed,
-        progress: Math.round(
-          (completed / old.total_topics) * 100
-        ),
-      };
-    }
-  );
-}
   /* -------- Group by Day -------- */
 
   const grouped: Record<number, WeekTopic[]> = {};
@@ -120,7 +125,9 @@ export default function WeekPlanner({ roadmapId, week }: Props) {
 
       <div
         className="flex justify-between items-center p-4 cursor-pointer"
-        onClick={() => setOpen(!open)}
+        onClick={() =>  {  if (!studyMode) {
+            setOpen(!open);}
+          }}
       >
 
         <div className="font-semibold">
@@ -192,13 +199,28 @@ export default function WeekPlanner({ roadmapId, week }: Props) {
 
                   <div
                     key={t.id}
-                    className="flex items-center gap-3 border rounded p-2"
+                    className={`flex items-center gap-3 border rounded p-2 cursor-pointer
+                    ${selectedTopic === t.id ? "bg-blue-100 border-blue-400" : ""}
+                    `}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (studyMode) {
+                       queryClient.prefetchQuery({
+      queryKey: ["topic-study", t.id],
+      queryFn: () => getTopicStudy(t.id)
+    });
+                        onSelectTopic?.(t.id);
+                      }
+                    }}
                   >
 
                     <input
                       type="checkbox"
                       checked={t.completed}
-                      onChange={() => handleToggle(t.id)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleToggle(t.id);
+                      }}
                     />
 
                     <div className="flex-1">
@@ -211,19 +233,20 @@ export default function WeekPlanner({ roadmapId, week }: Props) {
 
                     </div>
 
-                    <button
-                      className="text-blue-600 text-xs"
-                      onClick={() =>
-                        setOpenTopic(
-                          openTopic === t.id ? null : t.id
-                        )
-                      }
-                    >
-                      Explain
-                    </button>
+                    {/* Show Study button only in roadmap page */}
 
-                    {openTopic === t.id && (
-                      <TopicExplanation topicId={t.id} />
+                    {!studyMode && (
+
+                      <button
+                        className="text-blue-600 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/dashboard/study/${t.id}`);
+                        }}
+                      >
+                        Study
+                      </button>
+
                     )}
 
                   </div>
@@ -240,5 +263,6 @@ export default function WeekPlanner({ roadmapId, week }: Props) {
       )}
 
     </div>
+
   );
 }
