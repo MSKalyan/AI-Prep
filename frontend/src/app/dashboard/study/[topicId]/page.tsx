@@ -2,7 +2,6 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import StudySidebar from "@/features/study/components/StudySidebar";
 import StudyHeader from "@/features/study/components/StudyHeader";
 import AIExplanationPanel from "@/features/study/components/AIExplanationPanel";
 import {useState} from "react";

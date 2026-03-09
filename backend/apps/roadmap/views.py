@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 
+from django.db import transaction
 from worker.tasks import generate_roadmap_async
 
 from .models import Roadmap, RoadmapGenerationJob, Exam, RoadmapTopic
@@ -362,3 +363,31 @@ class RoadmapTopicsView(APIView):
         topics = StudyService.get_roadmap_topics(roadmap_id)
 
         return Response(topics)
+
+class ActivateRoadmapView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, roadmap_id):
+
+        user = request.user
+
+        roadmap = Roadmap.objects.filter(
+            id=roadmap_id,
+            user=user
+        ).first()
+
+        if not roadmap:
+            return Response({"error": "Roadmap not found"}, status=404)
+
+        with transaction.atomic():
+
+            Roadmap.objects.filter(
+                user=user,
+                is_active=True
+            ).update(is_active=False)
+
+            roadmap.is_active = True
+            roadmap.save()
+
+        return Response({"message": "Roadmap activated"})

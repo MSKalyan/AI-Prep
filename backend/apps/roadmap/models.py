@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-
+from django.db.models import Q
 
 # =====================================================
 # EXAM MODEL (Dropdown source)
@@ -87,11 +87,18 @@ class Roadmap(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     version = models.PositiveIntegerField(default=1)
-    is_active = models.BooleanField(default=True,db_index=True)
+    is_active = models.BooleanField(default=False,db_index=True)
 
     class Meta:
         db_table = "roadmaps"
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user"],
+                condition=Q(is_active=True),
+                name="unique_active_roadmap_per_user"
+            )
+        ]
 
     def __str__(self):
         exam_name = self.exam.name if self.exam else "No Exam"

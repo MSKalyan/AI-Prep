@@ -22,14 +22,20 @@ class RoadmapService:
             study_hours_per_day
         )
 
+        Roadmap.objects.filter(
+            user=user,
+            is_active=True
+        ).update(is_active=False)
+
         roadmap = Roadmap.objects.create(
             user=user,
             exam=exam,
             target_date=target_date,
             total_weeks=plan_result["total_weeks"],
             description=f"Deterministic roadmap for {exam.name}",
+            is_active=True
         )
-
+       
         daily_limit = study_hours_per_day
 
         # -----------------------------

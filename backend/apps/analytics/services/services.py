@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from django.db.models import Sum, Avg, Count, Q
 from django.utils import timezone
-from .models import StudySession, PerformanceMetrics, WeakArea, DailyProgress,PerformanceSnapshot
+from ..models import StudySession, PerformanceMetrics, WeakArea, DailyProgress,PerformanceSnapshot
 
 
 class AnalyticsService:
@@ -365,3 +365,19 @@ class AnalyticsService:
 
         return snapshot
     
+    @staticmethod
+    def get_weak_subject(user):
+
+        weak = PerformanceMetrics.objects.filter(
+            user=user,
+            total_attempts__gt=0
+        ).order_by("accuracy_percentage").first()
+
+        if not weak:
+            return None
+
+        return {
+            "subject": weak.subject,
+            "accuracy": round(weak.accuracy_percentage, 2),
+            "attempts": weak.total_attempts
+        }

@@ -11,7 +11,8 @@ from .views import (
     WeekPlanView,
     TopicCompleteView,
     WeekProgressView,
-    RoadmapProgressView
+    RoadmapProgressView,
+    ActivateRoadmapView
 )
 
 app_name = "roadmap"
@@ -89,5 +90,10 @@ urlpatterns = [
     "roadmap/<int:roadmap_id>/topics/",
     RoadmapTopicsView.as_view(),
     name="roadmap_topics"
-)
+),
+    path(
+        "roadmap/activate/<int:roadmap_id>/",
+        ActivateRoadmapView.as_view(),
+        name="activate-roadmap",
+    ),
 ]

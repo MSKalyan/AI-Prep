@@ -58,7 +58,7 @@ Exam Focus:
 - Important formula, rule, or comparison
 """
 
-            explanation = llm.generate_response(prompt) or "Explanation unavailable."
+            explanation = llm.generate_response(prompt, user=topic.roadmap.user, endpoint="topic-explanation") or "Explanation unavailable."
             print("Generated AI Explanation:", explanation)
             if explanation:
                 explanation = re.sub(r'(?<=:)\s+', '\n', explanation)

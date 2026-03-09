@@ -9,7 +9,7 @@ from .serializers import (
     DailyProgressSerializer,
     StudySessionSerializer
 )
-from .services import AnalyticsService
+from .services.services import AnalyticsService
 from .models import PerformanceMetrics, WeakArea, DailyProgress
 
 

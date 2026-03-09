@@ -13,7 +13,7 @@ from .serializers import (
     GeneratePracticeSerializer
 )
 from .services import MockTestService
-from apps.analytics.services import AnalyticsService
+from apps.analytics.services.services import AnalyticsService
 
 class QuestionListView(APIView):
     """List and filter questions"""
