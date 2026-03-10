@@ -140,7 +140,7 @@ class AIUsageLog(models.Model):
     cost = models.DecimalField(max_digits=10, decimal_places=6, default=0)
     
     success = models.BooleanField(default=True)
-    error_message = models.TextField(blank=True)
+    error_message = models.TextField(null=True, blank=True)
     
     response_time_ms = models.IntegerField(default=0)
     

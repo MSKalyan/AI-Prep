@@ -80,7 +80,7 @@ urlpatterns = [
         name="roadmap_progress"
     ),
     path(
-    "roadmap/topic/<int:topic_id>/explanation/",
+    "roadmap/topics/<int:topic_id>/explanation/",
     TopicExplanationView.as_view(),
 ),
 

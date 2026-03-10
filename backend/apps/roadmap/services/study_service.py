@@ -21,50 +21,50 @@ class StudyService:
             else topic.topic.name
         )
 
-        # -----------------------------
-        # Generate AI explanation once
-        # -----------------------------
-        if not topic.ai_explanation:
+#         # -----------------------------
+#         # Generate AI explanation once
+#         # -----------------------------
+#         if not topic.ai_explanation:
 
-            llm = LLMService()
+#             llm = LLMService()
 
-            prompt = f"""
-You are an expert tutor helping a student prepare for competitive exams.
+#             prompt = f"""
+# You are an expert tutor helping a student prepare for competitive exams.
 
-Topic: {topic.topic.name}
-Subject: {subject}
+# Topic: {topic.topic.name}
+# Subject: {subject}
 
-Explain the topic as concise study notes.
+# Explain the topic as concise study notes.
 
-Instructions:
-- Use simple language.
-- Limit the entire explanation to about 120 words.
-- Focus only on key exam concepts.
-- Do not use markdown symbols like ** or ##.
-- Keep formatting exactly as shown below.
+# Instructions:
+# - Use simple language.
+# - Limit the entire explanation to about 120 words.
+# - Focus only on key exam concepts.
+# - Do not use markdown symbols like ** or ##.
+# - Keep formatting exactly as shown below.
 
-Output format:
+# Output format:
 
-Concept Overview:
-A short explanation (2–3 sentences).
+# Concept Overview:
+# A short explanation (2–3 sentences).
 
-Key Points:
-- Important idea
-- Important idea
-- Important idea
+# Key Points:
+# - Important idea
+# - Important idea
+# - Important idea
 
-Exam Focus:
-- What exam questions usually test
-- Important formula, rule, or comparison
-"""
+# Exam Focus:
+# - What exam questions usually test
+# - Important formula, rule, or comparison
+# """
 
-            explanation = llm.generate_response(prompt, user=topic.roadmap.user, endpoint="topic-explanation") or "Explanation unavailable."
-            print("Generated AI Explanation:", explanation)
-            if explanation:
-                explanation = re.sub(r'(?<=:)\s+', '\n', explanation)
-                explanation = explanation.replace("**", "").strip()
-            topic.ai_explanation = explanation
-            topic.save(update_fields=["ai_explanation"])
+#             explanation = llm.generate_response(prompt, user=topic.roadmap.user, endpoint="topic-explanation") or "Explanation unavailable."
+#             print("Generated AI Explanation:", explanation)
+#             if explanation:
+#                 explanation = re.sub(r'(?<=:)\s+', '\n', explanation)
+#                 explanation = explanation.replace("**", "").strip()
+#             topic.ai_explanation = explanation
+#             topic.save(update_fields=["ai_explanation"])
 
         # -----------------------------
         # Fetch PYQs

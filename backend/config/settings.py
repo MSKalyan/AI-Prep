@@ -235,7 +235,7 @@ LLM_TEMPERATURE = float(
 )
 
 LLM_MAX_TOKENS = int(
-    os.environ.get("LLM_MAX_TOKENS", "300")
+    os.environ.get("LLM_MAX_TOKENS", "800")
 )
 
 AI_MODE = os.environ.get("AI_MODE", "groq")

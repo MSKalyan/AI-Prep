@@ -3,6 +3,7 @@ import time
 
 from groq import Groq
 from django.conf import settings
+from django.db import transaction
 
 from apps.ai_service.models import AIUsageLog
 
@@ -10,7 +11,7 @@ from apps.ai_service.models import AIUsageLog
 class LLMService:
     """
     Service responsible for communicating with the LLM provider
-    and logging AI usage with robust error handling.
+    and logging AI usage with structured error handling.
     """
 
     def __init__(self):
@@ -26,7 +27,6 @@ class LLMService:
         endpoint: str = "topic-explanation",
         expect_json: bool = False
     ):
-
         start_time = time.time()
 
         try:
@@ -34,13 +34,17 @@ class LLMService:
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "You are an educational assistant."},
-                    {"role": "user", "content": prompt}
+                    {"role": "user", "content": prompt},
                 ],
                 temperature=self.temperature,
-                max_tokens=self.max_tokens
+                max_tokens=self.max_tokens,
             )
 
-            content = response.choices[0].message.content.strip() if response.choices else ""
+            content = ""
+            if response and response.choices:
+                message = response.choices[0].message
+                if message and message.content:
+                    content = message.content.strip()
 
             usage = getattr(response, "usage", None)
 
@@ -50,20 +54,16 @@ class LLMService:
 
             response_time = int((time.time() - start_time) * 1000)
 
-            # Log success
-            try:
-                AIUsageLog.objects.create(
-                    user=user,
-                    endpoint=endpoint,
-                    model_used=self.model,
-                    prompt_tokens=prompt_tokens,
-                    completion_tokens=completion_tokens,
-                    total_tokens=total_tokens,
-                    response_time_ms=response_time,
-                    success=True
-                )
-            except Exception as log_error:
-                print(f"AIUsageLog failed: {log_error}")
+            # Log successful usage
+            self._log_usage(
+                user=user,
+                endpoint=endpoint,
+                success=True,
+                response_time=response_time,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
+            )
 
             # Validate response
             if not content or len(content) < 10:
@@ -82,18 +82,45 @@ class LLMService:
             response_time = int((time.time() - start_time) * 1000)
 
             # Log failure
-            try:
-                AIUsageLog.objects.create(
-                    user=user,
-                    endpoint=endpoint,
-                    model_used=self.model,
-                    success=False,
-                    error_message=str(e),
-                    response_time_ms=response_time
-                )
-            except Exception as log_error:
-                print(f"AIUsageLog failed: {log_error}")
+            self._log_usage(
+                user=user,
+                endpoint=endpoint,
+                success=False,
+                response_time=response_time,
+                error_message=str(e)[:500],
+            )
 
             print(f"LLM Error: {e}")
 
             return None
+
+    def _log_usage(
+        self,
+        user,
+        endpoint,
+        success,
+        response_time,
+        prompt_tokens=0,
+        completion_tokens=0,
+        total_tokens=0,
+        error_message=None,
+    ):
+        """
+        Internal helper for logging AI usage safely.
+        Logging failure should never break the application.
+        """
+
+        try:
+            AIUsageLog.objects.create(
+                user=user,
+                endpoint=endpoint,
+                model_used=self.model,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                total_tokens=total_tokens,
+                response_time_ms=response_time,
+                success=success,
+                error_message=error_message,
+            )
+        except Exception as log_error:
+            print(f"AIUsageLog failed: {log_error}")

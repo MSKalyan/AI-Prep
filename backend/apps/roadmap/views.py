@@ -1,3 +1,5 @@
+import re
+
 from django.utils import timezone
 
 from urllib3 import request
@@ -304,46 +306,73 @@ class RoadmapProgressView(APIView):
         progress = ProgressService.get_overall_progress(roadmap_id)
 
         return Response(progress)
-    
+
+
 class TopicExplanationView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-  
     def get(self, request, topic_id):
 
         topic = get_object_or_404(RoadmapTopic, id=topic_id)
+
+        # If explanation already exists, return it directly
+        if topic.ai_explanation:
+            return Response({
+                "topic": topic.topic.name,
+                "explanation": topic.ai_explanation
+            })
+
         hours = topic.estimated_hours
         topic_name = topic.topic.name
 
         prompt = f"""
-        You are an AI tutor helping students prepare for technical exams.
+You are an expert tutor helping students quickly understand concepts for exams.
 
-        Explain the topic briefly and clearly.
+Explain the topic in a short and clear way so that a student can grasp the core idea quickly.
 
-        Topic: {topic}
-        Recommended Study Time: {hours} hours
+Topic: {topic_name}
 
-        Instructions:
-        - Write a concise explanation suitable for exam preparation.
-        - Focus on the core concept and its importance.
-        - Avoid storytelling, analogies, or casual examples.
-        - Do not mention study time in the explanation.
-        - Use simple technical language.
+Provide the explanation in below format:
+ 1. Concept Overview Explain what the topic is and its main idea in clear, simple terms.  
+2. Key Points and Subtopics Summarize the important ideas, principles, or subtopics related to the topic that students should understand.
 
-        Output requirements:
-        - 2–3 sentences only.
-        - Do not include headings, markdown, or bullet points.
+Instructions:
+- Write a concise explanation of the topic.
+- Focus on the main concept and why it is important.
+- Mention one or two key points students should remember for exams.
+- Use simple, clear language suitable for quick revision.
+- Do not include headings, bullet points, or markdown.
+
+Output rules:
+-Give 5-6 points on It's sub topics.
+- Write overview in a paragraph.
+-keypoints in bullet points without using markdown symbols like - or *.
+- Keep the entire explanation within 120 words.
 """
+
         llm = LLMService()
 
-        explanation = llm.generate_response(prompt)
+        explanation = llm.generate_response(
+            prompt,
+            user=request.user,
+            endpoint="topic-explanation"
+        )
+
+        # Fallback if AI fails
+        if not explanation:
+            explanation = "Explanation unavailable."
+        if explanation:
+            explanation = re.sub(r'(?<=:)\s+', '\n', explanation)
+            explanation = explanation.replace("**", "").strip()
+        # Save explanation for future requests
+        topic.ai_explanation = explanation
+        topic.save(update_fields=["ai_explanation"])
 
         return Response({
             "topic": topic_name,
             "explanation": explanation
         })
-    
 class TopicStudyView(APIView):
 
     permission_classes = [IsAuthenticated]

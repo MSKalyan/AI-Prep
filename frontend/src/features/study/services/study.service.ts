@@ -1,13 +1,13 @@
 import { apiClient } from "@/lib/apiClient";
 
 export interface StudyTopicResponse {
-  roadmap_id:number;
+  roadmap_id: number;
   topic: string;
   subject: string;
   week: number;
   phase: string;
   estimated_hours: number;
-  ai_explanation: string;
+  ai_explanation: string | null;
 }
 
 export interface SidebarTopic {
@@ -17,15 +17,20 @@ export interface SidebarTopic {
   completed: boolean;
 }
 
+export interface TopicExplanationResponse {
+  ai_explanation: string;
+}
 
 export async function getTopicStudy(topicId: number): Promise<StudyTopicResponse> {
   const res = await apiClient.get(`/roadmap/topics/${topicId}/study/`);
   return res.data;
 }
 
-export async function getTopicExplanation(topicId: number): Promise<{ explanation: string }> {
-  const res = await apiClient.post(`/ai/explain-topic/`, {
-    topic_id: topicId,
+export async function getTopicExplanation(
+  topicId: number
+): Promise<TopicExplanationResponse> {
+
+  const res = await apiClient.get(`/roadmap/topics/${topicId}/explanation/`, {
   });
 
   return res.data;
@@ -33,11 +38,8 @@ export async function getTopicExplanation(topicId: number): Promise<{ explanatio
 
 export async function getRoadmapTopics(
   roadmapId: number
-) {
+): Promise<SidebarTopic[]> {
 
-  const res = await apiClient.get(
-    `/roadmap/${roadmapId}/topics/`
-  );
-
+  const res = await apiClient.get(`/roadmap/${roadmapId}/topics/`);
   return res.data;
 }
