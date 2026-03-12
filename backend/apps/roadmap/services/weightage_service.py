@@ -7,15 +7,21 @@ class WeightageService:
     @staticmethod
     def compute_weightage(exam):
         """
-        Computes topic-wise weightage based on PYQ marks.
+        Computes subject-level weightage for an exam.
+
         Updates:
         - pyq_total_marks
         - pyq_count
         - weightage (%)
         """
 
-        topics = Topic.objects.filter(exam=exam)
+        # Only compute weightage for main subjects
+        topics = Topic.objects.filter(
+            exam=exam,
+            parent=None
+        )
 
+        # Total marks of the entire exam dataset
         total_exam_marks = topics.aggregate(
             total=Sum("pyqs__marks")
         )["total"] or 0
@@ -37,4 +43,8 @@ class WeightageService:
             else:
                 topic.weightage = 0
 
-            topic.save()
+            topic.save(update_fields=[
+                "pyq_total_marks",
+                "pyq_count",
+                "weightage"
+            ])

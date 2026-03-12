@@ -59,15 +59,6 @@ class GenerateQuestionsAISerializer(serializers.Serializer):
     )
 
 
-class DocumentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Document
-        fields = ('id', 'title', 'content', 'document_type', 'subject',
-                  'topic', 'exam_type', 'source_url', 'author', 'tags',
-                  'created_at')
-        read_only_fields = ('id', 'created_at', 'embedding')
-
-
 
 
 
@@ -127,3 +118,18 @@ class RoadmapAIResponseSerializer(serializers.Serializer):
                     )
 
         return data
+    
+
+
+class DocumentUploadSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Document
+        fields = [
+            "title",
+            "file",
+            "subject",
+            "topic",
+            "exam_type",
+            "document_type",
+        ]

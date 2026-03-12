@@ -22,6 +22,7 @@ class RoadmapService:
             study_hours_per_day
         )
 
+        # deactivate existing roadmap
         Roadmap.objects.filter(
             user=user,
             is_active=True
@@ -35,12 +36,12 @@ class RoadmapService:
             description=f"Deterministic roadmap for {exam.name}",
             is_active=True
         )
-       
+
         daily_limit = study_hours_per_day
 
-        # -----------------------------
+        # ----------------------------------
         # Convert weekly plan → daily plan
-        # -----------------------------
+        # ----------------------------------
         for week_data in plan_result["plan"]:
 
             week_number = week_data["week_number"]
@@ -52,9 +53,12 @@ class RoadmapService:
             for item in week_data["items"]:
 
                 topic = item["topic"]
-                topic_hours = int(round(item["hours"])) if item["hours"] > 0 else 1
+                topic_hours = item["hours"]
 
                 while topic_hours > 0:
+
+                    if current_day > 7:
+                        break
 
                     allocated = min(topic_hours, remaining_day_hours)
 
@@ -63,7 +67,7 @@ class RoadmapService:
                         week_number=week_number,
                         day_number=current_day,
                         topic=topic,
-                        estimated_hours=allocated,
+                        estimated_hours=round(allocated, 2),
                         phase=phase,
                         priority=1
                     )
@@ -71,10 +75,8 @@ class RoadmapService:
                     topic_hours -= allocated
                     remaining_day_hours -= allocated
 
-                    # Move to next day if limit reached
-                    if remaining_day_hours == 0:
+                    # move to next day if limit reached
+                    if remaining_day_hours <= 0:
                         current_day += 1
                         remaining_day_hours = daily_limit
-
         return roadmap
-        

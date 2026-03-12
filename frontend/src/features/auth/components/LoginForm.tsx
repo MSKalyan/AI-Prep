@@ -5,15 +5,37 @@ import { useAuth } from "../hooks/useAuth";
 
 export default function LoginForm() {
 
-  const { login } = useAuth();
+  const { login, loginError, loginLoading } = useAuth();
 
   const [form, setForm] = useState({
     email: "",
     password: "",
   });
 
-  return (
+  const [error, setError] = useState("");
 
+  const handleLogin = async () => {
+
+    setError("");
+
+    if (!form.email) {
+      setError("Email is required");
+      return;
+    }
+
+    if (!form.password) {
+      setError("Password is required");
+      return;
+    }
+
+    try {
+      await login(form);
+    } catch {
+      // error handled by React Query
+    }
+  };
+
+  return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100">
 
       <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-md">
@@ -24,10 +46,24 @@ export default function LoginForm() {
 
         <div className="space-y-4">
 
+          {/* Client Validation Error */}
+          {error && (
+            <div className="rounded bg-red-100 p-2 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
+          {/* Server Error */}
+          {loginError && (
+            <div className="rounded bg-red-100 p-2 text-sm text-red-700">
+              {loginError.message}
+            </div>
+          )}
+
           <input
-            className="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none"
-            placeholder="Email"
             type="email"
+            placeholder="Email"
+            className="w-full rounded border p-2"
             value={form.email}
             onChange={(e) =>
               setForm({ ...form, email: e.target.value })
@@ -35,9 +71,9 @@ export default function LoginForm() {
           />
 
           <input
-            className="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none"
             type="password"
             placeholder="Password"
+            className="w-full rounded border p-2"
             value={form.password}
             onChange={(e) =>
               setForm({ ...form, password: e.target.value })
@@ -45,10 +81,11 @@ export default function LoginForm() {
           />
 
           <button
-            className="w-full rounded-md bg-blue-600 p-2 text-white transition hover:bg-blue-700"
-            onClick={() => login(form)}
+            onClick={handleLogin}
+            disabled={loginLoading}
+            className="w-full rounded bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:bg-gray-400"
           >
-            Login
+            {loginLoading ? "Logging in..." : "Login"}
           </button>
 
         </div>

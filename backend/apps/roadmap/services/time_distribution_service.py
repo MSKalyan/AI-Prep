@@ -18,7 +18,6 @@ class TimeDistributionService:
         weekly_hours = int(study_hours_per_day * 7 * 0.85)
         total_hours = weekly_hours * total_weeks
 
-        # Phase split
         coverage_weeks = max(1, int(total_weeks * 0.7))
         practice_weeks = max(1, int(total_weeks * 0.2))
         revision_weeks = total_weeks - coverage_weeks - practice_weeks
@@ -37,19 +36,20 @@ class TimeDistributionService:
 
         work_queue = []
 
-        # -----------------------------
+        # ---------------------------------
         # BUILD WORK QUEUE
-        # -----------------------------
+        # ---------------------------------
         for subject in subjects:
 
-            subject_hours = (subject.weightage / 100) * coverage_hours
+            subject_weight = subject.weightage or 0
+            subject_hours = (subject_weight / 100) * coverage_hours
 
             subtopics = list(
                 Topic.objects.filter(parent=subject).order_by("order")
             )
 
-            # if no subtopics
             if not subtopics:
+
                 work_queue.append({
                     "topic": subject,
                     "remaining_hours": subject_hours
@@ -61,10 +61,14 @@ class TimeDistributionService:
 
             for subtopic in subtopics:
 
+                weight = subtopic.weightage or 0
+                marks = subtopic.pyq_total_marks or 0
+                count = subtopic.pyq_count or 0
+
                 score = (
-                    subtopic.weightage * 0.5 +
-                    subtopic.pyq_total_marks * 0.3 +
-                    subtopic.pyq_count * 0.2
+                    weight * 0.5 +
+                    marks * 0.3 +
+                    count * 0.2
                 )
 
                 if subtopic.is_core:
@@ -73,7 +77,6 @@ class TimeDistributionService:
                 scores.append((subtopic, score))
                 total_score += score
 
-            # fallback if no score data
             if total_score == 0:
 
                 split_hours = subject_hours / len(subtopics)
@@ -95,9 +98,9 @@ class TimeDistributionService:
                         "remaining_hours": allocated_hours
                     })
 
-        # -----------------------------
+        # ---------------------------------
         # WEEKLY ALLOCATION
-        # -----------------------------
+        # ---------------------------------
         plan = []
         week_number = 1
 
@@ -138,20 +141,22 @@ class TimeDistributionService:
 
             week_number += 1
 
-        # -----------------------------
+        # ---------------------------------
         # PRACTICE PHASE
-        # -----------------------------
+        # ---------------------------------
         top_subjects = subjects[:5]
 
         for _ in range(practice_weeks):
 
-            total_weight = sum(s.weightage for s in top_subjects)
+            total_weight = sum((s.weightage or 0) for s in top_subjects)
 
             week_items = []
 
             for subject in top_subjects:
 
-                subject_hours = (subject.weightage / total_weight) * weekly_hours
+                subject_hours = (
+                    (subject.weightage or 0) / total_weight
+                ) * weekly_hours
 
                 week_items.append({
                     "topic": subject,
@@ -166,9 +171,9 @@ class TimeDistributionService:
 
             week_number += 1
 
-        # -----------------------------
+        # ---------------------------------
         # REVISION PHASE
-        # -----------------------------
+        # ---------------------------------
         for _ in range(revision_weeks):
 
             split_hours = weekly_hours / len(top_subjects)
@@ -194,8 +199,6 @@ class TimeDistributionService:
             "weekly_hours": weekly_hours,
             "plan": plan
         }
-
-
 class DayDistributionService:
 
     @staticmethod
@@ -208,7 +211,7 @@ class DayDistributionService:
         for item in week_items:
 
             topic = item["topic"]
-            hours = int(round(item["hours"]))
+            hours = item["hours"]
 
             while hours > 0:
 
@@ -217,13 +220,13 @@ class DayDistributionService:
                 days.append({
                     "day": current_day,
                     "topic": topic,
-                    "hours": allocate
+                    "hours": round(allocate, 2)
                 })
 
                 hours -= allocate
                 remaining_day_hours -= allocate
 
-                if remaining_day_hours == 0:
+                if remaining_day_hours <= 0:
                     current_day += 1
                     remaining_day_hours = daily_limit
 

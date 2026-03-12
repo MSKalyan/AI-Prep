@@ -252,7 +252,8 @@ class WeekPlanView(APIView):
                 "day": t.day_number,
                 "topic": t.topic.name,
                 "hours": t.estimated_hours,
-                "completed": t.is_completed
+                "completed": t.is_completed,
+                "subject": t.topic.parent.name if t.topic.parent else None
             }
             for t in topics
         ]

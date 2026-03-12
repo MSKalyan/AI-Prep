@@ -226,7 +226,9 @@ export default function WeekPlanner({
                     <div className="flex-1">
 
                       <div>{t.topic}</div>
-
+                      <div className="text-xs text-gray-500">
+                        {t.subject}
+                      </div>
                       <div className="text-xs text-gray-500">
                         {t.hours} hrs
                       </div>

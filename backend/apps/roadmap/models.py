@@ -209,6 +209,10 @@ class RoadmapGenerationJob(models.Model):
         return f"Job {self.id} - {self.status}"
 
 class PYQ(models.Model):
+    """
+    Stores past year question metadata required for
+    topic weightage calculation.
+    """
 
     exam = models.ForeignKey(
         Exam,
@@ -223,11 +227,17 @@ class PYQ(models.Model):
     )
 
     year = models.IntegerField()
-    marks = models.FloatField()
 
+    # Marks of the question (1 or 2 for GATE)
+    marks = models.FloatField()
+    source_url = models.URLField(unique=True)
     class Meta:
         db_table = "pyqs"
+
         indexes = [
             models.Index(fields=["exam", "year"]),
             models.Index(fields=["topic"]),
         ]
+
+    def __str__(self):
+        return f"{self.exam.name} | {self.topic.name} | {self.year} | {self.marks} marks"

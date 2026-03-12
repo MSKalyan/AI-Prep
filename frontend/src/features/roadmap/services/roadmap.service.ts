@@ -19,6 +19,7 @@ export interface DeterministicRoadmapResponse {
 export interface WeekTopic {
   id: number;
   day: number;
+  subject: string;
   topic: string;
   hours: number;
   completed: boolean;

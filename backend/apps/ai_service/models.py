@@ -3,8 +3,7 @@ from django.conf import settings
 
 
 class Document(models.Model):
-    """Knowledge base documents for RAG"""
-    
+
     DOCUMENT_TYPE_CHOICES = [
         ('textbook', 'Textbook'),
         ('notes', 'Notes'),
@@ -12,32 +11,46 @@ class Document(models.Model):
         ('syllabus', 'Syllabus'),
         ('previous_paper', 'Previous Year Paper'),
     ]
-    
+
+    SOURCE_TYPE_CHOICES = [
+        ("upload", "Upload"),
+        ("scraped", "Scraped"),
+    ]
+
     title = models.CharField(max_length=500)
+
+    file = models.FileField(upload_to="documents/", null=True, blank=True)
+
     content = models.TextField()
+
     document_type = models.CharField(
         max_length=20,
         choices=DOCUMENT_TYPE_CHOICES,
         default='notes',
         db_index=True
     )
-    
-    subject = models.CharField(max_length=200)
-    topic = models.CharField(max_length=200, blank=True)
-    exam_type = models.CharField(max_length=100,db_index=True)  # e.g., UPSC, NEET, JEE
 
-    
-    # Vector embeddings stored as JSON for simplicity
-    # In production, use a proper vector database like Pinecone, Weaviate, or pgvector
-    embedding = models.JSONField(null=True, blank=True)
-    
-    # Metadata
+    subject = models.CharField(max_length=200)
+
+    topic = models.CharField(max_length=200, blank=True)
+
+    exam_type = models.CharField(max_length=100, db_index=True)
+
+    source_type = models.CharField(
+        max_length=20,
+        choices=SOURCE_TYPE_CHOICES,
+        default="upload",
+        db_index=True
+    )
+
     source_url = models.URLField(blank=True)
-    author = models.CharField(max_length=200, blank=True)
+
+    embedding = models.JSONField(null=True, blank=True)
+
     tags = models.JSONField(default=list, blank=True)
-    
-    # Chunking info
+
     chunk_index = models.IntegerField(default=0)
+
     parent_document = models.ForeignKey(
         "self",
         null=True,
@@ -45,10 +58,12 @@ class Document(models.Model):
         on_delete=models.CASCADE,
         related_name="chunks"
     )
-    
+
+    processed = models.BooleanField(default=False)
+
     created_at = models.DateTimeField(auto_now_add=True)
+
     updated_at = models.DateTimeField(auto_now=True)
-    
     class Meta:
         db_table = 'documents'
         ordering = ['id']

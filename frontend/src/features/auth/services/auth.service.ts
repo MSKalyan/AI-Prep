@@ -1,13 +1,62 @@
 import { apiClient } from "@/lib/apiClient";
+import {ApiError} from "@/features/auth/types/apiError";
+
 
 export const login = async (payload: any) => {
-  const { data } = await apiClient.post("/auth/login/", payload);
-  return data;
+  try {
+
+    const { data } = await apiClient.post("/auth/login/", payload);
+
+    return data;
+
+  } catch (error: any) {
+
+    const apiError: ApiError = {
+      message:
+        error?.response?.data?.message ||
+        "Invalid email or password",
+      status: error?.response?.status,
+      errors: error?.response?.data?.errors,
+    };
+
+    throw apiError;
+  }
 };
 
 export const register = async (payload: any) => {
-  const { data } = await apiClient.post("/auth/register/", payload);
-  return data;
+  try {
+    const { data } = await apiClient.post("/auth/register/", payload);
+    return data;
+  } catch (error: any) {
+    const response = error?.response?.data;
+console.log("REGISTER ERROR RESPONSE:", error?.response?.data);
+    let message = "Registration failed";
+
+    if (response) {
+      if (response.message) {
+        message = response.message;
+      } else if (response.detail) {
+        message = response.detail;
+      } else if (typeof response === "object") {
+        const messages = Object.values(response)
+          .flat()
+          .filter(Boolean)
+          .join(" ");
+
+        if (messages) {
+          message = messages;
+        }
+      }
+    }
+
+    const apiError: ApiError = {
+      message,
+      status: error?.response?.status,
+      errors: response,
+    };
+
+    throw apiError;
+  }
 };
 
 export const getProfile = async () => {

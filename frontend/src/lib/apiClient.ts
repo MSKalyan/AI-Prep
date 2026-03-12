@@ -5,36 +5,38 @@ export const apiClient = axios.create({
   withCredentials: true,
 });
 
-
-
-
 apiClient.interceptors.response.use(
-  res => res,
-  async error => {
-
+  (res) => res,
+  async (error) => {
     const originalRequest = error.config;
 
-    // ❌ DO NOT intercept refresh endpoint itself
-    if (originalRequest.url?.includes("/auth/refresh/")) {
+    // Do not intercept refresh endpoint
+    if (originalRequest?.url?.includes("/auth/refresh/")) {
       return Promise.reject(error);
     }
 
-   if (error.response?.status === 401 && !originalRequest._retry) {
+    // Handle expired access token
+    if (error.response?.status === 401 && !originalRequest?._retry) {
 
-  // 🚨 skip refresh if already logout state
-  if (window.location.pathname === "/login") {
-      return Promise.reject(error);
-  }
+      // If already on login page, do nothing
+      if (typeof window !== "undefined" && window.location.pathname === "/login") {
+        return Promise.reject(error);
+      }
 
-  originalRequest._retry = true;
+      originalRequest._retry = true;
 
-  try {
-    await apiClient.post("/auth/refresh/");
-    return apiClient(originalRequest);
-  } catch {
-    window.location.href = "/login";
+      try {
+        await apiClient.post("/auth/refresh/");
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        if (typeof window !== "undefined") {
+          window.location.href = "/login";
+        }
+        return Promise.reject(refreshError);
+      }
+    }
+
+    // IMPORTANT: forward all other errors (e.g., 400 validation errors)
     return Promise.reject(error);
-  }
-}
   }
 );

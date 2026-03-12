@@ -3,7 +3,8 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import * as auth from "../services/auth.service";
 import { useRouter } from "next/navigation";
-
+import { ApiError } from "../types/apiError";
+import { register } from "module";
 export function useAuth(){
 
   const queryClient = useQueryClient();
@@ -25,30 +26,54 @@ export function useAuth(){
   // LOGIN
   // ===============================
 
-  const loginMutation = useMutation({
-    mutationFn: auth.login,
-    onSuccess: () => {
+  const loginMutation = useMutation<
+  any,
+  ApiError,
+  { email: string; password: string }
+>({
+  mutationFn: auth.login,
 
-      // force refetch user
-      queryClient.invalidateQueries({ queryKey:["profile"] });
+  onSuccess: () => {
 
-      router.push("/dashboard");
-    }
-  });
+    // refresh user profile
+    queryClient.invalidateQueries({ queryKey: ["profile"] });
+
+    router.push("/dashboard");
+  },
+
+  onError: (error) => {
+
+    console.error("Login failed:", error.message);
+
+  }
+});
 
   // ===============================
   // REGISTER
   // ===============================
 
-  const registerMutation = useMutation({
-    mutationFn: auth.register,
-    onSuccess: () => {
+  const registerMutation = useMutation<
+  any,
+  ApiError,
+  {
+    email: string;
+    username: string;
+    password: string;
+    password_confirm: string;
+    full_name?: string;
+  }
+>({
+  mutationFn: auth.register,
 
-      queryClient.invalidateQueries({ queryKey:["profile"] });
+  onSuccess: () => {
+    queryClient.invalidateQueries({ queryKey: ["profile"] });
+    router.push("/dashboard");
+  },
 
-      router.push("/dashboard");
-    }
-  });
+  onError: (error) => {
+    console.error("Registration failed:", error.message);
+  }
+});
 
   // ===============================
   // LOGOUT
@@ -84,7 +109,11 @@ export function useAuth(){
     isAuthenticated: !!profileQuery.data,
 
     login: loginMutation.mutateAsync,
+    loginError: loginMutation.error,
+    loginLoading: loginMutation.isPending,
     register: registerMutation.mutateAsync,
+    registerError: registerMutation.error,
+    registerLoading: registerMutation.isPending,
     logout: logoutMutation.mutateAsync,
     updateProfile: updateProfileMutation.mutateAsync,
   };

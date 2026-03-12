@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
+import { ApiError } from "@/features/auth/types/apiError";
 
 export default function RegisterForm() {
 
-  const { register } = useAuth();
+  const { register, registerLoading } = useAuth();
 
   const [form, setForm] = useState({
     email: "",
@@ -15,7 +16,6 @@ export default function RegisterForm() {
     full_name: "",
   });
 
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,18 +26,24 @@ export default function RegisterForm() {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
+
     e.preventDefault();
+    setError(null);
+
+    if (form.password !== form.password_confirm) {
+      setError("Passwords do not match");
+      return;
+    }
 
     try {
-      setLoading(true);
-      setError(null);
 
       await register(form);
 
-    } catch (err:any) {
-      setError(err?.response?.data?.detail || "Registration failed");
-    } finally {
-      setLoading(false);
+    } catch (err) {
+
+      const apiError = err as ApiError;
+      setError(apiError.message);
+
     }
   };
 
@@ -61,7 +67,7 @@ export default function RegisterForm() {
             placeholder="Full name"
             value={form.full_name}
             onChange={handleChange}
-            className="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-md border border-gray-300 p-2"
           />
 
           <input
@@ -70,7 +76,7 @@ export default function RegisterForm() {
             value={form.username}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-md border border-gray-300 p-2"
           />
 
           <input
@@ -80,7 +86,7 @@ export default function RegisterForm() {
             value={form.email}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-md border border-gray-300 p-2"
           />
 
           <input
@@ -90,7 +96,7 @@ export default function RegisterForm() {
             value={form.password}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-md border border-gray-300 p-2"
           />
 
           <input
@@ -100,7 +106,7 @@ export default function RegisterForm() {
             value={form.password_confirm}
             onChange={handleChange}
             required
-            className="w-full rounded-md border border-gray-300 p-2 focus:border-blue-500 focus:outline-none"
+            className="w-full rounded-md border border-gray-300 p-2"
           />
 
           {error && (
@@ -109,10 +115,10 @@ export default function RegisterForm() {
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full rounded-md bg-blue-600 p-2 text-white transition hover:bg-blue-700 disabled:opacity-50"
+            disabled={registerLoading}
+            className="w-full rounded-md bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:opacity-50"
           >
-            {loading ? "Registering..." : "Register"}
+            {registerLoading ? "Registering..." : "Register"}
           </button>
 
         </div>
