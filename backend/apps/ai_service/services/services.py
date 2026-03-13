@@ -34,44 +34,7 @@ class AIService:
             self.groq = Groq(api_key=self.groq_api_key)
 
   
-    # =====================================================
-    # LLM CALL
-    # =====================================================
-
-    def _call_llm(self, messages):
-
-        # ---------- MOCK ----------
-        if self.ai_mode == "mock":
-            return {
-                "choices": [{
-                    "message": {
-                        "content": self._mock_response(messages)
-                    }
-                }],
-                "usage": {}
-            }
-
-        # ---------- GROQ ----------
-        if self.ai_mode == "groq":
-
-            response = self.groq.chat.completions.create(
-                model="llama-3.1-8b-instant",
-                messages=messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens
-            )
-
-            return {
-                "choices": [{
-                    "message": {
-                        "content": response.choices[0].message.content
-                    }
-                }],
-                "usage": {}
-            }
-
-        raise Exception("Invalid AI_MODE")
-
+    
     # =====================================================
 
     def _mock_response(self, messages):
@@ -86,29 +49,6 @@ You asked:
 {user_message}
 
 This is simulated AI output.
-"""
-
-    # =====================================================
-
-    def _build_system_prompt(self, context, exam_type):
-
-        base = """You are an expert AI tutor helping students prepare for competitive exams."""
-
-        if context:
-            base += f"\nContext: {context}"
-
-        if exam_type:
-            base += f"\nExam: {exam_type}"
-
-        return base
-
-    def _build_user_prompt(self, question, knowledge_context):
-
-        return f"""
-Knowledge Base Context:
-{knowledge_context}
-
-Question: {question}
 """
 
     # =====================================================

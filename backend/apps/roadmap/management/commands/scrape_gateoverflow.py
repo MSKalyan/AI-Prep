@@ -18,81 +18,85 @@ class Command(BaseCommand):
 
         exam = Exam.objects.get(name="GATE CSE")
 
-        pages = GateOverflowScraper.get_year_pages()
+        # Scrape all question links from tag pages
+        self.stdout.write("Collecting question links...")
 
-        total_links = 0
+        links = GateOverflowScraper.get_question_links()
+
+        self.stdout.write(f"Total links collected: {len(links)}")
+
         inserted = 0
-
         visited_links = set()
         unmapped_tags = defaultdict(int)
 
-        for page in pages:
+        for link in links:
 
-            self.stdout.write(f"Scraping: {page}")
+            if link in visited_links:
+                continue
 
-            links = GateOverflowScraper.get_question_links(page)
+            visited_links.add(link)
 
-            total_links += len(links)
+            try:
 
-            for link in links:
+                question_text, candidates, year, marks = (
+                    QuestionParserService.parse_question(link)
+                )
 
-                # Avoid duplicate parsing
-                if link in visited_links:
-                    continue
+            except Exception as e:
 
-                visited_links.add(link)
-
-                try:
-                    candidates, year, marks = (
-                        QuestionParserService.parse_question(link)
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"Failed to parse {link} : {e}"
                     )
+                )
+                continue
 
-                except Exception as e:
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f"Failed to parse {link} : {e}"
-                        )
+            # Validation
+            if not question_text or not year:
+                continue
+
+            mapped_topic = TopicMapperService.map_topic(candidates)
+
+            if not mapped_topic:
+
+                for tag in candidates:
+                    unmapped_tags[tag] += 1
+
+                continue
+
+            try:
+
+                PYQImportService.save_question(
+                    exam=exam,
+                    topic_name=mapped_topic,
+                    question_text=question_text,
+                    year=year,
+                    marks=marks,
+                    source_url=link
+                )
+
+                inserted += 1
+
+                if inserted % 50 == 0:
+                    self.stdout.write(f"Inserted {inserted} PYQs")
+
+            except Exception as e:
+
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"Failed to insert {link} : {e}"
                     )
-                    continue
+                )
 
-                mapped_topic = TopicMapperService.map_topic(candidates)
-
-                if not mapped_topic:
-
-                    for tag in candidates:
-                        unmapped_tags[tag] += 1
-
-                    continue
-
-                try:
-                    PYQImportService.save_question(
-                        exam=exam,
-                        topic_name=mapped_topic,
-                        year=year,
-                        marks=marks,
-                        source_url=link
-                    )
-
-                    inserted += 1
-
-                except Exception as e:
-
-                    self.stdout.write(
-                        self.style.WARNING(
-                            f"Failed to insert {link} : {e}"
-                        )
-                    )
-
-                # Prevent aggressive scraping
-                time.sleep(0.3)
+            time.sleep(0.4)
 
         self.stdout.write("\n==============================")
-        self.stdout.write(f"Total question links found: {total_links}")
+        self.stdout.write(f"Total question links found: {len(links)}")
         self.stdout.write(f"Inserted PYQs: {inserted}")
 
         if unmapped_tags:
 
-            self.stdout.write("\nUnmapped topic candidates:")
+            self.stdout.write("\nTop Unmapped Topic Candidates:")
 
             sorted_tags = sorted(
                 unmapped_tags.items(),

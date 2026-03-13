@@ -1,4 +1,5 @@
 import re
+from collections import defaultdict
 
 
 class TopicMapperService:
@@ -49,13 +50,17 @@ class TopicMapperService:
 
         # Computer Organization & Architecture
         "pipeline": "Computer Organization & Architecture",
+        "pipelining": "Computer Organization & Architecture",
         "hazard": "Computer Organization & Architecture",
         "cache": "Computer Organization & Architecture",
         "addressing": "Computer Organization & Architecture",
         "floating point": "Computer Organization & Architecture",
         "instruction": "Computer Organization & Architecture",
+        "microprogramming": "Computer Organization & Architecture",
+        "dma": "Computer Organization & Architecture",
         "alu": "Computer Organization & Architecture",
         "coa": "Computer Organization & Architecture",
+        "architecture": "Computer Organization & Architecture",
 
         # Computer Networks
         "tcp": "Computer Networks",
@@ -67,7 +72,6 @@ class TopicMapperService:
         "ip": "Computer Networks",
         "ethernet": "Computer Networks",
         "network": "Computer Networks",
-        "web technologies": "Computer Networks",
 
         # Databases
         "sql": "Databases",
@@ -110,10 +114,12 @@ class TopicMapperService:
 
     @staticmethod
     def normalize(tag):
+
         tag = tag.lower()
         tag = tag.replace("-", " ")
         tag = tag.replace("_", " ")
         tag = re.sub(r"\s+", " ", tag)
+
         return tag.strip()
 
     @staticmethod
@@ -122,13 +128,19 @@ class TopicMapperService:
         if not candidates:
             return None
 
+        scores = defaultdict(int)
+
         for tag in candidates:
 
             tag = TopicMapperService.normalize(tag)
 
-            for key, topic in TopicMapperService.MAP.items():
+            for keyword, topic in TopicMapperService.MAP.items():
 
-                if key in tag:
-                    return topic
+                if keyword in tag:
+                    scores[topic] += 1
 
-        return None
+        if not scores:
+            return None
+
+        # return topic with highest score
+        return max(scores, key=scores.get)

@@ -1,75 +1,61 @@
+from .vector_search import semantic_search
+from ..models import Document
 
-
-
-from linecache import cache
-
-from polars import List
-
-from backend.apps.ai_service.models import Document
 
 
 class RAGService:
 
     @staticmethod
-    def retrieve_relevant_documents(query: str, context: str = "",
-                                    exam_type: str = "", top_k: int = 5) -> List[Document]:
+    def retrieve_relevant_documents(query, context="", exam_type="", top_k=3):
 
-        safe_query = query.replace("?", "").replace(":", "")
-        safe_context = context.replace(":", "")
-        safe_exam = exam_type.replace(":", "")
+        # run semantic search
+        results = semantic_search(query, top_k=10)  # retrieve more first
 
-        cache_key = f"rag_docs:{safe_query}:{safe_context}:{safe_exam}"
+        filtered_docs = []
 
-        cached_docs = cache.get(cache_key)
+        for chunk, score in results:
 
-        if cached_docs:
-            return cached_docs
+            # skip weak similarity
+            if score < 0.35:
+                continue
 
-        documents = Document.objects.all()
+            # ensure we only use chunk documents
+            if not chunk.parent_document_id:
+                continue
 
-        if exam_type:
-            documents = documents.filter(exam_type=exam_type)
+            # optional exam filtering
+            if exam_type and chunk.exam_type != exam_type:
+                continue
 
-        if context:
-            documents = documents.filter(subject__icontains=context) | \
-                        documents.filter(topic__icontains=context)
+            # attach score for later use
+            chunk.score = score
 
-        query_terms = query.lower().split()
-        scored_docs = []
+            filtered_docs.append(chunk)
 
-        for doc in documents[:100]:
-            content_lower = doc.content.lower()
-            title_lower = doc.title.lower()
-
-            score = sum(
-                content_lower.count(term) + title_lower.count(term) * 2
-                for term in query_terms
-            )
-
-            if score > 0:
-                scored_docs.append((score, doc))
-
-        scored_docs.sort(reverse=True, key=lambda x: x[0])
-        relevant_docs = [doc for score, doc in scored_docs[:top_k]]
-
-        cache.set(cache_key, relevant_docs, 3600)
-        return relevant_docs
-
+        # return best k documents
+        return filtered_docs[:top_k]
+    # =====================================================
+    # BUILD CONTEXT FOR LLM
+    # =====================================================
     @staticmethod
-    def build_context(documents: List[Document]) -> str:
+    def build_context(documents):
 
         if not documents:
-            return "No relevant context found in knowledge base."
+            return ""
 
         context_parts = []
 
-        for i, doc in enumerate(documents, 1):
+        for doc in documents:
             context_parts.append(
-                f"[Document {i}]\n"
-                f"Title: {doc.title}\n"
-                f"Subject: {doc.subject}\n"
-                f"Content: {doc.content[:500]}...\n"
+                f"""
+Title: {doc.title}
+Subject: {doc.subject}
+
+Content:
+{doc.content}
+"""
             )
 
-        return "\n".join(context_parts)
-
+        return "\n\n".join(context_parts)
+    
+  

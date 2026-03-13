@@ -18,7 +18,7 @@ from .serializers import (
     ConversationSerializer,
     MessageSerializer
 )
-from .services.services import AIService
+from .services.chat_service import AIService
 from .models import Conversation, Document
 
 

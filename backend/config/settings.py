@@ -267,4 +267,9 @@ INTERNAL_IPS = [
 #             "level": "DEBUG",
 #         },
 #     },
-# }
+# }# =========================
+# RAG SETTINGS
+# =========================
+
+TOP_K_RESULTS = 3
+MAX_TOKENS =500

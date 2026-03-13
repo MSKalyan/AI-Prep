@@ -1,4 +1,3 @@
-import time
 import requests
 from bs4 import BeautifulSoup
 
@@ -9,69 +8,45 @@ class GateOverflowScraper:
     HEADERS = {"User-Agent": "Mozilla/5.0"}
 
     @staticmethod
-    def get_year_pages(start_year=2020, end_year=2026):
+    def get_year_pages(start=2020, end=2024):
 
         pages = []
 
-        for year in range(start_year, end_year + 1):
-            for set_no in range(1, 4):
-
-                pages.append(
-                    f"{GateOverflowScraper.BASE_URL}/tag/gatecse-{year}-set{set_no}"
-                )
+        for year in range(start, end + 1):
+            pages.append(f"{GateOverflowScraper.BASE_URL}/tag/gate-cse-{year}")
 
         return pages
 
     @staticmethod
-    def get_question_links():
+    def get_question_links(page):
 
         links = set()
-        start = 0
 
-        while True:
+        try:
+            response = requests.get(
+                page,
+                headers=GateOverflowScraper.HEADERS,
+                timeout=15
+            )
 
-            url = f"{GateOverflowScraper.TAG_URL}?start={start}"
+            if response.status_code != 200:
+                return []
 
-            try:
-                response = requests.get(
-                    url,
-                    headers=GateOverflowScraper.HEADERS,
-                    timeout=15
-                )
+        except requests.RequestException:
+            return []
 
-                if response.status_code != 200:
-                    break
+        soup = BeautifulSoup(response.text, "html.parser")
 
-            except requests.RequestException:
-                break
+        # FIXED SELECTOR
+        for a in soup.select("a.qa-q-item-title-link"):
 
-            soup = BeautifulSoup(response.text, "html.parser")
+            href = a.get("href")
 
-            page_links = []
+            if not href:
+                continue
 
-            for a in soup.select(".qa-q-item-title a"):
+            full_url = GateOverflowScraper.BASE_URL + href
 
-                href = a.get("href")
-
-                if not href:
-                    continue
-
-                if href.startswith("../"):
-                    href = href.replace("../", "/")
-
-                full_url = GateOverflowScraper.BASE_URL + href
-
-                page_links.append(full_url)
-
-            if not page_links:
-                break
-
-            links.update(page_links)
-
-            print(f"Collected {len(links)} links so far...")
-
-            start += 20
-
-            time.sleep(0.3)
+            links.add(full_url)
 
         return list(links)

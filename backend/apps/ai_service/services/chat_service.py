@@ -107,7 +107,7 @@ class AIService:
                 "answer": answer,
                 "conversation_id": conversation.id,
                 "retrieved_documents": [
-                    {"title": doc.title, "subject": doc.subject, "relevance": "high"}
+                    {"title": doc.title, "subject": doc.subject}
                     for doc in relevant_docs[:3]
                 ],
                 "tokens_used": usage.get('total_tokens', 0)
@@ -125,4 +125,121 @@ class AIService:
             )
 
             raise e
- 
+    def _call_llm(self, messages):
+
+        # =============================
+        # MOCK MODE
+        # =============================
+        if self.ai_mode == "mock":
+
+            content = self._mock_response(messages)
+
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "content": content
+                        }
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0
+                }
+            }
+
+        # =============================
+        # GROQ MODE
+        # =============================
+        if self.ai_mode == "groq":
+
+            try:
+
+                response = self.groq.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=self.temperature,
+                    max_tokens=self.max_tokens
+                )
+
+                content = response.choices[0].message.content
+
+                usage = getattr(response, "usage", None)
+
+                return {
+                    "choices": [
+                        {
+                            "message": {
+                                "content": content
+                            }
+                        }
+                    ],
+                    "usage": {
+                        "prompt_tokens": getattr(usage, "prompt_tokens", 0),
+                        "completion_tokens": getattr(usage, "completion_tokens", 0),
+                        "total_tokens": getattr(usage, "total_tokens", 0),
+                    }
+                }
+
+            except Exception as e:
+                raise Exception(f"LLM request failed: {str(e)}")
+
+        # =============================
+        # INVALID MODE
+        # =============================
+        raise Exception("Invalid AI_MODE configuration")
+    
+    def _build_system_prompt(self, context, exam_type):
+
+        base = """You are an expert AI tutor helping students prepare for competitive exams."""
+
+        if context:
+            base += f"\nContext: {context}"
+
+        if exam_type:
+            base += f"\nExam: {exam_type}"
+
+        return base
+
+    def _build_user_prompt(self, question, knowledge_context):
+      return f"""
+You must answer ONLY using the provided context.
+
+If the answer is not found in the context, reply:
+"I cannot find the answer in the provided study material."
+
+Context:
+{knowledge_context}
+
+Question:
+{question}
+"""
+
+    # =====================================================
+
+    
+    def _log_usage(
+        self,
+        user,
+        endpoint,
+        usage,
+        response_time,
+        success,
+        error_message=None
+    ):
+
+        try:
+            AIUsageLog.objects.create(
+                user=user,
+                endpoint=endpoint,
+                model_used=self.model,
+                prompt_tokens=usage.get("prompt_tokens", 0),
+                completion_tokens=usage.get("completion_tokens", 0),
+                total_tokens=usage.get("total_tokens", 0),
+                response_time_ms=response_time,
+                success=success,
+                error_message=error_message
+            )
+        except Exception as e:
+            print("AIUsageLog failed:", e)

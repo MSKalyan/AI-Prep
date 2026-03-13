@@ -20,22 +20,43 @@ class Exam(models.Model):
     def __str__(self):
         return self.name
 
-class Topic(models.Model):
-
-    name = models.CharField(max_length=200)
+class Subject(models.Model):
 
     exam = models.ForeignKey(
         Exam,
         on_delete=models.CASCADE,
-        related_name="topics"
+        related_name="subjects"
     )
+
+    name = models.CharField(max_length=200)
+
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "subjects"
+        ordering = ["order", "name"]
+        unique_together = ("exam", "name")
+
+    def __str__(self):
+        return f"{self.exam.name} - {self.name}"
+class Topic(models.Model):
+
+    name = models.CharField(max_length=200)
+
+    subject = models.ForeignKey(
+    Subject,
+    on_delete=models.CASCADE,
+    related_name="topics",
+    null=True,
+    blank=True
+)
 
     parent = models.ForeignKey(
         "self",
         null=True,
         blank=True,
         on_delete=models.CASCADE,
-        related_name="subtopics"
+        related_name="child_topics"
     )
 
     order = models.PositiveIntegerField(default=0)
@@ -48,10 +69,31 @@ class Topic(models.Model):
     class Meta:
         db_table = "topics"
         ordering = ["order", "name"]
-        unique_together = ("exam","parent","name")
+        unique_together = ("subject","parent","name")
 
     def __str__(self):
         return f"{self.exam.name} - {self.name}"
+
+class Subtopic(models.Model):
+
+    topic = models.ForeignKey(
+        Topic,
+        on_delete=models.CASCADE,
+        related_name="subtopics"
+    )
+
+    name = models.CharField(max_length=300)
+
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = "subtopics"
+        ordering = ["order"]
+        unique_together = ("topic", "name")
+
+    def __str__(self):
+        return f"{self.topic.name} - {self.name}"
+
 # =====================================================
 # ROADMAP MODEL (Main learning plan)
 # =====================================================
@@ -231,6 +273,7 @@ class PYQ(models.Model):
     # Marks of the question (1 or 2 for GATE)
     marks = models.FloatField()
     source_url = models.URLField(unique=True)
+    question_text = models.TextField(null=True, blank=True)
     class Meta:
         db_table = "pyqs"
 
