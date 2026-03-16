@@ -72,7 +72,9 @@ class Topic(models.Model):
         unique_together = ("subject","parent","name")
 
     def __str__(self):
-        return f"{self.exam.name} - {self.name}"
+        if self.subject:
+            return f"{self.subject.exam.name} - {self.name}"
+        return self.name
 
 class Subtopic(models.Model):
 
@@ -251,16 +253,16 @@ class RoadmapGenerationJob(models.Model):
         return f"Job {self.id} - {self.status}"
 
 class PYQ(models.Model):
-    """
-    Stores past year question metadata required for
-    topic weightage calculation.
-    """
 
-    exam = models.ForeignKey(
-        Exam,
-        on_delete=models.CASCADE,
-        related_name="pyqs"
-    )
+    QUESTION_TYPES = [
+        ("mcq", "Single Correct MCQ"),
+        ("msq", "Multiple Select"),
+        ("nat", "Numerical Answer"),
+        ("int", "Integer Answer"),
+        ("desc", "Descriptive"),
+    ]
+
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE,related_name="pyqs")
 
     topic = models.ForeignKey(
         Topic,
@@ -270,17 +272,62 @@ class PYQ(models.Model):
 
     year = models.IntegerField()
 
-    # Marks of the question (1 or 2 for GATE)
     marks = models.FloatField()
-    source_url = models.URLField(unique=True)
-    question_text = models.TextField(null=True, blank=True)
+
+    question_type = models.CharField(
+        max_length=10,
+        choices=QUESTION_TYPES
+    )
+
+    question_text = models.TextField()
+
+    options = models.JSONField(
+        null=True,
+        blank=True
+    )
+
+    correct_answer = models.JSONField(
+        null=True,
+        blank=True
+    )
+
+    explanation = models.TextField(null=True, blank=True)
+
+    source_url = models.URLField()
+
     class Meta:
         db_table = "pyqs"
 
         indexes = [
-            models.Index(fields=["exam", "year"]),
-            models.Index(fields=["topic"]),
-        ]
+                models.Index(fields=["exam", "year"]),
+                models.Index(fields=["topic"]),
+            ]    
+        
+        
+class UserPYQAttempt(models.Model):
 
-    def __str__(self):
-        return f"{self.exam.name} | {self.topic.name} | {self.year} | {self.marks} marks"
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="pyq_attempts"
+    )
+
+    pyq = models.ForeignKey(
+        PYQ,
+        on_delete=models.CASCADE,
+        related_name="attempts"
+    )
+
+    answer = models.JSONField()
+
+    is_correct = models.BooleanField()
+
+    time_taken = models.IntegerField(null=True, blank=True)
+
+    attempted_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "user_pyq_attempts"
+        indexes = [
+            models.Index(fields=["user", "pyq"]),
+        ]

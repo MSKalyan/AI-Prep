@@ -1,4 +1,4 @@
-from apps.ai_service.services.llm_service import LLMService
+from backend.apps.ai_service.services.rag.llm_service import LLMService
 
 
 class ExplanationService:

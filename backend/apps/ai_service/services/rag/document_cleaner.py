@@ -1,4 +1,4 @@
-from ..models import Document
+from ...models import Document
 from .text_cleaner import clean_text
 
 

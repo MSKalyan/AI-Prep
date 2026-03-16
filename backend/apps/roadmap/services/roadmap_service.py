@@ -1,6 +1,7 @@
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from apps.roadmap.models import Roadmap, RoadmapTopic, Exam
-from apps.roadmap.services.time_distribution_service import TimeDistributionService
+from apps.roadmap.services.pyq.time_distribution_service import TimeDistributionService
+from apps.roadmap.services.pyq.weightage_service import WeightageService
 
 
 class RoadmapService:
@@ -15,6 +16,9 @@ class RoadmapService:
     ):
 
         exam = Exam.objects.get(id=exam_id)
+
+        # update weights from PYQ data before generating plan
+        WeightageService.compute_weightage(exam)
 
         plan_result = TimeDistributionService.generate_plan(
             exam,
@@ -62,21 +66,39 @@ class RoadmapService:
 
                     allocated = min(topic_hours, remaining_day_hours)
 
-                    RoadmapTopic.objects.create(
-                        roadmap=roadmap,
-                        week_number=week_number,
-                        day_number=current_day,
-                        topic=topic,
-                        estimated_hours=round(allocated, 2),
-                        phase=phase,
-                        priority=1
-                    )
+                    # Avoid duplicate topic/day insertion by advancing day if needed
+                    inserted = False
+                    attempt_day = current_day
+                    while not inserted and attempt_day <= 7:
+                        if RoadmapTopic.objects.filter(
+                            roadmap=roadmap,
+                            week_number=week_number,
+                            day_number=attempt_day,
+                            topic=topic
+                        ).exists():
+                            attempt_day += 1
+                            continue
+
+                        RoadmapTopic.objects.create(
+                            roadmap=roadmap,
+                            week_number=week_number,
+                            day_number=attempt_day,
+                            topic=topic,
+                            estimated_hours=round(allocated, 2),
+                            phase=phase,
+                            priority=1
+                        )
+                        inserted = True
+
+                    if not inserted:
+                        # if cannot insert in this week due duplicates, skip remaining hours
+                        break
 
                     topic_hours -= allocated
                     remaining_day_hours -= allocated
 
-                    # move to next day if limit reached
                     if remaining_day_hours <= 0:
                         current_day += 1
                         remaining_day_hours = daily_limit
+
         return roadmap

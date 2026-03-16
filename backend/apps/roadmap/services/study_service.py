@@ -1,7 +1,7 @@
 import re
 
 from apps.roadmap.models import RoadmapTopic, PYQ
-from apps.ai_service.services.llm_service import LLMService
+from apps.ai_service.services.rag.llm_service import LLMService
 
 
 class StudyService:

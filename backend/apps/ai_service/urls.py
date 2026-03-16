@@ -13,4 +13,5 @@ path("documents/clean/", CleanDocumentAPIView.as_view(), name="clean-document"),
 path("documents/chunk/", ChunkDocumentAPIView.as_view(), name="chunk-document"),
 path("documents/embed/", EmbedDocumentAPIView.as_view(), name="embed-document"),
 path("documents/search/", SemanticSearchAPIView.as_view(), name="semantic-search"),
+
 ]

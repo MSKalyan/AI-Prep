@@ -1,5 +1,5 @@
 from ..models import Document
-from .embedding_service import generate_embedding
+from .rag.embedding_service import generate_embedding
 
 
 def embed_document_chunks(document):

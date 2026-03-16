@@ -4,7 +4,7 @@ from groq import Groq
 from datetime import datetime
 import time
 from .rag_service import RAGService
-from ..models import Document, Conversation, Message, AIUsageLog
+from ...models import Document, Conversation, Message, AIUsageLog
 
 class AIService:
 

@@ -18,3 +18,5 @@ def extract_all():
             with zipfile.ZipFile(path, "r") as zip_ref:
 
                 zip_ref.extractall(EXTRACT_DIR)
+
+    return EXTRACT_DIR

@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from apps.roadmap.models import Exam, Topic, PYQ
 import random
-from apps.roadmap.services.weightage_service import WeightageService
+from backend.apps.roadmap.services.pyq.weightage_service import WeightageService
 
 
 class Command(BaseCommand):

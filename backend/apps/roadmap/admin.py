@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Exam, Roadmap, RoadmapTopic, RoadmapGenerationJob, Subject, Topic
+from .models import PYQ, Exam, Roadmap, RoadmapTopic, RoadmapGenerationJob, Subject, Topic, Subtopic
 
 
 class RoadmapTopicInline(admin.TabularInline):
@@ -45,3 +45,15 @@ class TopicAdmin(admin.ModelAdmin):
 class SubjectAdmin(admin.ModelAdmin):
     list_display = ("name",)
     search_fields = ("name",)
+
+@admin.register(PYQ)
+class PYQAdmin(admin.ModelAdmin):
+    list_display = ("exam", "topic", "year", "question_type", "marks")
+    list_filter = ("exam", "year", "question_type")
+    search_fields = ("question_text",)
+
+@admin.register(Subtopic)
+class SubTopicAdmin(admin.ModelAdmin):
+    list_display = ("name", "topic")
+    search_fields = ("name",)
+

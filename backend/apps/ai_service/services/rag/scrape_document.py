@@ -1,4 +1,4 @@
-from ..models import Document
+from ...models import Document
 from .web_scraper import scrape_webpage
 
 

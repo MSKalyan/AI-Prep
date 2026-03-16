@@ -1,9 +1,9 @@
-from apps.ai_service.services.scrape_document import scrape_and_store_document
-from apps.ai_service.services.text_extractor import extract_text
-from apps.ai_service.services.document_cleaner import clean_document
-from apps.ai_service.services.document_chunker import create_chunks
+from apps.ai_service.services.rag.scrape_document import scrape_and_store_document
+from apps.ai_service.services.rag.text_extractor import extract_text
+from apps.ai_service.services.rag.document_cleaner import clean_document
+from apps.ai_service.services.rag.document_chunker import create_chunks
 from apps.ai_service.services.embed_chunks import embed_document_chunks
-from .services.vector_search import semantic_search
+from .services.rag.vector_search import semantic_search
 
 from rest_framework import status
 from rest_framework.views import APIView
@@ -18,7 +18,7 @@ from .serializers import (
     ConversationSerializer,
     MessageSerializer
 )
-from .services.chat_service import AIService
+from .services.rag.chat_service import AIService
 from .models import Conversation, Document
 
 
@@ -182,7 +182,7 @@ class ScrapeDocumentAPIView(APIView):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
         
-    from .services.document_cleaner import clean_document
+    from .services.rag.document_cleaner import clean_document
 
 
 class CleanDocumentAPIView(APIView):

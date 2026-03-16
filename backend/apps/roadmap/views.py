@@ -5,7 +5,7 @@ from django.utils import timezone
 from urllib3 import request
 
 from apps.roadmap.services.progress_service import ProgressService
-from apps.ai_service.services.llm_service import LLMService
+from apps.ai_service.services.rag.llm_service import LLMService
 from apps.roadmap.services.study_service import StudyService
 from rest_framework import status
 from rest_framework.views import APIView

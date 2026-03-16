@@ -1,5 +1,5 @@
 import numpy as np
-from ..models import Document
+from ...models import Document
 from .embedding_service import generate_embedding
 
 

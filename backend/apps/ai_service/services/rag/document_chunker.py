@@ -1,4 +1,4 @@
-from ..models import Document
+from ...models import Document
 from .chunk_service import chunk_text
 
 

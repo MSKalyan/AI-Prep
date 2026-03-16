@@ -1,5 +1,5 @@
 from .vector_search import semantic_search
-from ..models import Document
+from ...models import Document
 
 
 

@@ -1,3 +1,4 @@
 from .roadmap_service import RoadmapService
-from .weightage_service import WeightageService
-from .time_distribution_service import TimeDistributionService
+from .pyq.weightage_service import WeightageService
+from .pyq.time_distribution_service import TimeDistributionService
+from .pyq.question_parser_service import QuestionParserService
