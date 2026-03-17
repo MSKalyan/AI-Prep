@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import StudyHeader from "@/features/study/components/StudyHeader";
 import AIExplanationPanel from "@/features/study/components/AIExplanationPanel";
-import AskAIChat from "@/features/study/components/AskAIChat";
+import AskAIChat from "@/features/ai/components/AskAIChat";
 import WeekPlanner from "@/features/roadmap/components/WeekPlanner";
 import { getTopicStudy } from "@/features/study/services/study.service";
 

@@ -1,14 +1,17 @@
+import traceback
+
 from apps.ai_service.services.rag.scrape_document import scrape_and_store_document
 from apps.ai_service.services.rag.text_extractor import extract_text
 from apps.ai_service.services.rag.document_cleaner import clean_document
 from apps.ai_service.services.rag.document_chunker import create_chunks
-from apps.ai_service.services.embed_chunks import embed_document_chunks
+from apps.ai_service.services.rag.document_pipeline import process_document
+from apps.ai_service.services.rag.embed_chunks import embed_document_chunks
 from .services.rag.vector_search import semantic_search
-
+from .services.rag.rag_service import RAGService
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser
 from .serializers import (
     AskAISerializer,
@@ -53,6 +56,7 @@ class AskAIView(APIView):
                 )
             
             except Exception as e:
+                traceback.print_exc()
                 return Response(
                     {'error': f'AI service error: {str(e)}'},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -278,12 +282,11 @@ class SemanticSearchAPIView(APIView):
         if not query:
             return Response({"error": "query required"}, status=400)
 
-        results = semantic_search(query)
+        chunks = RAGService.retrieve_relevant_documents(query=query, top_k=5)
 
         response = []
 
-        for chunk, score in results:
-
+        for chunk, score in chunks:
             response.append({
                 "chunk_id": chunk.id,
                 "content": chunk.content[:200],
@@ -291,6 +294,41 @@ class SemanticSearchAPIView(APIView):
                 "document_id": chunk.parent_document_id
             })
 
-        return Response({
-            "results": response
-        })
+        return Response({"results": response})
+    
+
+
+class ProcessDocumentAPIView(APIView):
+
+    permission_classes = [AllowAny]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+
+        serializer = DocumentUploadSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=400)
+
+        file = request.FILES.get("file")
+
+        if not file:
+            return Response({"error": "File required"}, status=400)
+
+        try:
+            # 1. Save document
+            document = serializer.save(source_type="upload")
+
+            # 2. Run full pipeline
+            result = process_document(document)
+
+            return Response({
+                "message": "Document fully processed",
+                "document_id": document.id,
+                **result
+            }, status=201)
+
+        except Exception as e:
+            return Response({
+                "error": str(e)
+            }, status=500)

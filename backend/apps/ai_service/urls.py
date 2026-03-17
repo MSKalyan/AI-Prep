@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import AskAIView, ChunkDocumentAPIView, DocumentUploadAPIView, GenerateQuestionsView,HealthCheckView, ScrapeDocumentAPIView, CleanDocumentAPIView, EmbedDocumentAPIView, SemanticSearchAPIView
+from .views import AskAIView, ChunkDocumentAPIView, DocumentUploadAPIView, GenerateQuestionsView,HealthCheckView, ProcessDocumentAPIView, ScrapeDocumentAPIView, CleanDocumentAPIView, EmbedDocumentAPIView, SemanticSearchAPIView
 
 app_name = 'ai_service'
 
@@ -14,4 +14,5 @@ path("documents/chunk/", ChunkDocumentAPIView.as_view(), name="chunk-document"),
 path("documents/embed/", EmbedDocumentAPIView.as_view(), name="embed-document"),
 path("documents/search/", SemanticSearchAPIView.as_view(), name="semantic-search"),
 
+path("documents/process/", ProcessDocumentAPIView.as_view(), name="document-process"),
 ]

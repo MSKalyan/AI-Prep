@@ -1,20 +1,30 @@
-def chunk_text(text, chunk_size=400, overlap=80):
+def chunk_text(text, chunk_size=120, overlap=30):
 
-    words = text.split()
+    text = " ".join(text.split())
+
+    # split by sentences instead of words
+    import re
+    sentences = re.split(r'(?<=[.!?]) +', text)
 
     chunks = []
+    current_chunk = []
 
-    step = chunk_size - overlap
+    current_len = 0
 
-    for i in range(0, len(words), step):
+    for sentence in sentences:
 
-        chunk_words = words[i:i + chunk_size]
+        words = sentence.split()
+        length = len(words)
 
-        if not chunk_words:
-            break
+        if current_len + length > chunk_size:
+            chunks.append(" ".join(current_chunk))
+            current_chunk = current_chunk[-overlap:] if overlap < len(current_chunk) else current_chunk
+            current_len = len(current_chunk)
 
-        chunk = " ".join(chunk_words)
+        current_chunk.extend(words)
+        current_len += length
 
-        chunks.append(chunk)
+    if current_chunk:
+        chunks.append(" ".join(current_chunk))
 
     return chunks
