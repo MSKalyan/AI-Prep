@@ -342,8 +342,10 @@ class AnalyticsService:
     def create_performance_snapshot(test_attempt):
 
         user = test_attempt.user
-        subject = test_attempt.mock_test.exam_type
-
+        subject = (
+            test_attempt.mock_test.exam.name
+            if test_attempt.mock_test.exam else "Unknown"
+        )
         if test_attempt.total_marks == 0:
             accuracy = 0
         else:

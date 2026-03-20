@@ -174,11 +174,13 @@ class DailyProgress(models.Model):
 
 
 class PerformanceSnapshot(models.Model):
+    """Snapshot of performance per test attempt"""
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name="performance_snapshots"
+        related_name="performance_snapshots",
+        db_index=True
     )
 
     subject = models.CharField(max_length=200, db_index=True)
@@ -196,7 +198,12 @@ class PerformanceSnapshot(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
+        db_table = "performance_snapshots"   # ✅ IMPORTANT (explicit table)
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "created_at"]),
+            models.Index(fields=["subject"]),
+        ]
 
     def __str__(self):
-        return f"{self.user} - {self.subject} - {self.accuracy}%"
+        return f"{self.user} - {self.subject} - {self.accuracy:.2f}%"

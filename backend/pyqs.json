@@ -1,0 +1,152 @@
+[
+  {
+    "topic": "Binary Search",
+    "exam": "GATE",
+    "year": 2020,
+    "question": "What is the time complexity of binary search in a sorted array?",
+    "type": "mcq",
+    "options": {
+      "A": "O(n)",
+      "B": "O(log n)",
+      "C": "O(n log n)",
+      "D": "O(1)"
+    },
+    "answer": "B",
+    "explanation": "Binary search reduces the search space by half each step."
+  },
+  {
+    "topic": "Sorting",
+    "exam": "GATE",
+    "year": 2019,
+    "question": "Which sorting algorithm is stable?",
+    "type": "mcq",
+    "options": {
+      "A": "Quick Sort",
+      "B": "Heap Sort",
+      "C": "Merge Sort",
+      "D": "Selection Sort"
+    },
+    "answer": "C",
+    "explanation": "Merge sort maintains the relative order of equal elements."
+  },
+  {
+    "topic": "Data Structures",
+    "exam": "GATE",
+    "year": 2021,
+    "question": "Which data structure uses FIFO order?",
+    "type": "mcq",
+    "options": {
+      "A": "Stack",
+      "B": "Queue",
+      "C": "Tree",
+      "D": "Graph"
+    },
+    "answer": "B",
+    "explanation": "Queue follows First In First Out principle."
+  },
+  {
+    "topic": "Operating Systems",
+    "exam": "GATE",
+    "year": 2018,
+    "question": "Which scheduling algorithm may cause starvation?",
+    "type": "mcq",
+    "options": {
+      "A": "FCFS",
+      "B": "Round Robin",
+      "C": "Priority Scheduling",
+      "D": "SJF"
+    },
+    "answer": "C",
+    "explanation": "Low priority processes may starve in priority scheduling."
+  },
+  {
+    "topic": "Database",
+    "exam": "GATE",
+    "year": 2020,
+    "question": "Which normal form removes transitive dependency?",
+    "type": "mcq",
+    "options": {
+      "A": "1NF",
+      "B": "2NF",
+      "C": "3NF",
+      "D": "BCNF"
+    },
+    "answer": "C",
+    "explanation": "3NF eliminates transitive dependencies."
+  },
+  {
+    "topic": "Computer Networks",
+    "exam": "GATE",
+    "year": 2017,
+    "question": "Which layer is responsible for routing?",
+    "type": "mcq",
+    "options": {
+      "A": "Transport Layer",
+      "B": "Network Layer",
+      "C": "Data Link Layer",
+      "D": "Application Layer"
+    },
+    "answer": "B",
+    "explanation": "Routing is handled at the network layer."
+  },
+  {
+    "topic": "Algorithms",
+    "exam": "GATE",
+    "year": 2021,
+    "question": "What is the worst-case time complexity of quicksort?",
+    "type": "mcq",
+    "options": {
+      "A": "O(n log n)",
+      "B": "O(n)",
+      "C": "O(n^2)",
+      "D": "O(log n)"
+    },
+    "answer": "C",
+    "explanation": "Worst case occurs when pivot selection is poor."
+  },
+  {
+    "topic": "Theory of Computation",
+    "exam": "GATE",
+    "year": 2019,
+    "question": "Which machine recognizes regular languages?",
+    "type": "mcq",
+    "options": {
+      "A": "Turing Machine",
+      "B": "Pushdown Automaton",
+      "C": "Finite Automaton",
+      "D": "Linear Bounded Automaton"
+    },
+    "answer": "C",
+    "explanation": "Finite automata recognize regular languages."
+  },
+  {
+    "topic": "Compiler Design",
+    "exam": "GATE",
+    "year": 2018,
+    "question": "Which phase checks syntax errors?",
+    "type": "mcq",
+    "options": {
+      "A": "Lexical Analysis",
+      "B": "Syntax Analysis",
+      "C": "Semantic Analysis",
+      "D": "Code Generation"
+    },
+    "answer": "B",
+    "explanation": "Syntax analysis checks grammatical structure."
+  },
+  {
+    "topic": "Digital Logic",
+    "exam": "GATE",
+    "year": 2022,
+    "question": "Which gate is universal?",
+    "type": "mcq",
+    "options": {
+      "A": "AND",
+      "B": "OR",
+      "C": "NOT",
+      "D": "NAND"
+    },
+    "answer": "D",
+    "explanation": "NAND can be used to implement any Boolean function."
+  }
+]
