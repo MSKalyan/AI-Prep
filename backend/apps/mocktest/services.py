@@ -1,39 +1,49 @@
+import json
+import random
+import re
 from django.utils import timezone
 from django.db import transaction
 from .models import Question, MockTest, TestAttempt, Answer
-
+from groq import Groq
+from django.conf import settings
 
 class MockTestService:
-    """Service layer for mock test operations"""
 
     @staticmethod
     def create_mock_test(user, topic, num_questions=5, duration_minutes=60):
-        """Create a new mock test using PYQs (source='pyq')"""
+        """Create mock test using PYQ + LLM fallback"""
 
-        # Fetch PYQs for topic
-        questions = Question.objects.filter(
-            topic=topic,
-            source='pyq'
+        # 🔹 Fetch PYQs
+        pyq_questions = list(
+            Question.objects.filter(topic=topic, source='pyq')
         )
 
-        total_available = questions.count()
+        selected_questions = []
 
-        if total_available == 0:
-            raise ValueError("No PYQs available for this topic")
+        # Case 1: Enough PYQs
+        if len(pyq_questions) >= num_questions:
+            selected_questions = random.sample(pyq_questions, num_questions)
 
-        if total_available < num_questions:
-            num_questions = total_available
+        else:
+            # Case 2: Partial or No PYQs
+            selected_questions = pyq_questions
 
-        # Random selection
-        questions = questions.order_by('?')[:num_questions]
+            remaining = num_questions - len(pyq_questions)
 
-        # Create test inside transaction
+            # 🔹 Generate LLM questions
+            llm_questions = MockTestService._generate_llm_questions(
+                topic=topic,
+                count=remaining
+            )
+
+            selected_questions.extend(llm_questions)
+
+        # 🔹 Create test
         with transaction.atomic():
 
             mock_test = MockTest.objects.create(
                 user=user,
                 title=f"{topic.name} Practice Test",
-                exam=questions.first().exam if questions else None,
                 description=f"{topic.name} Topic Test",
                 duration_minutes=duration_minutes,
                 status='active'
@@ -41,16 +51,111 @@ class MockTestService:
 
             total_marks = 0
 
-            for question in questions:
-                mock_test.questions.add(question)
-                total_marks += question.marks
+            for q in selected_questions:
+                mock_test.questions.add(q)
+                total_marks += q.marks if hasattr(q, "marks") else 1
 
             mock_test.total_marks = total_marks
-            mock_test.question_count = questions.count()
+            mock_test.question_count = len(selected_questions)
             mock_test.save()
 
         return mock_test
+    @staticmethod
+    def _generate_llm_questions(topic, count):
+        client = Groq(api_key=settings.GROQ_API_KEY)
 
+        prompt = f"""
+    Generate {count} multiple-choice questions for topic: {topic.name}
+
+    Return ONLY JSON array. No explanation, no markdown.
+
+    Format:
+    [
+    {{
+        "question_text": "...",
+        "options": {{
+        "A": "...",
+        "B": "...",
+        "C": "...",
+        "D": "..."
+        }},
+        "correct_answer": "A",
+        "explanation": "..."
+    }}
+    ]
+    """
+
+        try:
+            response = client.chat.completions.create(
+                model="llama3-70b-8192",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+            )
+
+            content = response.choices[0].message.content.strip()
+
+            print("RAW LLM RESPONSE:", content)  # 🔥 DEBUG
+
+            # 🔹 Remove markdown if present
+            content = re.sub(r"```json|```", "", content).strip()
+
+            # 🔹 Extract JSON array safely
+            match = re.search(r"\[.*\]", content, re.DOTALL)
+            if match:
+                content = match.group(0)
+
+            data = json.loads(content)
+
+            questions = []
+
+            for q in data:
+                # 🔹 Validate keys
+                if not all(k in q for k in ["question_text", "options", "correct_answer"]):
+                    continue
+
+                question = Question.objects.create(
+                    question_text=q["question_text"],
+                    options=q["options"],
+                    correct_answer=q["correct_answer"],
+                    explanation=q.get("explanation", ""),
+                    marks=1,
+                    negative_marks=0,
+                    source="llm",
+                    topic=topic
+                )
+                questions.append(question)
+
+            if not questions:
+                raise ValueError("LLM returned invalid structure")
+
+            return questions
+
+        except Exception as e:
+            print("LLM ERROR:", str(e))
+
+            # 🔻 HARD fallback (never fail)
+            fallback = []
+
+            for i in range(count):
+                q = Question.objects.create(
+                    question_text=f"[Fallback] {topic.name} Q{i+1}",
+                    options={
+                        "A": "Option A",
+                        "B": "Option B",
+                        "C": "Option C",
+                        "D": "Option D",
+                    },
+                    correct_answer="A",
+                    explanation="Fallback",
+                    marks=1,
+                    negative_marks=0,
+                    source="llm",
+                    topic=topic
+                )
+                fallback.append(q)
+
+            return fallback
+        
     @staticmethod
     def start_test_attempt(user, mock_test_id):
         """Start a new test attempt"""
@@ -68,97 +173,6 @@ class MockTestService:
                 mock_test.save()
 
             return attempt
+
         except MockTest.DoesNotExist:
             return None
-
-    @staticmethod
-    def submit_answer(attempt_id, question_id, user_answer, time_taken_seconds=0):
-        """Submit an answer for a question"""
-        try:
-            attempt = TestAttempt.objects.get(id=attempt_id)
-            question = Question.objects.get(id=question_id)
-
-            is_correct = MockTestService._check_answer(question, user_answer)
-
-            marks_obtained = 0
-            if is_correct:
-                marks_obtained = question.marks
-            elif user_answer:
-                marks_obtained = -question.negative_marks
-
-            answer, created = Answer.objects.update_or_create(
-                attempt=attempt,
-                question=question,
-                defaults={
-                    'user_answer': user_answer,
-                    'is_correct': is_correct,
-                    'marks_obtained': marks_obtained,
-                    'time_taken_seconds': time_taken_seconds
-                }
-            )
-
-            return answer,attempt
-        except (TestAttempt.DoesNotExist, Question.DoesNotExist):
-            return None, None
-
-    @staticmethod
-    def _check_answer(question, user_answer):
-        """Check if the answer is correct"""
-        if not user_answer:
-            return False
-
-        return question.correct_answer.strip().lower() == user_answer.strip().lower()
-
-    @staticmethod
-    def finalize_test(attempt_id):
-        """Calculate final score and mark test as completed"""
-        try:
-            attempt = TestAttempt.objects.get(id=attempt_id)
-
-            answers = attempt.answers.all()
-            total_questions = answers.count()
-
-            correct = answers.filter(is_correct=True).count()
-            incorrect = answers.filter(
-                is_correct=False,
-                user_answer__isnull=False
-            ).exclude(user_answer='').count()
-
-            unanswered = total_questions - (correct + incorrect)
-
-            total_score = sum(ans.marks_obtained for ans in answers)
-
-            percentage = (
-                (total_score / attempt.total_marks * 100)
-                if attempt.total_marks > 0 else 0
-            )
-
-            time_taken = sum([
-                ans.time_taken_seconds for ans in answers
-            ]) / 60
-            attempt.submitted_at = timezone.now()
-            attempt.score = total_score
-            attempt.percentage = max(0, percentage)
-            attempt.correct_answers = correct
-            attempt.incorrect_answers = incorrect
-            attempt.unanswered = unanswered
-            attempt.time_taken_minutes = int(time_taken)
-            attempt.save()
-
-            mock_test = attempt.mock_test
-            mock_test.status = 'completed'
-            mock_test.completed_at = timezone.now()
-            mock_test.save()
-
-            return attempt
-
-        except TestAttempt.DoesNotExist:
-            return None
-
-    @staticmethod
-    def generate_ai_questions(*args, **kwargs):
-        """
-        Deprecated for Sprint 6.
-        Will be redesigned later with new Question schema.
-        """
-        return []

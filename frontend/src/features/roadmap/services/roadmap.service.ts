@@ -23,6 +23,7 @@ export interface WeekTopic {
   topic: string;
   hours: number;
   completed: boolean;
+  phase: 'study' | 'revision' | 'practice';
 }
 
 export interface WeekProgress {

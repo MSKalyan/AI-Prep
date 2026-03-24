@@ -45,6 +45,7 @@ class RoadmapTopicSerializer(serializers.ModelSerializer):
             "completed_at",
             "created_at",
             "subject_name",
+            "phase",
         )
 
         

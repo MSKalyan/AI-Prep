@@ -1,7 +1,7 @@
-from sentence_transformers import SentenceTransformer
+from ml_utils import ModelLoader
 import numpy as np
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+model = ModelLoader.get_model()
 
 
 def generate_embedding(text: str):

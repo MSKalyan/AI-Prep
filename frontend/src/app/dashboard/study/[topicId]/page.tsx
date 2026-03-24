@@ -102,6 +102,14 @@ export default function StudyPage() {
           <AskAIChat context={data.topic} />
         </div>
 
+        <div className="mt-6">
+           <button
+        onClick={() => router.push(`/dashboard/mocktest?topicId=${topicId}`)}
+        className="bg-blue-600 text-white px-4 py-2 rounded mt-4"
+      >
+        Start Mock Test
+      </button>
+      </div>
       </div>
 
     </div>

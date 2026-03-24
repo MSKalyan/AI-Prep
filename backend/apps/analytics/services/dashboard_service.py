@@ -57,9 +57,9 @@ class DashboardService:
                 "topics_completed": 0,
                 "roadmap_progress": 0,
                 "tests_taken": tests_taken,
-                "average_score": round(avg_score, 2),
+                "average_score": 0,
                 "continue_studying": None,
-                "weak_subject": weak_subject,
+                "weak_subject": None,
                 "roadmaps": roadmaps
             }
 
@@ -141,3 +141,6 @@ class DashboardService:
             current_date -= timedelta(days=1)
 
         return streak
+    
+
+    

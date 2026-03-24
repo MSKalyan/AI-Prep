@@ -1,172 +1,109 @@
 from datetime import datetime
 from apps.roadmap.models import Topic
-
+from collections import defaultdict, deque
 
 class TimeDistributionService:
-
     @staticmethod
     def generate_plan(exam, target_date, study_hours_per_day):
-
         today = datetime.now().date()
-        days_remaining = (target_date - today).days
+        total_weeks = max(1, (target_date - today).days // 7)
+        
+        # User's total capacity for the 5 study days
+        daily_limit = float(study_hours_per_day)
+        weekly_study_h = daily_limit * 5 
 
-        if days_remaining < 7:
-            raise ValueError("Not enough time to generate roadmap.")
+        # 1. Get All Topics and group by Subject
+        all_topics = list(Topic.objects.filter(subject__exam=exam).order_by('-weightage'))
+        
+        if not all_topics:
+            return {"total_weeks": total_weeks, "plan": []}
 
-        total_weeks = max(1, days_remaining // 7)
-
-        weekly_hours = round(study_hours_per_day * 7 * 0.85, 2)
-        total_hours = round(study_hours_per_day * days_remaining * 0.85, 2)
-
-        coverage_weeks = max(1, int(total_weeks * 0.6))
-        practice_weeks = max(1, int(total_weeks * 0.2))
-        revision_weeks = max(1, total_weeks - coverage_weeks - practice_weeks)
-
-        subjects = list(
-            Topic.objects.filter(
-                subject__exam=exam,
-                parent__isnull=True
-            ).order_by("-weightage")
-        )
-
-        if not subjects:
-            raise ValueError("No subjects found for exam.")
-
-        coverage_hours = round(total_hours * 0.65, 2)
-
-        total_weight = sum((s.weightage or 0) for s in subjects)
-        if total_weight <= 0:
-            total_weight = len(subjects)
-
-        work_queue = []
-
-        for subject in subjects:
-
-            subject_ratio = (
-                (subject.weightage or 0) / total_weight
-                if total_weight else 1 / len(subjects)
-            )
-
-            subject_hours = max(1, round(coverage_hours * subject_ratio, 2))
-
-            subtopics = list(subject.child_topics.all())
-
-            if subtopics:
-
-                score_sum = 0
-                scored = []
-
-                for sub in subtopics:
-
-                    score = (
-                        (sub.weightage or 0) * 0.4 +
-                        (sub.pyq_total_marks or 0) * 0.4 +
-                        (sub.pyq_count or 0) * 0.2
-                    )
-
-                    if score <= 0:
-                        score = 1
-
-                    scored.append((sub, score))
-                    score_sum += score
-
-                for sub, score in scored:
-
-                    allocated = round(
-                        (score / score_sum) * subject_hours, 2
-                    )
-
-                    work_queue.append({
-                        "topic": sub,
-                        "remaining_hours": max(1, allocated)
-                    })
-
-            else:
-
-                work_queue.append({
-                    "topic": subject,
-                    "remaining_hours": max(1, subject_hours)
-                })
-
+        subj_map = defaultdict(deque)
+        for t in all_topics:
+            s_id = t.subject_id if t.subject_id else 0
+            subj_map[s_id].append(t)
+        
+        subj_ids = list(subj_map.keys())
         plan = []
-        week_number = 1
 
-        for _ in range(coverage_weeks):
-
+        for w in range(1, total_weeks + 1):
             week_items = []
-            remaining_week_hours = weekly_hours
+            rem_h = weekly_study_h
+            
+            # --- PHASE 1: INTERLEAVED SUBJECTS ---
+            # Try to give 50/50 time to two subjects
+            s1_idx = (w - 1) % len(subj_ids)
+            s2_idx = w % len(subj_ids)
+            active_ids = [subj_ids[s1_idx]]
+            if len(subj_ids) > 1:
+                active_ids.append(subj_ids[s2_idx])
 
-            while remaining_week_hours > 0 and work_queue:
+            for s_id in active_ids:
+                q = subj_map[s_id]
+                target_h = weekly_study_h / len(active_ids)
+                current_sub_h = 0
+                while current_sub_h < target_h and q:
+                    topic = q.popleft()
+                    # Calculate depth based on weightage (Scaling factor: 0.8)
+                    # Min 2hrs, Max 8hrs per topic block
+                    h = max(2.0, min(8.0, 2.0 + (float(topic.weightage or 0) * 0.8)))
+                    h = min(h, target_h - current_sub_h) # Don't exceed sub target
+                    
+                    if h >= 0.5:
+                        week_items.append({"topic": topic, "hours": round(h, 1)})
+                        current_sub_h += h
+                        rem_h -= h
 
-                current = work_queue[0]
+            # --- PHASE 2: THE BACKFILL (CRITICAL FOR UTILIZATION) ---
+            # If we still have hours left in the week (rem_h > 0), 
+            # fill them with ANY remaining topics from ANY subject.
+            if rem_h > 0.5:
+                for s_id in subj_ids:
+                    q = subj_map[s_id]
+                    while rem_h > 0.5 and q:
+                        topic = q.popleft()
+                        h = min(rem_h, 4.0) # Take up to 4 hours of next topic
+                        week_items.append({"topic": topic, "hours": round(h, 1)})
+                        rem_h -= h
 
-                allocated = min(
-                    current["remaining_hours"],
-                    remaining_week_hours
-                )
+            plan.append({"week_number": w, "items": week_items})
+            
+        return {"total_weeks": total_weeks, "plan": plan}
 
-                if allocated <= 0:
-                    work_queue.pop(0)
-                    continue
-
-                week_items.append({
-                    "topic": current["topic"],
-                    "hours": round(allocated, 2)
-                })
-
-                current["remaining_hours"] -= allocated
-                remaining_week_hours -= allocated
-
-                if current["remaining_hours"] <= 0:
-                    work_queue.pop(0)
-
-            plan.append({
-                "week_number": week_number,
-                "phase": "coverage",
-                "items": week_items
-            })
-
-            week_number += 1
-
-        return {
-            "total_weeks": total_weeks,
-            "weekly_hours": weekly_hours,
-            "plan": plan
-        }
 class DayDistributionService:
-
     @staticmethod
     def distribute_week(week_items, daily_limit):
-
+        """
+        Takes the packed week_items and distributes them into Days 1-5.
+        Day 6 and 7 are reserved for Revision/Mock in RoadmapService.
+        """
         days = []
-
         current_day = 1
-        remaining_day_hours = daily_limit
+        remaining_day_hours = float(daily_limit)
 
         for item in week_items:
-
             topic = item["topic"]
-            hours = item["hours"]
+            hours = float(item["hours"])
 
-            while hours > 0:
+            while hours > 0.1: 
+                if current_day > 5: # Study only 5 days
+                    break
 
                 allocate = min(hours, remaining_day_hours)
-
-                days.append({
-                    "day": current_day,
-                    "topic": topic,
-                    "hours": round(allocate, 2)
-                })
+                
+                if allocate > 0.1:
+                    days.append({
+                        "day": current_day,
+                        "topic": topic,
+                        "hours": round(allocate, 1)
+                    })
 
                 hours -= allocate
                 remaining_day_hours -= allocate
 
-                if remaining_day_hours <= 0:
-
+                # Move to next day if this one is full
+                if remaining_day_hours <= 0.1:
                     current_day += 1
-                    remaining_day_hours = daily_limit
-
-                if current_day > 7:
-                    break
+                    remaining_day_hours = float(daily_limit)
 
         return days

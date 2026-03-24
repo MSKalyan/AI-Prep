@@ -11,7 +11,7 @@ import {
   WeekTopic
 } from "@/features/roadmap/services/roadmap.service";
 
-import {getTopicStudy} from "@/features/study/services/study.service";
+import { getTopicStudy } from "@/features/study/services/study.service";
 
 interface Props {
   roadmapId: number;
@@ -28,12 +28,10 @@ export default function WeekPlanner({
   selectedTopic,
   onSelectTopic
 }: Props) {
-
   const queryClient = useQueryClient();
   const router = useRouter();
 
   const [open, setOpen] = useState(studyMode);
-  const [openTopic, setOpenTopic] = useState<number | null>(null);
 
   const { data: topics } = useQuery({
     queryKey: ["week-topics", roadmapId, week],
@@ -47,224 +45,141 @@ export default function WeekPlanner({
   });
 
   async function handleToggle(id: number) {
-
-    const topics: any[] | undefined = queryClient.getQueryData([
-      "week-topics",
-      roadmapId,
-      week,
-    ]);
-
-    const topic = topics?.find((t) => t.id === id);
-    const wasCompleted = topic?.completed;
+    const topicsList: any[] | undefined = queryClient.getQueryData(["week-topics", roadmapId, week]);
+    const topic = topicsList?.find((t) => t.id === id);
+    const wasCompleted = topic?.completed ?? topic?.is_completed;
 
     await toggleTopic(id);
 
-    queryClient.setQueryData(
-      ["week-topics", roadmapId, week],
-      (old: any[]) =>
-        old.map((t) =>
-          t.id === id ? { ...t, completed: !t.completed } : t
-        )
+    const updateProgress = (old: any) => {
+      if (!old) return old;
+      const change = wasCompleted ? -1 : +1;
+      const completed = (old.completed_topics || 0) + change;
+      return {
+        ...old,
+        completed_topics: completed,
+        progress: Math.round((completed / old.total_topics) * 100),
+      };
+    };
+
+    queryClient.setQueryData(["week-topics", roadmapId, week], (old: any[]) =>
+      old.map((t) => (t.id === id ? { ...t, completed: !wasCompleted, is_completed: !wasCompleted } : t))
     );
-
-    queryClient.setQueryData(
-      ["roadmap-progress", roadmapId],
-      (old: any) => {
-
-        if (!old) return old;
-
-        const change = wasCompleted ? -1 : +1;
-        const completed = old.completed_topics + change;
-
-        return {
-          ...old,
-          completed_topics: completed,
-          progress: Math.round(
-            (completed / old.total_topics) * 100
-          ),
-        };
-      }
-    );
-
-    queryClient.setQueryData(
-      ["week-progress", roadmapId, week],
-      (old: any) => {
-
-        if (!old) return old;
-
-        const change = wasCompleted ? -1 : +1;
-        const completed = old.completed_topics + change;
-
-        return {
-          ...old,
-          completed_topics: completed,
-          progress: Math.round(
-            (completed / old.total_topics) * 100
-          ),
-        };
-      }
-    );
+    queryClient.setQueryData(["roadmap-progress", roadmapId], updateProgress);
+    queryClient.setQueryData(["week-progress", roadmapId, week], updateProgress);
   }
 
-  /* -------- Group by Day -------- */
-
   const grouped: Record<number, WeekTopic[]> = {};
-
-  topics?.forEach((t) => {
-    if (!grouped[t.day]) grouped[t.day] = [];
-    grouped[t.day].push(t);
+  topics?.forEach((t: any) => {
+    const d = t.day || t.day_number || 1;
+    if (!grouped[d]) grouped[d] = [];
+    grouped[d].push(t);
   });
 
   const days = Object.keys(grouped).map(Number).sort((a, b) => a - b);
 
   return (
-
-    <div className="border rounded-lg bg-white">
-
-      {/* Week Header */}
-
+    <div className="border rounded-xl bg-white shadow-sm overflow-hidden mb-4">
       <div
-        className="flex justify-between items-center p-4 cursor-pointer"
-        onClick={() =>  {  if (!studyMode) {
-            setOpen(!open);}
-          }}
+        className={`flex justify-between items-center p-5 cursor-pointer transition-colors ${open ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+        onClick={() => { if (!studyMode) setOpen(!open); }}
       >
-
-        <div className="font-semibold">
-          Week {week}
+        <div>
+          <h3 className="text-lg font-bold text-gray-800">Week {week}</h3>
+          <p className="text-xs text-gray-500 italic">Maximize coverage and test performance</p>
         </div>
 
         <div className="flex items-center gap-4">
-
           {progress && (
-            <div className="text-sm text-gray-500">
-              {progress.progress}%
+            <div className="flex flex-col items-end">
+              <span className="text-sm font-semibold text-blue-600">{progress.progress}%</span>
+              <div className="w-24 h-1.5 bg-gray-200 rounded-full mt-1">
+                <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${progress.progress}%` }} />
+              </div>
             </div>
           )}
-
-          <span>
-            {open ? "▲" : "▼"}
-          </span>
-
+          <span className="text-gray-400">{open ? "▲" : "▼"}</span>
         </div>
-
       </div>
 
-      {/* Week Content */}
-
       {open && (
-
-        <div className="p-4 space-y-4 border-t">
-
+        <div className="p-4 space-y-6 border-t bg-gray-50/30">
           {days.map((day) => {
-
             const dayTopics = grouped[day];
-
-            const completed =
-              dayTopics.filter((t) => t.completed).length;
-
-            const progress =
-              Math.round((completed / dayTopics.length) * 100);
+            const completedCount = dayTopics.filter((t: any) => t.completed || t.is_completed).length;
+            const dayProgress = Math.round((completedCount / dayTopics.length) * 100);
 
             return (
-
-              <div key={day} className="space-y-2">
-
-                {/* Day Header */}
-
-                <div className="flex justify-between text-sm font-medium">
-
-                  <span>Day {day}</span>
-
-                  <span className="text-gray-500">
-                    {progress}%
-                  </span>
-
+              <div key={day} className="space-y-3">
+                <div className="flex items-center gap-2">
+                   <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                     day === 7 ? "bg-red-100 text-red-700" : 
+                     day === 6 ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600"
+                   }`}>
+                     Day {day} {day === 7 ? "• Mock Test" : day === 6 ? "• Revision" : ""}
+                   </span>
+                   <div className="flex-1 h-px bg-gray-200"></div>
+                   <span className="text-[10px] font-medium text-gray-400">{dayProgress}% Done</span>
                 </div>
 
-                {/* Day Progress */}
-
-                <div className="h-2 bg-gray-200 rounded">
-
-                  <div
-                    className="h-2 bg-blue-500 rounded"
-                    style={{ width: `${progress}%` }}
-                  />
-
-                </div>
-
-                {/* Topics */}
-
-                {dayTopics.map((t) => (
-
-                  <div
-                    key={t.id}
-                    className={`flex items-center gap-3 border rounded p-2 cursor-pointer
-                    ${selectedTopic === t.id ? "bg-blue-100 border-blue-400" : ""}
-                    `}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (studyMode) {
-                       queryClient.prefetchQuery({
-      queryKey: ["topic-study", t.id],
-      queryFn: () => getTopicStudy(t.id)
-    });
-                        onSelectTopic?.(t.id);
-                      }
-                    }}
-                  >
-
-                    <input
-                      type="checkbox"
-                      checked={t.completed}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        handleToggle(t.id);
-                      }}
-                    />
-
-                    <div className="flex-1">
-
-                      <div>{t.topic}</div>
-                      <div className="text-xs text-gray-500">
-                        {t.subject}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {t.hours} hrs
-                      </div>
-
-                    </div>
-
-                    {/* Show Study button only in roadmap page */}
-
-                    {!studyMode && (
-
-                      <button
-                        className="text-blue-600 text-xs"
+                <div className="grid grid-cols-1 gap-2">
+                  {dayTopics.map((t: any) => {
+                    // Logic to handle Phase colors and labels
+                    const currentPhase = t.phase?.toLowerCase();
+                    const isRevision = currentPhase === "revision" || day === 6;
+                    const isMock = currentPhase === "practice" || currentPhase === "test" || day === 7;
+                    
+                    const statusColor = isMock ? "border-l-red-500" : isRevision ? "border-l-amber-500" : "border-l-blue-500";
+                    const buttonLabel = isMock ? "Take Test" : isRevision ? "Revise" : "Study";
+                    const buttonStyle = isMock ? "bg-red-50 text-red-600 hover:bg-red-100" : isRevision ? "bg-amber-50 text-amber-600 hover:bg-amber-100" : "bg-blue-50 text-blue-600 hover:bg-blue-100";
+                    console.log(t);
+                    return (
+                      <div
+                        key={t.id}
                         onClick={(e) => {
                           e.stopPropagation();
-                          router.push(`/dashboard/study/${t.id}`);
+                          if (studyMode) {
+                            queryClient.prefetchQuery({ queryKey: ["topic-study", t.id], queryFn: () => getTopicStudy(t.id) });
+                            onSelectTopic?.(t.id);
+                          }
                         }}
+                        className={`flex items-center gap-4 border-2 rounded-lg p-3 transition-all cursor-pointer
+                          ${selectedTopic === t.id ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100" : "bg-white border-transparent shadow-sm hover:border-gray-200"}
+                          border-l-4 ${statusColor}
+                        `}
                       >
-                        Study
-                      </button>
+                        <input
+                          type="checkbox"
+                          className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          checked={!!(t.completed || t.is_completed) || false}
+                          onChange={(e) => { e.stopPropagation(); handleToggle(t.id); }}
+                        />
 
-                    )}
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-800 text-sm leading-tight">{t.topic || t.topic_name}</div>
+                          <div className="flex gap-2 mt-1">
+                            <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">{t.subject || t.subject_name}</span>
+                            <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{t.hours || t.estimated_hours} hrs</span>
+                          </div>
+                        </div>
 
-                  </div>
-
-                ))}
-
+                        {!studyMode && (
+                          <button
+                            className={`px-3 py-1 rounded text-xs font-bold transition-colors ${buttonStyle}`}
+                            onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/study/${t.id}`); }}
+                          >
+                            {buttonLabel}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-
             );
           })}
-
         </div>
-
       )}
-
     </div>
-
   );
 }

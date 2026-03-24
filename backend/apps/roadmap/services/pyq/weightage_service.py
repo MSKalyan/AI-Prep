@@ -59,3 +59,19 @@ class WeightageService:
                 f"{topic.pyq_count} PYQs → "
                 f"{round(topic.weightage,2)}%"
             )
+
+        # 1. Calculate for Parent Topics (as you do now)
+        parent_topics = Topic.objects.filter(subject__exam=exam, parent__isnull=True)
+        # ... (Your existing agg_map logic) ...
+
+        for p in parent_topics:
+            data = agg_map.get(p.id)
+            p.weightage = (data["total_marks"] / total_exam_marks * 100) if total_exam_marks else 0
+            p.save()
+
+            # 2. PROJECTION: Give subtopics a portion of parent weightage 
+            # so the TimeDistributor can rank them.
+            subtopics = Topic.objects.filter(parent=p)
+            if subtopics.exists():
+                child_weight = p.weightage / subtopics.count()
+                subtopics.update(weightage=child_weight)

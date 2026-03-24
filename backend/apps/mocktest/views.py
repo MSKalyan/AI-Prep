@@ -55,7 +55,6 @@ class MockTestCreateView(APIView):
         difficulty = request.data.get('difficulty', 'medium')
         num_questions = request.data.get('num_questions', 10)
         duration = request.data.get('duration_minutes', 60)
-        
         if not exam_type or not subject:
             return Response(
                 {'error': 'exam_type and subject are required'},

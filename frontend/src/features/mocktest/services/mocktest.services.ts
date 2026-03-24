@@ -12,7 +12,7 @@ export const getQuestions = async () => {
    CREATE MOCK TEST
 ====================== */
 export const createMockTest = async (payload:any) => {
-  const { data } = await apiClient.post("/mocktest/", payload);
+  const { data } = await apiClient.post("/mocktest/generate/", payload);
   return data;
 };
 
@@ -28,7 +28,7 @@ export const getMockTestDetail = async (id:number) => {
    SUBMIT ANSWER
 ====================== */
 export const submitAnswer = async (payload:any) => {
-  const { data } = await apiClient.post("/submit-answer/", payload);
+  const { data } = await apiClient.post("/mocktest/submit-answer/", payload);
   return data;
 };
 
@@ -36,12 +36,12 @@ export const submitAnswer = async (payload:any) => {
    TEST RESULTS
 ====================== */
 export const getResults = async () => {
-  const { data } = await apiClient.get("/results/");
+  const { data } = await apiClient.get("/mocktest/results/");
   return data;
 };
 
 export const finalizeTest = async (payload:any) => {
-  const { data } = await apiClient.post("/results/", payload);
+  const { data } = await apiClient.post("/mocktest/results/", payload);
   return data;
 };
 
@@ -49,6 +49,6 @@ export const finalizeTest = async (payload:any) => {
    GENERATE PRACTICE
 ====================== */
 export const generatePractice = async (payload:any) => {
-  const { data } = await apiClient.post("/generate-practice/", payload);
+  const { data } = await apiClient.post("/mocktest/generate-practice/", payload);
   return data;
 };

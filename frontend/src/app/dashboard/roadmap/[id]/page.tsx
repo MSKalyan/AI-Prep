@@ -52,9 +52,7 @@ export default function RoadmapDetailPage() {
   />
 ))}
 
-      {/* Week planner */}
-      <WeekPlanner roadmapId={id} week={week} />
-
+    
     </div>
   );
 }
