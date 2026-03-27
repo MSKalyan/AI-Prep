@@ -62,7 +62,7 @@ class Topic(models.Model):
     order = models.PositiveIntegerField(default=0)
 
       # NEW FIELDS
-    weightage = models.FloatField(default=0.0)  # percentage
+    weightage = models.FloatField(default=1.0)  # percentage
     pyq_total_marks = models.FloatField(default=0.0)  # sum of PYQ marks
     pyq_count = models.PositiveIntegerField(default=0)
     is_core = models.BooleanField(default=True)

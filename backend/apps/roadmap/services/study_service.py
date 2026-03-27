@@ -75,6 +75,7 @@ class StudyService:
 
         return {
             "roadmap_id": topic.roadmap.id,
+            "topic_id":topic.id,
             "topic": topic.topic.name,
             "subject": subject,
             "week": topic.week_number,

@@ -1,5 +1,54 @@
 from django.db import models
 from django.conf import settings
+from apps.roadmap.models import Topic
+from apps.users.models import User
+
+class TopicPerformance(models.Model):
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="topic_performance"
+    )
+
+    topic = models.ForeignKey(
+        "roadmap.Topic",
+        on_delete=models.CASCADE
+    )
+
+    accuracy = models.FloatField()
+    avg_time = models.FloatField()
+    total_attempts = models.IntegerField()
+    strength = models.CharField(
+            max_length=20,
+            choices=[
+                ("weak", "Weak"),
+                ("moderate", "Moderate"),
+                ("strong", "Strong"),
+                ("insufficient", "Insufficient Data")
+            ],
+            default="insufficient",
+            db_index=True
+        )
+
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'topic']
+
+
+
+class StudyContentCache(models.Model):
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE)
+    description = models.TextField()
+    youtube_links = models.JSONField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "study_content_cache"
+        unique_together = ["topic"]
+
 
 
 class StudySession(models.Model):

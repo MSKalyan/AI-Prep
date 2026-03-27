@@ -18,7 +18,8 @@ interface Props {
   week: number;
   studyMode?: boolean;
   selectedTopic?: number;
-  onSelectTopic?: (topicId: number) => void;
+  onSelectTopic?: (topicId: number, day:number) => void;
+  onSelectDay?: (day: number) => void;
 }
 
 export default function WeekPlanner({
@@ -26,7 +27,8 @@ export default function WeekPlanner({
   week,
   studyMode = false,
   selectedTopic,
-  onSelectTopic
+  onSelectTopic,
+  onSelectDay
 }: Props) {
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -110,7 +112,7 @@ export default function WeekPlanner({
             const dayProgress = Math.round((completedCount / dayTopics.length) * 100);
 
             return (
-              <div key={day} className="space-y-3">
+              <div key={day} className="space-y-3" >
                 <div className="flex items-center gap-2">
                    <span className={`text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
                      day === 7 ? "bg-red-100 text-red-700" : 
@@ -136,12 +138,15 @@ export default function WeekPlanner({
                     return (
                       <div
                         key={t.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (studyMode) {
-                            queryClient.prefetchQuery({ queryKey: ["topic-study", t.id], queryFn: () => getTopicStudy(t.id) });
-                            onSelectTopic?.(t.id);
-                          }
+                        onClick={() => {  if (studyMode) {
+    queryClient.prefetchQuery({
+      queryKey: ["topic-study", t.id],
+      queryFn: () => getTopicStudy(t.id)
+    });
+
+    onSelectTopic?.(t.id,day);
+    router.push(`/dashboard/study/${t.id}?day=${day}`);  // 🔥 SET TOPIC
+  }
                         }}
                         className={`flex items-center gap-4 border-2 rounded-lg p-3 transition-all cursor-pointer
                           ${selectedTopic === t.id ? "border-blue-500 bg-blue-50 ring-2 ring-blue-100" : "bg-white border-transparent shadow-sm hover:border-gray-200"}

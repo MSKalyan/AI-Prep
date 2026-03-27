@@ -45,10 +45,23 @@ export const finalizeTest = async (payload:any) => {
   return data;
 };
 
+
+export const getResultDetail = async (id:number) => {
+  const { data } = await apiClient.get(`/mocktest/results/${id}/`);
+  return data;
+};
 /* ======================
    GENERATE PRACTICE
 ====================== */
 export const generatePractice = async (payload:any) => {
   const { data } = await apiClient.post("/mocktest/generate-practice/", payload);
+  return data;
+};
+
+
+export const explainQuestion = async (question_id: number) => {
+  const { data } = await apiClient.post("/mocktest/explain/", {
+    question_id,
+  });
   return data;
 };

@@ -1,3 +1,7 @@
+from apps.analytics.services.performance_service import PerformanceService
+from apps.analytics.services.adaptive_service import AdaptiveRoadmapService
+from apps.analytics.services.roadmap_service import RoadmapService
+from apps.analytics.services.study_content_service import StudyContentService
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -11,6 +15,76 @@ from .serializers import (
 )
 from .services.services import AnalyticsService
 from .models import PerformanceMetrics, WeakArea, DailyProgress
+
+from .services.services import AttemptAggregationService
+
+
+class TopicAggregationView(APIView):
+    """
+    Returns topic-wise aggregated attempt data for the authenticated user.
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        data = AttemptAggregationService.get_topic_wise_aggregation(request.user)
+        return Response({
+            "status": "success",
+            "data": data
+        })
+
+
+class TopicPerformanceView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        data = PerformanceService.compute_and_store(request.user)
+
+        return Response({
+            "status": "success",
+            "data": data
+        })
+    
+
+class AdaptiveRoadmapView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        data = AdaptiveRoadmapService.generate_priority(request.user)
+
+        return Response({
+            "status": "success",
+            "data": data
+        })
+
+
+
+class AdaptiveStudyPlanView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        data = RoadmapService.generate_adaptive_roadmap(request.user)
+
+        return Response({
+            "status": "success",
+            "data": data
+        })
+
+
+
+class StudyContentView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, topic_id):
+        data = StudyContentService.get_study_content(topic_id)
+
+        if not data:
+            return Response({"error": "Topic not found"}, status=404)
+
+        return Response({
+            "status": "success",
+            "data": data
+        })
 
 
 class UserAnalyticsView(APIView):

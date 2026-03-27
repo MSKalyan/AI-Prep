@@ -8,7 +8,7 @@ urlpatterns = [
     path('api/', include('apps.roadmap.urls')),
     path('api/', include('apps.mocktest.urls')),
     path('api/', include('apps.ai_service.urls')),
-    path('api/', include('apps.analytics.urls')),
+    path('api/analytics/', include('apps.analytics.urls')),
 ]
 
 if settings.DEBUG:

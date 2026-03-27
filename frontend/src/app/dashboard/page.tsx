@@ -1,7 +1,8 @@
 "use client";
 
+import { useDashboardStats, useStudyPlan, usePerformance } from "@/features/analytics/hooks/hooks";
 import { apiClient } from "@/lib/apiClient";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 
 const services = [
@@ -12,34 +13,33 @@ const services = [
   },
   {
     name: "Analytics",
-    description: "View performance metrics and exam insights.",
+    description: "View weak topics, accuracy trends, and performance insights.",
     href: "/dashboard/analytics",
+  },
+  {
+    name: "Study Plan",
+    description: "Adaptive plan based on your weak areas and priorities.",
+    href: "/dashboard/study-plan",
   },
   {
     name: "Mock Tests",
     description: "Attempt mock exams and evaluate your performance.",
     href: "/dashboard/mocktest",
   },
-  {
-    name: "Roadmap",
-    description: "Generate and track your personalized exam roadmap.",
-    href: "/dashboard/roadmap",
-  },
 ];
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["dashboard"],
-    queryFn: async () => {
-      const res = await apiClient.get("/analytics/dashboard/");
-      return res.data;
-    },
-  });
+  const { data, isLoading } = useDashboardStats();
+  const { data: studyPlan = [] } = useStudyPlan();
+  const { data: performance = [] } = usePerformance();
+
+  const weakTopics = performance.filter((t: any) => t.strength === "weak");
 
   const activateMutation = useMutation({
-    mutationFn: (id: number) => apiClient.post(`/roadmap/activate/${id}/`),
+    mutationFn: (id: number) =>
+      apiClient.post(`/roadmap/activate/${id}/`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
     },
@@ -59,61 +59,75 @@ export default function DashboardPage() {
 
         <h1 className="text-3xl font-bold">Dashboard</h1>
 
-        {/* Stats */}
+        {/* ================= STATS ================= */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-
-          <StatCard
-            title="Study Streak"
-            value={`${data.study_streak} days`}
-          />
-
-          <StatCard
-            title="Topics Completed"
-            value={data.topics_completed}
-          />
-
-          <StatCard
-            title="Roadmap Progress"
-            value={`${data.roadmap_progress}%`}
-          />
-
-          <StatCard
-            title="Average Score"
-            value={`${data.average_score}%`}
-          />
-
-          {data.weak_subject && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm">
-              <p className="text-sm text-red-500">Weak Subject</p>
-
-              <h2 className="text-lg font-semibold truncate">
-                {data.weak_subject.subject}
-              </h2>
-
-              <p className="text-sm text-gray-600">
-                Accuracy: {data.weak_subject.accuracy}%
-              </p>
-            </div>
-          )}
+          <StatCard title="Study Streak" value={`${data.study_streak} days`} />
+          <StatCard title="Topics Completed" value={data.topics_completed} />
+          <StatCard title="Roadmap Progress" value={`${data.roadmap_progress}%`} />
+          <StatCard title="Average Score" value={`${data.average_score}%`} />
         </div>
 
-        {/* Continue Studying */}
+        {/* ================= STUDY PLAN CTA ================= */}
+        <div className="bg-blue-600 text-white p-6 rounded-xl flex justify-between items-center shadow">
+          <div>
+            <h2 className="text-lg font-semibold">
+              Your Personalized Study Plan
+            </h2>
+            <p className="text-sm opacity-90">
+              Focus on your weak topics and improve faster
+            </p>
+          </div>
+
+          <Link
+            href="/dashboard/study-plan"
+            className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium"
+          >
+            View Plan →
+          </Link>
+        </div>
+
+
+
+        {/* ================= WEAK TOPICS ================= */}
+        {weakTopics.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm">
+
+            <h2 className="text-lg font-semibold mb-3">
+              ⚠ Weak Topics
+            </h2>
+
+            <div className="grid md:grid-cols-2 gap-4">
+              {weakTopics.slice(0, 6).map((t: any) => (
+                <div
+                  key={t.topic_id}
+                  className="flex justify-between bg-white p-3 rounded"
+                >
+                  <span>
+                    {t.topic_name || `Topic ${t.topic_id}`}
+                  </span>
+
+                  <span className="text-sm text-gray-600">
+                    {(t.accuracy * 100).toFixed(0)}%
+                  </span>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        )}
+
+        {/* ================= CONTINUE ================= */}
         {data.continue_studying && (
-          <div className="bg-white rounded-xl p-6 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div className="bg-white rounded-xl p-6 shadow-sm flex justify-between items-center">
 
             <div>
-              <h2 className="text-lg font-semibold">
-                Continue Studying
-              </h2>
-
-              <p className="text-gray-600 truncate max-w-lg">
-                {data.continue_studying.topic_name}
-              </p>
+              <h2 className="font-semibold">Continue Studying</h2>
+              <p>{data.continue_studying.topic_name}</p>
             </div>
 
             <Link
               href={`/dashboard/study/${data.continue_studying.topic_id}`}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+              className="bg-blue-600 text-white px-4 py-2 rounded"
             >
               Resume
             </Link>
@@ -121,37 +135,25 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Roadmaps */}
+        {/* ================= ROADMAPS ================= */}
         <div>
-
-          <h2 className="text-xl font-semibold mb-4">
-            Your Roadmaps
-          </h2>
+          <h2 className="text-xl font-semibold mb-4">Your Roadmaps</h2>
 
           <div className="bg-white rounded-xl shadow-sm divide-y">
-
             {data.roadmaps.map((roadmap: any) => (
-              <div
-                key={roadmap.id}
-                className="flex items-center justify-between p-4"
-              >
+              <div key={roadmap.id} className="flex justify-between p-4">
 
-                <div className="flex flex-col min-w-0">
-                  <span className="font-medium truncate max-w-xs">
-                    {roadmap.exam_name}
-                  </span>
-
+                <div>
+                  <span>{roadmap.exam_name}</span>
                   {roadmap.is_active && (
-                    <span className="text-green-600 text-sm">
-                      Active
-                    </span>
+                    <p className="text-green-600 text-sm">Active</p>
                   )}
                 </div>
 
                 {!roadmap.is_active && (
                   <button
                     onClick={() => activateRoadmap(roadmap.id)}
-                    className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition"
+                    className="bg-blue-600 text-white px-3 py-1 rounded"
                   >
                     Activate
                   </button>
@@ -159,37 +161,26 @@ export default function DashboardPage() {
 
               </div>
             ))}
-
           </div>
         </div>
 
-        {/* Services */}
+        {/* ================= SERVICES ================= */}
         <div>
-
-          <h2 className="text-xl font-semibold mb-4">
-            Platform Services
-          </h2>
+          <h2 className="text-xl font-semibold mb-4">Platform Services</h2>
 
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-
             {services.map((service) => (
               <Link
                 key={service.name}
                 href={service.href}
-                className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition flex flex-col"
+                className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition"
               >
-
-                <h3 className="text-lg font-semibold mb-2">
-                  {service.name}
-                </h3>
-
-                <p className="text-sm text-gray-600 line-clamp-3">
+                <h3 className="font-semibold">{service.name}</h3>
+                <p className="text-sm text-gray-600">
                   {service.description}
                 </p>
-
               </Link>
             ))}
-
           </div>
         </div>
 
@@ -202,7 +193,7 @@ function StatCard({ title, value }: any) {
   return (
     <div className="bg-white rounded-xl p-6 shadow-sm">
       <p className="text-sm text-gray-500">{title}</p>
-      <h2 className="text-2xl font-semibold mt-1 truncate">{value}</h2>
+      <h2 className="text-xl font-semibold">{value}</h2>
     </div>
   );
 }
