@@ -33,3 +33,30 @@ class AdaptiveRoadmapService:
 
         return topic_accuracy
   
+    @staticmethod
+    def get_today_revision(user, limit=3):
+        """
+        Returns top weak topics NOT in today's learning topics
+        """
+
+        from apps.roadmap.models import RoadmapTopic
+
+        # 1. Get priority topics
+        priority_topics = AdaptiveRoadmapService.generate_priority(user)
+
+        # 2. Get today's topics
+        today_topics = RoadmapTopic.objects.filter(
+            roadmap__user=user,
+            roadmap__is_active=True
+        ).values_list("topic_id", flat=True)
+
+        today_topic_ids = set(today_topics)
+
+        # 3. Filter weak topics NOT in today
+        revision_candidates = [
+            t for t in priority_topics
+            if t["strength"] == "weak" and t["topic_id"] not in today_topic_ids
+        ]
+
+        # 4. Take top N
+        return revision_candidates[:limit]

@@ -24,6 +24,7 @@ export interface WeekTopic {
   hours: number;
   completed: boolean;
   phase: 'study' | 'revision' | 'practice';
+
 }
 
 export interface WeekProgress {
@@ -32,7 +33,14 @@ export interface WeekProgress {
   completed_topics: number;
   progress: number;
 }
-
+export interface WeekPlanResponse {
+  data: WeekTopic[];
+  today_revision: {
+    topic_id: number;
+    topic_name: string;
+    priority: number;
+  }[];
+}
 /* ======================
    EXAMS
 ====================== */
@@ -87,7 +95,7 @@ export const deleteRoadmap = async (id: number) => {
 export const getWeekTopics = async (
   roadmapId: number,
   week: number
-): Promise<WeekTopic[]> => {
+): Promise<WeekPlanResponse> => {
 
   const { data } = await apiClient.get(
     `/roadmap/${roadmapId}/week/${week}/`

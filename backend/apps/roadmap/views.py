@@ -1,3 +1,4 @@
+from pydoc_data.topics import topics
 import re
 
 from django.utils import timezone
@@ -7,6 +8,7 @@ from urllib3 import request
 from apps.roadmap.services.progress_service import ProgressService
 from apps.ai_service.services.rag.llm_service import LLMService
 from apps.roadmap.services.study_service import StudyService
+from apps.analytics.services.adaptive_service import AdaptiveRoadmapService
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -235,17 +237,19 @@ class DeterministicRoadmapGenerateView(APIView):
             status=status.HTTP_201_CREATED
         )
     
-class WeekPlanView(APIView):
 
+
+class WeekPlanView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, roadmap_id, week_number):
 
-        topics = RoadmapTopic.objects.filter(
+        topics = RoadmapTopic.objects.select_related("topic").filter(
             roadmap_id=roadmap_id,
             week_number=week_number
         ).order_by("day_number")
 
+        # ---------- NORMAL ROADMAP DATA ----------
         data = [
             {
                 "id": t.id,
@@ -253,14 +257,62 @@ class WeekPlanView(APIView):
                 "topic": t.topic.name,
                 "hours": t.estimated_hours,
                 "completed": t.is_completed,
-                "subject": t.topic.parent.name if t.topic.parent else None
+                "subject": t.topic.parent.name if t.topic.parent else None,
+                "phase": t.phase
             }
             for t in topics
         ]
 
-        return Response(data)
-    
+        # ---------- FIND CURRENT DAY ----------
+        day_groups = {}
 
+        for t in topics:
+            day_groups.setdefault(t.day_number, []).append(t)
+
+        current_day = None
+
+        for day in sorted(day_groups.keys()):
+            day_items = day_groups[day]
+            if not all(t.is_completed for t in day_items):
+                current_day = day
+                break
+
+        if current_day is None:
+            current_day = max(day_groups.keys())
+
+
+        # ---------- ADAPTIVE REVISION ----------
+        priority_topics = AdaptiveRoadmapService.generate_priority(request.user)
+
+        # Day 1 → no revision
+        if current_day == 1:
+            revision = []
+        else:
+            weak_topics = [
+                t for t in priority_topics
+                if t["strength"] == "weak"
+            ]
+
+            # exclude today's learning topics
+            today_topic_ids = set(
+                t.topic_id for t in day_groups.get(current_day, [])
+            )
+
+            revision = [
+                {
+                    "topic_id": t["topic_id"],
+                    "topic_name": t["topic_name"],
+                    "priority": t["priority"]
+                }
+                for t in weak_topics
+                if t["topic_id"] not in today_topic_ids
+            ][:3]
+
+        return Response({
+            "status": "success",
+            "data": data,
+            "today_revision": revision
+        })
 class TopicCompleteView(APIView):
 
     permission_classes = [IsAuthenticated]

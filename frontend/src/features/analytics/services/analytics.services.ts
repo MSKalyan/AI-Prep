@@ -11,6 +11,11 @@ export type TopicPerformance = {
   strength: "weak" | "moderate" | "strong" | "insufficient";
 };
 
+export type PerformanceResponse = {
+  topics: TopicPerformance[];
+  total_mocktests: number;
+  total_questions_attempted: number;
+};
 export type StudyPlanItem = {
   topic_id: number;
   topic_name:string;

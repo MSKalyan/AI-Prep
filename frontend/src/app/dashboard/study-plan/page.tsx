@@ -1,50 +1,70 @@
 "use client";
 
-import { useStudyPlan } from "@/features/analytics/hooks/hooks";
-import { StudyPlanItem } from "@/features/analytics/services/analytics.services";
+import { useTodayPlan } from "@/features/analytics/hooks/hooks";
 
 export default function StudyPlanPage() {
-  const { data = [], isLoading } = useStudyPlan();
+  const { data, isLoading } = useTodayPlan();
 
-  if (isLoading) return <div className="p-6">Loading...</div>;
+  if (isLoading) {
+    return <div className="p-6 text-center">Loading today’s plan...</div>;
+  }
 
-  const top3 = data.slice(0, 3);
+  if (!data) {
+    return <div className="p-6 text-center text-gray-500">No plan available</div>;
+  }
 
   return (
-    <div className="p-6 space-y-6">
-      <h1 className="text-2xl font-bold">Study Plan</h1>
+    <div className="p-6 max-w-3xl mx-auto space-y-6">
 
+      {/* HEADER */}
       <div>
-        <h2>Focus Now</h2>
-        <div className="grid md:grid-cols-3 gap-4">
-          {top3.map((t) => (
-            <Card key={t.topic_id} topic={t} highlight />
-          ))}
+        <h1 className="text-2xl font-bold">Today's Study Plan</h1>
+        <p className="text-sm text-gray-500">
+          Week {data.week} • Day {data.day}
+        </p>
+      </div>
+
+      {/* LEARN SECTION */}
+      <div className="bg-white p-5 rounded-xl shadow-sm border">
+        <p className="text-blue-600 font-semibold mb-2">
+          📘 Learn Topics
+        </p>
+
+        {data.learn_topics?.length > 0 ? (
+          <ul className="list-disc ml-5 text-gray-700">
+            {data.learn_topics.map((topic: any) => (
+              <li key={topic.topic_id}>{topic.topic_name}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-gray-400 text-sm">No topics for today</p>
+        )}
+      </div>
+
+      {/* REVISION SECTION */}
+      {data.revision && (
+        <div className="bg-red-50 border border-red-200 p-5 rounded-xl">
+          <p className="text-red-600 font-semibold mb-2">
+            🔁 Focus Revision
+          </p>
+
+          <p className="text-gray-800">
+            {data.revision.topic_name}
+          </p>
+
+          <p className="text-xs text-gray-500 mt-1">
+            Priority: {(data.revision.priority * 100).toFixed(0)}%
+          </p>
         </div>
+      )}
+
+      {/* ACTION BUTTON */}
+      <div className="pt-2">
+        <button className="w-full bg-black text-white py-2 rounded-lg hover:opacity-90">
+          Mark Day as Completed
+        </button>
       </div>
 
-      <div>
-        <h2>All Topics</h2>
-        {data.map((t) => (
-          <Card key={t.topic_id} topic={t} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Card({
-  topic,
-  highlight,
-}: {
-  topic: StudyPlanItem;
-  highlight?: boolean;
-}) {
-  return (
-    <div className={`p-4 border rounded ${highlight ? "bg-blue-100" : ""}`}>
-      <p>Topic {topic.topic_name}</p>
-      <p>{topic.strength}</p>
-      <p>{topic.suggested_time_minutes} mins</p>
     </div>
   );
 }

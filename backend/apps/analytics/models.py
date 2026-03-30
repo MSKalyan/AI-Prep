@@ -34,6 +34,7 @@ class TopicPerformance(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        db_table="topic_performance"
         unique_together = ['user', 'topic']
 
 

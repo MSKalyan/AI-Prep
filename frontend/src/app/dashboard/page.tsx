@@ -33,10 +33,14 @@ export default function DashboardPage() {
 
   const { data, isLoading } = useDashboardStats();
   const { data: studyPlan = [] } = useStudyPlan();
-  const { data: performance = [] } = usePerformance();
+const { data: performanceData } = usePerformance();
 
-  const weakTopics = performance.filter((t: any) => t.strength === "weak");
+// safe extraction
+const performance = Array.isArray(performanceData?.topics)
+  ? performanceData.topics
+  : [];
 
+const weakTopics = performance.filter((t: any) => t.strength === "weak");
   const activateMutation = useMutation({
     mutationFn: (id: number) =>
       apiClient.post(`/roadmap/activate/${id}/`),

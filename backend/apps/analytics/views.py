@@ -1,7 +1,10 @@
+from django.db.models import Sum
+
 from apps.analytics.services.performance_service import PerformanceService
 from apps.analytics.services.adaptive_service import AdaptiveRoadmapService
 from apps.analytics.services.roadmap_service import RoadmapService
 from apps.analytics.services.study_content_service import StudyContentService
+from apps.mocktest.models import MockTest
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -14,7 +17,7 @@ from .serializers import (
     StudySessionSerializer
 )
 from .services.services import AnalyticsService
-from .models import PerformanceMetrics, WeakArea, DailyProgress
+from .models import PerformanceMetrics, TopicPerformance, WeakArea, DailyProgress
 
 from .services.services import AttemptAggregationService
 
@@ -34,15 +37,31 @@ class TopicAggregationView(APIView):
         })
 
 
+
 class TopicPerformanceView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        data = PerformanceService.compute_and_store(request.user)
+        user = request.user
+
+        # Existing logic
+        topics = PerformanceService.compute_and_store(user)
+
+        # NEW: total mock tests
+        total_mocktests = MockTest.objects.filter(user=user).count()
+
+        # NEW: total questions attempted
+        total_questions = TopicPerformance.objects.filter(user=user).aggregate(
+            total=Sum('total_attempts')
+        )['total'] or 0
 
         return Response({
             "status": "success",
-            "data": data
+            "data": {
+                "topics": topics,
+                "total_mocktests": total_mocktests,
+                "total_questions_attempted": total_questions
+            }
         })
     
 
@@ -70,7 +89,16 @@ class AdaptiveStudyPlanView(APIView):
             "data": data
         })
 
+class TodayStudyPlanView(APIView):
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        data = RoadmapService.get_today_plan(request.user)
+
+        return Response({
+            "status": "success",
+            "data": data
+        })
 
 class StudyContentView(APIView):
     permission_classes = [IsAuthenticated]
@@ -97,7 +125,13 @@ class UserAnalyticsView(APIView):
     def get(self, request):
         try:
             analytics_data = AnalyticsService.get_user_analytics(request.user)
-            
+            total_mocktests = MockTest.objects.filter(user=request.user).count()
+
+            # NEW: total questions attempted
+            total_questions = TopicPerformance.objects.filter(user=request.user).aggregate(
+                total=Sum('total_attempts')
+            )['total'] or 0
+
             # Serialize the data
             response_data = {
                 'overall_stats': analytics_data['overall_stats'],
@@ -114,7 +148,9 @@ class UserAnalyticsView(APIView):
                     many=True
                 ).data,
                 'study_streak': analytics_data['study_streak'],
-                'total_study_time': analytics_data['total_study_time']
+                'total_study_time': analytics_data['total_study_time'],
+                'total_mocktests': total_mocktests,
+                'total_questions_attempted': total_questions
             }
             
             return Response(response_data, status=status.HTTP_200_OK)
@@ -183,3 +219,15 @@ class PerformanceStatsView(APIView):
                 {'error': f'Failed to fetch performance stats: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class AdaptiveRevisionView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        data = AdaptiveRoadmapService.get_revision_map(request.user)
+
+        return Response({
+            "status": "success",
+            "data": data
+        })

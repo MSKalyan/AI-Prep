@@ -1,41 +1,56 @@
 "use client";
 
-import { usePerformance } from "@/features/analytics/hooks/hooks";
+import { usePerformance, useAnalyticsSummary } from "@/features/analytics/hooks/hooks";
 import { TopicPerformance } from "@/features/analytics/services/analytics.services";
 
 /* ================= PAGE ================= */
 
 export default function AnalyticsPage() {
-  const { data = [], isLoading } = usePerformance();
+  const { data, isLoading } = usePerformance();
+    const topics=data?.topics||[];
 
+  const { data: summary } = useAnalyticsSummary();
   if (isLoading) {
     return <div className="p-6 text-center">Loading analytics...</div>;
   }
 
-  const weak = data.filter((t) => t.strength === "weak");
-  const moderate = data.filter((t) => t.strength === "moderate");
-  const strong = data.filter((t) => t.strength === "strong");
+  // ---------------- SUMMARY DATA ----------------
+  const totalMocktests = summary?.total_mocktests || 0;
+  const totalQuestions = summary?.total_questions_attempted || 0;
 
-  const total = data.length;
+  // ---------------- CLASSIFICATION ----------------
+  const weak = topics.filter((t) => t.strength === "weak");
+  const moderate = topics.filter((t) => t.strength === "moderate");
+  const strong = topics.filter((t) => t.strength === "strong");
+
+  // ---------------- BASIC METRICS ----------------
+  const totalTopics = topics.length;
 
   const avgAccuracy =
-    total > 0 ? data.reduce((s, t) => s + t.accuracy, 0) / total : 0;
+    totalTopics > 0
+      ? topics.reduce((s, t) => s + t.accuracy, 0) / totalTopics
+      : 0;
 
   const avgTime =
-    total > 0 ? data.reduce((s, t) => s + t.avg_time, 0) / total : 0;
+    totalTopics > 0
+      ? topics.reduce((s, t) => s + t.avg_time, 0) / totalTopics
+      : 0;
 
   return (
     <div className="p-6 space-y-8">
-
       <h1 className="text-3xl font-bold">Analytics</h1>
 
       {/* ================= SUMMARY ================= */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <StatCard title="Topics Attempted" value={total} />
+      <div className="grid md:grid-cols-4 gap-4">
+        <StatCard title="Mock Tests Attempted" value={totalMocktests} />
+
+        <StatCard title="Questions Attempted" value={totalQuestions} />
+
         <StatCard
           title="Avg Accuracy"
           value={`${(avgAccuracy * 100).toFixed(1)}%`}
         />
+
         <StatCard
           title="Avg Time / Question"
           value={`${avgTime.toFixed(1)} sec`}
@@ -63,7 +78,6 @@ export default function AnalyticsPage() {
         color="bg-green-100"
         emptyText="No strong topics yet"
       />
-
     </div>
   );
 }

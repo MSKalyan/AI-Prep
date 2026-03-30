@@ -135,7 +135,6 @@ class DeterministicRoadmapGenerateSerializer(serializers.Serializer):
     def validate(self, data):
         exam_id = data.get("exam_id")
         target_date = data.get("target_date")
-
         try:
             exam = Exam.objects.get(id=exam_id)
         except Exam.DoesNotExist:

@@ -17,7 +17,7 @@ class StudyContentService:
     @staticmethod
     def generate_queries(topic_name):
         prompt = f"""
-        Generate 3 high-quality YouTube search queries for learning:
+        Generate exactly only 3 high-quality YouTube search queries for learning:
         {topic_name}
 
         Include:
@@ -92,7 +92,7 @@ class StudyContentService:
             try:
                 res = requests.get(url, params=params)
                 data = res.json()
-
+                print(data)
                 for item in data.get("items", []):
                     video_id = item["id"]["videoId"]
                     title = item["snippet"]["title"]
@@ -107,7 +107,7 @@ class StudyContentService:
                 continue
 
         # remove duplicates + limit
-        return list(dict.fromkeys(videos))[:5]
+        return list(dict.fromkeys(videos))[:3]
 
     # ================= FILTER =================
     @staticmethod
@@ -128,7 +128,11 @@ class StudyContentService:
         # ✅ STEP 1 — Check cache
         cached = StudyContentCache.objects.filter(topic=topic).first()
 
-        if cached and (timezone.now() - cached.created_at)<timedelta(days=7):
+        if (
+            cached
+            and cached.youtube_links   # 🔥 ensure not empty
+            and (timezone.now() - cached.created_at) < timedelta(days=7)
+        ):
             return {
                 "topic_id": topic.id,
                 "topic_name": topic.name,
@@ -144,11 +148,14 @@ class StudyContentService:
         description = StudyContentService.generate_description(topic_name)
 
         # ✅ STEP 3 — Save cache
-        StudyContentCache.objects.create(
-            topic=topic,
-            description=description,
-            youtube_links=videos
-        )
+        if videos:
+            StudyContentCache.objects.update_or_create(
+                topic=topic,
+                defaults={
+                    "description": description,
+                    "youtube_links": videos
+                }
+            )
 
         return {
             "topic_id": topic.id,

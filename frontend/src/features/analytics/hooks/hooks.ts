@@ -3,14 +3,19 @@ import {
   fetchPerformance,
   fetchStudyPlan,
   fetchDashboardStats,
+  PerformanceResponse
 } from "../services/analytics.services";
 
+import {apiClient }from "@/lib/apiClient";
 /* ================= HOOKS ================= */
 
 export const usePerformance = () => {
-  return useQuery({
+  return useQuery<PerformanceResponse>({
     queryKey: ["performance"],
-    queryFn: fetchPerformance,
+      queryFn: async () => {
+      const res = await apiClient.get("/analytics/performance/");
+      return res.data.data; // ✅ must match PerformanceResponse
+    },
   });
 };
 
@@ -25,5 +30,36 @@ export const useDashboardStats = () => {
   return useQuery({
     queryKey: ["dashboard"],
     queryFn: fetchDashboardStats,
+  });
+};
+
+export const useAnalyticsSummary = () => {
+  return useQuery({
+    queryKey: ["analytics-summary"],
+    queryFn: async () => {
+      const res = await apiClient.get("/analytics/");
+      return res.data;
+    },
+  });
+};
+
+
+export const useAdaptiveStudyPlan = () => {
+  return useQuery({
+    queryKey: ["adaptive-study-plan"],
+    queryFn: async () => {
+      const res = await apiClient.get("/analytics/adaptive-study-plan/");
+      return res.data.data;
+    },
+  });
+};
+
+export const useTodayPlan = () => {
+  return useQuery({
+    queryKey: ["today-plan"],
+    queryFn: async () => {
+      const res = await apiClient.get("/analytics/adaptive-study-plan/");
+      return res.data.data;
+    },
   });
 };

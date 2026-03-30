@@ -84,14 +84,15 @@ class DayDistributionService:
         for item in week_items:
             topic = item["topic"]
             hours = float(item["hours"])
-
-            while hours > 0.1: 
+            hours=round(hours,2)
+            remaining_day_hours=round(remaining_day_hours,2)
+            while hours > 0: 
                 if current_day > 5: # Study only 5 days
                     break
 
-                allocate = min(hours, remaining_day_hours)
+                allocate = round(min(hours, remaining_day_hours), 2)
                 
-                if allocate > 0.1:
+                if allocate > 0:
                     days.append({
                         "day": current_day,
                         "topic": topic,

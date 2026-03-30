@@ -23,8 +23,13 @@ class PerformanceService:
         topics = Topic.objects.filter(id__in=topic_ids)
 
         # ✅ STEP 3 — Build lookup map
-        topic_map = {t.id: t.name for t in topics}
-
+        topic_map = {
+                t.id: {
+                    "name": t.name,
+                    "weightage": t.weightage
+                }
+                for t in topics
+            }
         results = []
 
         # ✅ STEP 4 — Process each item
@@ -56,15 +61,17 @@ class PerformanceService:
                     "strength": strength
                 }
             )
+            topic_data = topic_map.get(topic_id, {"name": "", "weightage": 1.0})
 
             # --- Response payload ---
             results.append({
                 "topic_id": topic_id,
-                "topic_name": topic_map.get(topic_id, ""),  # ✅ FIXED
+                "topic_name": topic_data["name"],  # ✅ FIXED
                 "accuracy": round(accuracy, 2),
                 "avg_time": round(avg_time, 2),
                 "total_attempts": total_attempts,
-                "strength": strength
+                "strength": strength,
+                "weightage": topic_data["weightage"]  # ✅ FIXED
             })
 
         return results

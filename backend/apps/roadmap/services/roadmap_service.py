@@ -2,7 +2,7 @@ from django.db import transaction
 from apps.roadmap.models import Roadmap, RoadmapTopic, Exam, Topic
 from apps.roadmap.services.pyq.time_distribution_service import TimeDistributionService
 from apps.roadmap.services.pyq.weightage_service import WeightageService
-
+from apps.analytics.services.adaptive_service import AdaptiveRoadmapService
 class RoadmapService:
 
     @staticmethod
@@ -76,3 +76,64 @@ class RoadmapService:
                         day_rem_h = daily_limit
 
         return roadmap
+    
+    @staticmethod
+    def get_user_roadmap(user):
+
+        from collections import defaultdict
+
+        roadmap = RoadmapTopic.objects.select_related("topic", "roadmap") \
+            .filter(roadmap__user=user, roadmap__is_active=True) \
+            .order_by("week_number", "day_number", "id")
+
+        if not roadmap.exists():
+            return []
+
+        # 🔥 adaptive map
+        revision_map = AdaptiveRoadmapService.get_revision_map(user)
+
+        # group by week/day
+        grouped = defaultdict(list)
+
+        for item in roadmap:
+            key = (item.week_number, item.day_number)
+            grouped[key].append(item)
+
+        result = []
+
+        for (week, day) in sorted(grouped.keys()):
+
+            topics = []
+
+            for item in grouped[(week, day)]:
+                adaptive = revision_map.get(item.topic.id)
+
+                topics.append({
+                    "topic_id": item.topic.id,
+                    "topic_name": item.topic.name,
+                    "estimated_hours": item.estimated_hours,
+                    "phase": item.phase,
+
+                    # ✅ adaptive injection
+                    "adaptive": {
+                        "strength": adaptive["strength"] if adaptive else "unknown",
+                        "priority": adaptive["priority"] if adaptive else 0,
+                        "is_revision": adaptive["strength"] == "weak" if adaptive else False
+                    }
+                })
+
+            # ✅ sort inside day (important)
+            topics.sort(
+                key=lambda t: (
+                    not t["adaptive"]["is_revision"],   # weak first
+                    -t["adaptive"]["priority"]
+                )
+            )
+
+            result.append({
+                "week": week,
+                "day": day,
+                "topics": topics
+            })
+
+        return result

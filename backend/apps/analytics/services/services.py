@@ -1,10 +1,10 @@
 from datetime import datetime, timedelta
 from django.db.models import Sum, Avg, Count, Q
 from django.utils import timezone
-from ..models import StudySession, PerformanceMetrics, WeakArea, DailyProgress,PerformanceSnapshot
+from ..models import StudySession, PerformanceMetrics, TopicPerformance, WeakArea, DailyProgress,PerformanceSnapshot
 
 from django.db.models import Count, Sum, Case, When, IntegerField
-from apps.mocktest.models import Answer
+from apps.mocktest.models import Answer, MockTest
 
 
 class AttemptAggregationService:
@@ -56,7 +56,10 @@ class AnalyticsService:
         
         # Subject-wise performance
         subject_performance = PerformanceMetrics.objects.filter(user=user)
-        
+        total_mocktests=MockTest.objects.filter(user=user).count()
+        total_questions = TopicPerformance.objects.filter(user=user).aggregate(
+    total=Sum('total_attempts')
+)['total']
         # Weak areas
         weak_areas = WeakArea.objects.filter(user=user)[:10]
         
@@ -81,7 +84,9 @@ class AnalyticsService:
             'weak_areas': weak_areas,
             'recent_progress': recent_progress,
             'study_streak': study_streak,
-            'total_study_time': total_study_time
+            'total_study_time': total_study_time,
+            'total_mocktests': total_mocktests,
+            "total_questions_attempted": total_questions
         }
     
     @staticmethod
