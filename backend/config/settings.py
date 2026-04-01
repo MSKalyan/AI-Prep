@@ -12,7 +12,6 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
-import ssl
 from datetime import timedelta
 from dotenv import load_dotenv
 load_dotenv()  # Load environment variables from .env file  
@@ -45,8 +44,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
-    'django_celery_results',
-    'django_celery_beat',
+
     # Local apps
     'apps.users',
     'apps.roadmap',
@@ -194,33 +192,7 @@ SIMPLE_JWT = {
 }
 
 
-# Celery Configuration
-CELERY_BROKER_URL = os.environ.get(
-    'CELERY_BROKER_URL',
-    os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1')
-)
-CELERY_RESULT_BACKEND = os.environ.get(
-    'CELERY_RESULT_BACKEND',
-    os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1')
-)
-CELERY_ACCEPT_CONTENT = ['json']
-CELERY_TASK_SERIALIZER = 'json'
-CELERY_RESULT_SERIALIZER = 'json'
-CELERY_TIMEZONE = 'UTC'
-CELERY_TASK_TRACK_STARTED = True
-CELERY_TASK_TIME_LIMIT = 30 * 60  # 30 minutes
-CELERY_RESULT_EXTENDED = True
-CELERY_BROKER_USE_SSL = {"ssl_cert_reqs": ssl.CERT_NONE}
-CELERY_REDIS_BACKEND_USE_SSL = {"ssl_cert_reqs": ssl.CERT_NONE}
 
-
-# Redis Cache
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.redis.RedisCache',
-        'LOCATION': os.environ.get('REDIS_URL', 'redis://127.0.0.1:6379/1'),
-    }
-}
 
 # AI Service Settings
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")

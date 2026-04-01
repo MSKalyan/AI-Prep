@@ -16,7 +16,6 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 
 from django.db import transaction
-from worker.tasks import generate_roadmap_async
 
 from .models import Roadmap, RoadmapGenerationJob, Exam, RoadmapTopic
 from .serializers import (
