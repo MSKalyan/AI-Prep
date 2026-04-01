@@ -1,2 +1,10 @@
 worker/
 data/
+
+
+venv/
+__pycache__/
+*.pyc
+.env
+faiss.index
+faiss_mapping.pkl

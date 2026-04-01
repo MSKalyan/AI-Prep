@@ -1,16 +1,29 @@
-from ml_utils import ModelLoader
-import numpy as np
+from unittest import result
 
-model = ModelLoader.get_model()
+from google import genai
+from google.genai import types
+import os
+
+# Initialize client once
+client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 
-def generate_embedding(text: str):
+def generate_embedding(text: str, is_query: bool = False):
+    """
+    Generate embeddings using Gemini
 
-    embedding = model.encode(text)
+    is_query=True  → query embedding
+    is_query=False → document embedding
+    """
 
-    embedding = np.array(embedding).astype("float32")
+    task_type = (
+        "RETRIEVAL_QUERY" if is_query else "RETRIEVAL_DOCUMENT"
+    )
 
-    # normalize for cosine similarity
-    embedding = embedding / np.linalg.norm(embedding)
-
-    return embedding.tolist()
+    result = client.models.embed_content(
+        model="gemini-embedding-001",
+        contents=text,
+        config=types.EmbedContentConfig(task_type=task_type)
+    )
+    print("Embedding length:", len(result.embeddings[0].values))
+    return result.embeddings[0].values

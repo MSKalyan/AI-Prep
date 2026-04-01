@@ -10,15 +10,16 @@ MAPPING_PATH = "faiss_mapping.pkl"
 
 class FAISSVectorStore:
 
-    def __init__(self, dim=384):
+    def __init__(self, dim=None):
         self.dim = dim
 
         if os.path.exists(INDEX_PATH) and os.path.exists(MAPPING_PATH):
             self.index = faiss.read_index(INDEX_PATH)
+            self.dim = self.index.d  # ✅ sync dimension
             with open(MAPPING_PATH, "rb") as f:
                 self.id_map = pickle.load(f)
         else:
-            self.index = faiss.IndexFlatIP(dim)  # cosine similarity
+            self.index = None  # ✅ delay creation
             self.id_map = []
 
     # =====================================================
@@ -47,6 +48,10 @@ class FAISSVectorStore:
 
         vectors = np.array(new_vectors).astype("float32")
 
+        # 🔥 Initialize index dynamically
+        if self.index is None:
+            self.dim = vectors.shape[1]
+            self.index = faiss.IndexFlatIP(self.dim)
         # normalize for cosine similarity
         faiss.normalize_L2(vectors)
 
@@ -60,7 +65,7 @@ class FAISSVectorStore:
     # =====================================================
     def search(self, query_embedding, top_k=5):
 
-        if self.index.ntotal == 0:
+        if self.index is None or self.index.ntotal == 0:
             return []  # ✅ safe guard
 
         query_vector = np.array([query_embedding]).astype("float32")
@@ -92,7 +97,8 @@ class FAISSVectorStore:
             chunk = chunks_map.get(chunk_id)
             if not chunk:
                 continue
-
+            print("Query dim:", len(query_embedding))
+            print("Index dim:", self.index.d)
             results.append((chunk, float(score)))
 
         return results
@@ -110,6 +116,7 @@ class FAISSVectorStore:
     # =====================================================
     def reset(self):
         """Completely reset FAISS index"""
-        self.index = faiss.IndexFlatIP(self.dim)
+        self.index = None
+        self.dim = None
         self.id_map = []
-        self._save()
+        self._save()    

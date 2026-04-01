@@ -5,6 +5,7 @@ from groq import Groq
 
 from .rag_service import RAGService
 from ...models import Conversation, Message, AIUsageLog
+import google as genai
 
 
 class AIService:
@@ -13,14 +14,16 @@ class AIService:
     def __init__(self):
         self.ai_mode = os.getenv("AI_MODE", "mock")
         self.groq_api_key = os.getenv("GROQ_API_KEY")
-
+        self.gemini_api_key = os.getenv("GEMINI_API_KEY")
         self.model = settings.LLM_MODEL
         self.temperature = settings.LLM_TEMPERATURE
         self.max_tokens = settings.LLM_MAX_TOKENS
 
         if self.ai_mode == "groq" and self.groq_api_key:
             self.groq = Groq(api_key=self.groq_api_key)
-
+        elif self.ai_mode == "gemini" and self.gemini_api_key:
+                genai.configure(api_key=self.gemini_api_key)
+                self.gemini_model = genai.GenerativeModel("gemini-1.5-flash")
     # =====================================================
     # ASK AI
     # =====================================================
@@ -231,7 +234,33 @@ class AIService:
                 ],
                 "usage": usage
             }
+        if self.ai_mode == "gemini":
 
+            # Convert messages → prompt
+            prompt = ""
+            for msg in messages:
+                role = msg.get("role", "")
+                content = msg.get("content", "")
+
+                if role == "system":
+                    prompt += f"System: {content}\n"
+                elif role == "user":
+                    prompt += f"User: {content}\n"
+                elif role == "assistant":
+                    prompt += f"Assistant: {content}\n"
+
+            response = self.gemini_model.generate_content(prompt)
+
+            return {
+                "choices": [
+                    {"message": {"content": response.text}}
+                ],
+                "usage": {
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0
+                }
+            }
         raise Exception("Invalid AI_MODE")
 
     # =====================================================

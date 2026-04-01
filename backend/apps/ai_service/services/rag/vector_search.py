@@ -57,7 +57,7 @@ def semantic_search(query, top_k=20):
     # =========================
     # 🧠 STEP 2 — VECTOR SEARCH
     # =========================
-    query_embedding = generate_embedding(query)
+    query_embedding = generate_embedding(query,is_query=True)
 
     store = FAISSVectorStore()
     raw_results = store.search(query_embedding, top_k=top_k)
