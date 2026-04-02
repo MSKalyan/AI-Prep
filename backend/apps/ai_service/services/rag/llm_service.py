@@ -15,7 +15,11 @@ class LLMService:
     """
 
     def __init__(self):
-        self.client = Groq(api_key=settings.GROQ_API_KEY)
+        api_key = settings.GROQ_API_KEY
+
+        self.client = None
+        if api_key:
+            self.client = Groq(api_key=api_key)
         self.model = settings.LLM_MODEL
         self.temperature = settings.LLM_TEMPERATURE
         self.max_tokens = settings.LLM_MAX_TOKENS
@@ -28,7 +32,8 @@ class LLMService:
         expect_json: bool = False
     ):
         start_time = time.time()
-
+        if not self.client:
+            return None
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
