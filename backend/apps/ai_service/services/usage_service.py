@@ -1,6 +1,10 @@
+from apps.ai_service.models import AIUsageLog
+
+
 def _log_usage(self, user, endpoint, usage, response_time,
                    success=True, error_message=""):
 
+    if user:
         AIUsageLog.objects.create(
             user=user,
             endpoint=endpoint,
