@@ -40,7 +40,7 @@ export default function DashboardLayout({
           {navItem("/dashboard/ai_service", "AI Tutor")}
           {navItem("/dashboard/analytics", "Analytics")}
           {navItem("/dashboard/mocktest/results", "Mock Tests")}
-          {navItem("/dashboard/roadmap", "Roadmap")}
+          {navItem("/dashboard/roadmap", "Generate Roadmap")}
           {navItem("/dashboard/roadmaps", "My Roadmaps")}
 
         </nav>

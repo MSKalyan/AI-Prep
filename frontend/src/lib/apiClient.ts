@@ -1,7 +1,8 @@
 import axios from "axios";
 
+const API=process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 export const apiClient = axios.create({
-  baseURL: "http://localhost:8000/api",
+  baseURL: `${API}/api`,
   withCredentials: true,
 });
 
@@ -10,15 +11,12 @@ apiClient.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Do not intercept refresh endpoint
     if (originalRequest?.url?.includes("/auth/refresh/")) {
       return Promise.reject(error);
     }
 
-    // Handle expired access token
     if (error.response?.status === 401 && !originalRequest?._retry) {
 
-      // If already on login page, do nothing
       if (typeof window !== "undefined" && window.location.pathname === "/login") {
         return Promise.reject(error);
       }
@@ -36,7 +34,6 @@ apiClient.interceptors.response.use(
       }
     }
 
-    // IMPORTANT: forward all other errors (e.g., 400 validation errors)
     return Promise.reject(error);
   }
 );

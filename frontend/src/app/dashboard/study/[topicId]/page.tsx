@@ -17,6 +17,7 @@ export default function StudyPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const mode = searchParams.get("mode"); // ✅ revision mode
   const topicId = Number(params.topicId ?? 0);
   const dayFromUrl = Number(searchParams.get("day"));
 
@@ -40,10 +41,16 @@ export default function StudyPage() {
     }
   }, [dayFromUrl]);
 
+  // ✅ Preserve revision mode when switching topics
   const handleTopicChange = (newTopicId: number, day: number) => {
     setSelectedTopic(newTopicId);
     setSelectedDay(day);
-    router.push(`/dashboard/study/${newTopicId}?day=${day}`);
+
+    const url = mode === "revision"
+      ? `/dashboard/study/${newTopicId}?day=${day}&mode=revision`
+      : `/dashboard/study/${newTopicId}?day=${day}`;
+
+    router.push(url);
   };
 
   const handleStartTest = async () => {
@@ -64,8 +71,13 @@ export default function StudyPage() {
       console.error("Failed to start test", err);
     }
   };
-console.log("DATA:",data);
-
+if (data?.error) {
+  return (
+    <div className="p-6 text-red-600">
+      Invalid revision topic. Please try again.
+    </div>
+  );
+}
   if (isLoading) {
     return (
       <div className="p-6 animate-pulse space-y-3">
@@ -93,9 +105,10 @@ console.log("DATA:",data);
       </div>
     );
   }
+
   return (
     <div className="flex h-[calc(100vh-80px)]">
-      
+
       {/* ================= LEFT (PLANNER) ================= */}
       <div className="w-[350px] border-r bg-white overflow-y-auto">
         <WeekPlanner
@@ -110,6 +123,7 @@ console.log("DATA:",data);
       {/* ================= RIGHT (CONTENT) ================= */}
       <div className="flex-1 p-6 space-y-6 overflow-y-auto">
 
+        {/* BACK */}
         <button
           onClick={() =>
             router.push(`/dashboard/roadmap/${data.roadmap_id}`)
@@ -119,35 +133,50 @@ console.log("DATA:",data);
           ← Back to Roadmap
         </button>
 
+        {/* ✅ REVISION MODE BANNER */}
+        {mode === "revision" && (
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
+            🔁 Revision Mode — Focus on weak areas and recall actively
+          </div>
+        )}
+
         <StudyHeader topicId={selectedTopic} />
 
         <AIExplanationPanel
           topicId={selectedTopic}
           explanation={data.ai_explanation}
         />
-        
 
-  
-        {/* ================= AI CHAT ================= */}
+        {/* AI CHAT */}
         <div className="mt-4">
           <AskAIChat context={data.topic} />
         </div>
 
-         <div className="mt-3"> 
+        {/* YOUTUBE */}
+        <div className="mt-3">
           <YouTubeResources
-  topicName={data.topic}
-  youtubeLinks={data.youtube_links || []}
-/></div>
+            topicName={data.topic}
+            youtubeLinks={data.youtube_links || []}
+          />
+        </div>
 
+        {/* CTA */}
+        <div className="mt-6 flex gap-3">
 
-        {/* ================= CTA ================= */}
-        <div className="mt-6">
+          {/* Mock Test */}
           <button
             onClick={handleStartTest}
             className="bg-blue-600 text-white px-4 py-2 rounded"
           >
             Start Mock Test
           </button>
+
+          {/* ✅ Optional: Mark Revised */}
+          {mode === "revision" && (
+            <button className="bg-green-100 text-green-700 px-4 py-2 rounded">
+              Mark as Revised
+            </button>
+          )}
         </div>
 
       </div>

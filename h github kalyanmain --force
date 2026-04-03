@@ -1,0 +1,23 @@
+[33mcfc5b9f[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mkalyan[m[33m, [m[1;31mgithub/main[m[33m)[m remove celery config completely
+[33mbd83b82[m ensure gunicorn in requirements
+[33me0972b4[m add gunicorn for production
+[33mb2b3574[m set python version to 3.11 for render
+[33m8f914d1[m fix duplicate tiktoken conflict
+[33ma9d36bd[m Adaptive Roadmap - Shows revision option
+[33md5517e2[m implement analytics
+[33m7f13be0[m Implement mocktest
+[33m1d59286[m Implemente and validatePYQ-based mock test backend
+[33md5c32f1[m Chat Service
+[33m1d7ae9b[m complete RAG-chatAI integration
+[33ma43d4c2[m syllabus data ingestion
+[33md128b5d[m RAG pipeline
+[33mcaae2cd[m Control AI calls
+[33ma17d9cd[m implement dashboard UI, roadmap switching, and AI usage analytics integration
+[33ma02cd3e[m Add AI topic explanations and study workspace with sidebar navigation
+[33me7e6384[m add day-wise roadmap planner with AI topic explanations and progress tracking
+[33m6252ef7[m Implement LLM integration service and roadmap validation improvements
+[33mb6638f6[m Refactor roadmap architecture, add service layer, migrations, dashboard updates
+[33me7f2344[m Models Implementation
+[33me09d393[m Readme file changes
+[33md3190e5[m Sprint 1: Django setup, JWT authentication, frontend integration, project configuration
+[33m5805c6f[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Initial commit

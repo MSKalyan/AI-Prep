@@ -36,7 +36,6 @@ export default function WeekPlanner({
 
   const [open, setOpen] = useState(studyMode);
 
-  // ✅ FETCH DATA
   const { data: response } = useQuery<WeekPlanResponse>({
     queryKey: ["week-topics", roadmapId, week],
     queryFn: () => getWeekTopics(roadmapId, week),
@@ -46,13 +45,12 @@ export default function WeekPlanner({
   const topics = response?.data || [];
   const revision = response?.today_revision || [];
 
-  
+  console.log("revison data:",revision);
   const { data: progress } = useQuery({
     queryKey: ["week-progress", roadmapId, week],
     queryFn: () => getWeekProgress(roadmapId, week),
   });
 
-  // ---------- GROUP BY DAY ----------
   const grouped: Record<number, WeekTopic[]> = {};
   topics.forEach((t: any) => {
     const d = t.day || t.day_number || 1;
@@ -62,7 +60,6 @@ export default function WeekPlanner({
 
   const days = Object.keys(grouped).map(Number).sort((a, b) => a - b);
 
-  // ---------- FIND CURRENT DAY ----------
   const currentDay = (() => {
     for (const day of days) {
       const dayItems = grouped[day];
@@ -76,7 +73,6 @@ export default function WeekPlanner({
     return days[days.length - 1];
   })();
 
-  // ---------- TOGGLE ----------
   async function handleToggle(id: number) {
   const response: any = queryClient.getQueryData([
     "week-topics",
@@ -110,7 +106,6 @@ export default function WeekPlanner({
   return (
     <div className="border rounded-xl bg-white shadow-sm overflow-hidden mb-4">
 
-      {/* HEADER */}
       <div
         className={`flex justify-between items-center p-5 cursor-pointer ${open ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
         onClick={() => { if (!studyMode) setOpen(!open); }}
@@ -136,7 +131,6 @@ export default function WeekPlanner({
       {open && (
         <div className="p-4 space-y-6 border-t bg-gray-50/30">
 
-          {/* DAYS */}
           {days.map((day) => {
             const dayTopics = grouped[day];
             const completedCount = dayTopics.filter((t: any) => t.completed || t.is_completed).length;
@@ -145,7 +139,6 @@ export default function WeekPlanner({
             return (
               <div key={day} className="space-y-3">
 
-                {/* DAY HEADER */}
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold px-2 py-0.5 rounded bg-gray-100 text-gray-600">
                     Day {day}
@@ -164,9 +157,22 @@ export default function WeekPlanner({
                   </span>
                 </div>
 
-                {/* 🔥 REVISION ONLY FOR CURRENT DAY */}
                 {day === currentDay && revision.length > 0 && (
-                  <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <div
+                    className="p-3 bg-red-50 border border-red-200 rounded-lg cursor-pointer hover:bg-red-100 transition"
+                    onClick={() => {
+  if (revision.length > 0) {
+    const randomIndex = Math.floor(Math.random() * revision.length);
+    const selected = revision[randomIndex];
+
+    console.log("REVISION SELECTED:", selected);
+
+    router.push(
+      `/dashboard/study/${selected.topic_id}?mode=revision&day=${day}`
+    );
+  }
+}}
+                  >
                     <p className="text-xs font-semibold text-red-600 mb-1">
                       🔁 Revise (based on previous performance)
                     </p>
@@ -179,7 +185,6 @@ export default function WeekPlanner({
                   </div>
                 )}
 
-                {/* TOPICS */}
                 <div className="grid gap-2">
                   {dayTopics.map((t: any) => {
 

@@ -10,21 +10,17 @@ export function useAuth(){
   const queryClient = useQueryClient();
   const router = useRouter();
 
-  // ===============================
-  // GLOBAL USER QUERY
-  // ===============================
+
 
   const profileQuery = useQuery({
     queryKey: ["profile"],
     queryFn: auth.getProfile,
     retry: false,
-    staleTime: Infinity, // optional optimization
+    staleTime: Infinity, 
     // refetchInterval:10000, // auto refetch every 10s to keep user data fresh
   });
 
-  // ===============================
-  // LOGIN
-  // ===============================
+
 
   const loginMutation = useMutation<
   any,
@@ -35,7 +31,6 @@ export function useAuth(){
 
   onSuccess: () => {
 
-    // refresh user profile
     queryClient.invalidateQueries({ queryKey: ["profile"] });
 
     router.push("/dashboard");
@@ -48,9 +43,6 @@ export function useAuth(){
   }
 });
 
-  // ===============================
-  // REGISTER
-  // ===============================
 
   const registerMutation = useMutation<
   any,
@@ -75,10 +67,6 @@ export function useAuth(){
   }
 });
 
-  // ===============================
-  // LOGOUT
-  // ===============================
-
  const logoutMutation = useMutation({
   mutationFn: auth.logout,
   onSuccess: () => {
@@ -87,10 +75,6 @@ export function useAuth(){
   }
 });
 
-
-  // ===============================
-  // UPDATE PROFILE
-  // ===============================
 
   const updateProfileMutation = useMutation({
     mutationFn: auth.updateProfile,

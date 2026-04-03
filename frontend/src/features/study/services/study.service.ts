@@ -37,11 +37,9 @@ export async function getTopicStudy(topicId: number) {
 
   console.log("Study data:", studyData);
 
-  // 🔥 IMPORTANT: extract REAL topic id
   const realTopicId = studyData.topic_id;
-
+console.log("REAL TOPIC ID:", realTopicId);
   try {
-    // 2️⃣ Analytics API (USE REAL ID)
     const contentRes = await apiClient.get(
       `/analytics/study-content/${realTopicId}/`
     );

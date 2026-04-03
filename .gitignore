@@ -11,3 +11,9 @@ node_modules/
 
 # OS
 .DS_Store
+venv/
+__pycache__/
+*.pyc
+.env
+faiss.index
+faiss_mapping.pkl
