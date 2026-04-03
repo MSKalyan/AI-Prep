@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createMockTest } from "@/features/mocktest/services/mocktest.services";
-
+export const dynamic = "force-dynamic";
 export default function MockTestPage() {
   const router = useRouter();
   const params = useSearchParams();
