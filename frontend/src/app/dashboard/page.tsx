@@ -4,6 +4,7 @@ import { useDashboardStats, useStudyPlan, usePerformance } from "@/features/anal
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {useRouter} from "next/navigation";
 import Link from "next/link";
 
 const services = [
@@ -31,6 +32,7 @@ const services = [
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
+  const router =useRouter();
 const { user, isLoading } = useAuth();
 
 if (isLoading) {
@@ -38,7 +40,8 @@ if (isLoading) {
 }
 
 if (!user) {
-  return <div>Not authenticated</div>;
+  router.replace("/login");
+  return null;
 }
   const { data, isLoading:statsLoading } = useDashboardStats(!!user);
   if (statsLoading || !data) {

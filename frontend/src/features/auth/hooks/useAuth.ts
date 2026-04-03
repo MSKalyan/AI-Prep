@@ -11,15 +11,14 @@ export function useAuth(){
   const router = useRouter();
 
 
-
-  const profileQuery = useQuery({
-    queryKey: ["profile"],
-    queryFn: auth.getProfile,
-    retry: false,
-    staleTime: 0, 
-    // refetchInterval:10000, // auto refetch every 10s to keep user data fresh
-  });
-
+const profileQuery = useQuery({
+  queryKey: ["profile"],
+  queryFn: auth.getProfile,
+  retry: false,
+  staleTime: 5 * 60 * 1000,   // ✅ NOT Infinity, NOT 0
+  refetchOnMount: false,      // 🔥 IMPORTANT
+  refetchOnWindowFocus: false,
+});
 
 
   const loginMutation = useMutation<
@@ -34,7 +33,7 @@ export function useAuth(){
  await queryClient.invalidateQueries({
     queryKey: ["profile"],
   });
-    router.push("/dashboard");
+    router.replace("/dashboard");
   },
 
   onError: (error) => {
