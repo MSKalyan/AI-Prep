@@ -4,11 +4,13 @@ import { useState } from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { ApiError } from "@/features/auth/types/apiError";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function RegisterForm() {
 
   const { register, registerLoading } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
     email: "",
@@ -40,6 +42,10 @@ export default function RegisterForm() {
     try {
 
       await register(form);
+      // Refetch profile to ensure authentication state is updated
+      await queryClient.refetchQueries({
+        queryKey: ["profile"],
+      });
       // Redirect to dashboard after successful registration
       router.replace("/dashboard");
 

@@ -29,11 +29,7 @@ const profileQuery = useQuery({
   mutationFn: auth.login,
 
   onSuccess: async () => {
-    // Refetch profile to ensure it's updated
-    await queryClient.refetchQueries({
-      queryKey: ["profile"],
-    });
-    // LoginForm will handle the redirect
+    // Profile will be refetched automatically when dashboard loads
   },
 
   onError: (error) => {

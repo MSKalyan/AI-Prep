@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function LoginForm() {
 
   const { login, loginError, loginLoading } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
     email: "",
@@ -32,6 +34,10 @@ export default function LoginForm() {
 
     try {
       await login(form);
+      // Refetch profile to ensure authentication state is updated
+      await queryClient.refetchQueries({
+        queryKey: ["profile"],
+      });
       // If login succeeds, redirect manually
       router.replace("/dashboard");
     } catch {
@@ -85,6 +91,7 @@ export default function LoginForm() {
           />
 
           <button
+            type="button"
             onClick={handleLogin}
             disabled={loginLoading}
             className="w-full rounded bg-blue-600 p-2 text-white hover:bg-blue-700 disabled:bg-gray-400"
