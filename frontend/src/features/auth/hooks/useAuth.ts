@@ -15,8 +15,8 @@ const profileQuery = useQuery({
   queryKey: ["profile"],
   queryFn: auth.getProfile,
   retry: false,
-  staleTime: 5 * 60 * 1000,   // ✅ NOT Infinity, NOT 0
-  refetchOnMount: true,       // ✅ Refetch when component mounts (fixes dashboard redirect)
+  staleTime: 0,   // Always refetch when needed
+  refetchOnMount: true,
   refetchOnWindowFocus: false,
 });
 
@@ -29,17 +29,17 @@ const profileQuery = useQuery({
   mutationFn: auth.login,
 
   onSuccess: async () => {
-    // Refetch profile before redirecting to ensure cookies are read
-    await queryClient.refetchQueries({
+    // Invalidate and refetch profile
+    await queryClient.invalidateQueries({
       queryKey: ["profile"],
     });
+    // Wait a bit for the query to refetch
+    await new Promise(resolve => setTimeout(resolve, 500));
     router.replace("/dashboard");
   },
 
   onError: (error) => {
-
     console.error("Login failed:", error.message);
-
   }
 });
 
@@ -58,7 +58,8 @@ const profileQuery = useQuery({
   mutationFn: auth.register,
 
   onSuccess: async () => {
-    await queryClient.refetchQueries({ queryKey: ["profile"] });
+    await queryClient.invalidateQueries({ queryKey: ["profile"] });
+    await new Promise(resolve => setTimeout(resolve, 500));
     router.replace("/dashboard");
   },
 

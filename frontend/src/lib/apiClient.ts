@@ -1,8 +1,9 @@
 import axios from "axios";
 
 
+const API=process.env.NEXT_PUBLIC_API_URL ;
 export const apiClient = axios.create({
-  baseURL: "https://ai-prep-3cnt.onrender.com/api",
+  baseURL: `${API}/api`,
   withCredentials: true,
 });
 apiClient.interceptors.response.use(
