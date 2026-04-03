@@ -1,6 +1,7 @@
 "use client";
 
 import { useDashboardStats, useStudyPlan, usePerformance } from "@/features/analytics/hooks/hooks";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -30,8 +31,19 @@ const services = [
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
+const { user, isLoading } = useAuth();
 
-  const { data, isLoading } = useDashboardStats();
+if (isLoading) {
+  return <div>Loading...</div>;
+}
+
+if (!user) {
+  return <div>Not authenticated</div>;
+}
+  const { data, isLoading:statsLoading } = useDashboardStats(!!user);
+  if (statsLoading || !data) {
+  return <div>Loading dashboard...</div>;
+}
   const { data: studyPlan = [] } = useStudyPlan();
 const { data: performanceData } = usePerformance();
 

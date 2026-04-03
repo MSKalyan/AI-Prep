@@ -81,5 +81,6 @@ export async function updateProfile(payload:any){
 
 
 export const logout = async () => {
+  console.log("logout called");
   await apiClient.post("/auth/logout/");
 };

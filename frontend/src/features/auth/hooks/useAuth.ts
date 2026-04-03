@@ -16,7 +16,7 @@ export function useAuth(){
     queryKey: ["profile"],
     queryFn: auth.getProfile,
     retry: false,
-    staleTime: Infinity, 
+    staleTime: 0, 
     // refetchInterval:10000, // auto refetch every 10s to keep user data fresh
   });
 
@@ -31,7 +31,7 @@ export function useAuth(){
 
   onSuccess: async () => {
 
- await queryClient.fetchQuery({
+ await queryClient.invalidateQueries({
     queryKey: ["profile"],
   });
     router.push("/dashboard");
@@ -58,8 +58,8 @@ export function useAuth(){
 >({
   mutationFn: auth.register,
 
-  onSuccess: () => {
-    queryClient.invalidateQueries({ queryKey: ["profile"] });
+  onSuccess: async () => {
+    await queryClient.invalidateQueries({ queryKey: ["profile"] });
     router.push("/dashboard");
   },
 
@@ -71,8 +71,9 @@ export function useAuth(){
  const logoutMutation = useMutation({
   mutationFn: auth.logout,
   onSuccess: () => {
-    queryClient.setQueryData(["profile"], null);
-    router.push("/login");
+     queryClient.clear();
+
+     router.replace("/login");
   }
 });
 

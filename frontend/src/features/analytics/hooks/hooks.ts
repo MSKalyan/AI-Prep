@@ -26,10 +26,11 @@ export const useStudyPlan = () => {
   });
 };
 
-export const useDashboardStats = () => {
+export const useDashboardStats = (enabled:boolean) => {
   return useQuery({
     queryKey: ["dashboard"],
     queryFn: fetchDashboardStats,
+    enabled,
   });
 };
 
