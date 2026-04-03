@@ -17,8 +17,8 @@ def set_auth_cookie(response, access_token, refresh_token):
         key="auth_token",
         value=str(access_token),
         httponly=True,
-        secure=False,
-        samesite="Lax",
+        secure=True,
+        samesite="None",
         path="/"
     )
 
@@ -26,8 +26,8 @@ def set_auth_cookie(response, access_token, refresh_token):
         key="refresh_token",
         value=str(refresh_token),
         httponly=True,
-        secure=False,
-        samesite="Lax",
+        secure=True,
+        samesite="None",
         path="/"
     )
 
