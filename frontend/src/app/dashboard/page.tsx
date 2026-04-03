@@ -31,31 +31,34 @@ const services = [
 ];
 
 export default function DashboardPage() {
+  // ✅ All hooks at TOP - before any conditional logic
   const queryClient = useQueryClient();
-  const router =useRouter();
-const { user, isLoading } = useAuth();
-
-if (isLoading) {
-  return <div>Loading...</div>;
-}
-
-if (!user) {
-  router.replace("/login");
-  return null;
-}
-  const { data, isLoading:statsLoading } = useDashboardStats(!!user);
-  if (statsLoading || !data) {
-  return <div>Loading dashboard...</div>;
-}
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
+  const { data, isLoading: statsLoading } = useDashboardStats(!!user);
   const { data: studyPlan = [] } = useStudyPlan();
-const { data: performanceData } = usePerformance();
+  const { data: performanceData } = usePerformance();
 
-// safe extraction
-const performance = Array.isArray(performanceData?.topics)
-  ? performanceData.topics
-  : [];
+  // ✅ NOW do conditional checks
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
-const weakTopics = performance.filter((t: any) => t.strength === "weak");
+  if (!user) {
+    router.replace("/login");
+    return null;
+  }
+
+  if (statsLoading || !data) {
+    return <div>Loading dashboard...</div>;
+  }
+
+  // safe extraction
+  const performance = Array.isArray(performanceData?.topics)
+    ? performanceData.topics
+    : [];
+
+  const weakTopics = performance.filter((t: any) => t.strength === "weak");
   const activateMutation = useMutation({
     mutationFn: (id: number) =>
       apiClient.post(`/roadmap/activate/${id}/`),
