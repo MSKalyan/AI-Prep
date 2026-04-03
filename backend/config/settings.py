@@ -167,18 +167,15 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 AUTH_USER_MODEL = 'users.User'
 
 CORS_ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in os.environ.get(
-        'CORS_ALLOWED_ORIGINS',
-        'https://ai-prep-oetysp5yb-mskalyans-projects.vercel.app'
-    ).split(',')
-    if origin.strip()
+    "https://ai-prep-oetysp5yb-mskalyans-projects.vercel.app",
+    "https://ai-prep-plum.vercel.app",    # << add yours
+    "https://ai-prep-3cnt.onrender.com",   # if used for plain frontend testing
 ]
 
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://ai-prep-oetysp5yb-mskalyans-projects.vercel.app"
+    "https://ai-prep-plum.vercel.app",
 ]
 SESSION_COOKIE_SAMESITE = "None"
 SESSION_COOKIE_SECURE = True
