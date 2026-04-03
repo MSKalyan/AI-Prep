@@ -93,8 +93,8 @@ class LogoutView(APIView):
     def post(self, request):
 
         response = Response({'message': 'Successfully logged out'})
-        response.delete_cookie("auth_token", samesite="None")
-        response.delete_cookie("refresh_token", samesite="None")
+        response.delete_cookie("auth_token", samesite="None",path="/")
+        response.delete_cookie("refresh_token", samesite="None",path="/")
         return response
 
 class UserProfileView(APIView):

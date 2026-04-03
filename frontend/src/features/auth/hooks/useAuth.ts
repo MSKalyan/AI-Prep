@@ -16,7 +16,7 @@ const profileQuery = useQuery({
   queryFn: auth.getProfile,
   retry: false,
   staleTime: 5 * 60 * 1000,   // ✅ NOT Infinity, NOT 0
-  refetchOnMount: false,      // 🔥 IMPORTANT
+  refetchOnMount: true,       // ✅ Refetch when component mounts (fixes dashboard redirect)
   refetchOnWindowFocus: false,
 });
 
@@ -29,10 +29,10 @@ const profileQuery = useQuery({
   mutationFn: auth.login,
 
   onSuccess: async () => {
-
- await queryClient.invalidateQueries({
-    queryKey: ["profile"],
-  });
+    // Refetch profile before redirecting to ensure cookies are read
+    await queryClient.refetchQueries({
+      queryKey: ["profile"],
+    });
     router.replace("/dashboard");
   },
 
@@ -58,8 +58,8 @@ const profileQuery = useQuery({
   mutationFn: auth.register,
 
   onSuccess: async () => {
-    await queryClient.invalidateQueries({ queryKey: ["profile"] });
-    router.push("/dashboard");
+    await queryClient.refetchQueries({ queryKey: ["profile"] });
+    router.replace("/dashboard");
   },
 
   onError: (error) => {
