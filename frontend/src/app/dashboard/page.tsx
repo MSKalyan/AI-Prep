@@ -39,6 +39,15 @@ export default function DashboardPage() {
   const { data: studyPlan = [] } = useStudyPlan();
   const { data: performanceData } = usePerformance();
 
+  // Must be at top level - BEFORE conditionals
+  const activateMutation = useMutation({
+    mutationFn: (id: number) =>
+      apiClient.post(`/roadmap/activate/${id}/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+    },
+  });
+
   // ✅ NOW do conditional checks
   if (isLoading) {
     return <div>Loading...</div>;
@@ -59,13 +68,6 @@ export default function DashboardPage() {
     : [];
 
   const weakTopics = performance.filter((t: any) => t.strength === "weak");
-  const activateMutation = useMutation({
-    mutationFn: (id: number) =>
-      apiClient.post(`/roadmap/activate/${id}/`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-    },
-  });
 
   function activateRoadmap(id: number) {
     activateMutation.mutate(id);
