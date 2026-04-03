@@ -29,10 +29,11 @@ export function useAuth(){
 >({
   mutationFn: auth.login,
 
-  onSuccess: () => {
+  onSuccess: async () => {
 
-    queryClient.invalidateQueries({ queryKey: ["profile"] });
-
+ await queryClient.fetchQuery({
+    queryKey: ["profile"],
+  });
     router.push("/dashboard");
   },
 
