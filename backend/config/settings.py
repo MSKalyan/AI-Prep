@@ -170,7 +170,6 @@ CORS_ALLOWED_ORIGINS = [
     origin.strip()
     for origin in os.environ.get(
         'CORS_ALLOWED_ORIGINS',
-        'http://localhost:3000',
         'https://ai-prep-oetysp5yb-mskalyans-projects.vercel.app'
     ).split(',')
     if origin.strip()
@@ -178,6 +177,9 @@ CORS_ALLOWED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
+CSRF_TRUSTED_ORIGINS = [
+    "https://ai-prep-oetysp5yb-mskalyans-projects.vercel.app"
+]
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
