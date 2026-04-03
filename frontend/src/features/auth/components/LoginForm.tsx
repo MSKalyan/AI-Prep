@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useAuth } from "../hooks/useAuth";
+import { useRouter } from "next/navigation";
 
 export default function LoginForm() {
 
   const { login, loginError, loginLoading } = useAuth();
+  const router = useRouter();
 
   const [form, setForm] = useState({
     email: "",
@@ -30,6 +32,8 @@ export default function LoginForm() {
 
     try {
       await login(form);
+      // If login succeeds, redirect manually
+      router.replace("/dashboard");
     } catch {
       // error handled by React Query
     }

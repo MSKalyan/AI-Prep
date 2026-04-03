@@ -29,13 +29,11 @@ const profileQuery = useQuery({
   mutationFn: auth.login,
 
   onSuccess: async () => {
-    // Invalidate and refetch profile
-    await queryClient.invalidateQueries({
+    // Refetch profile to ensure it's updated
+    await queryClient.refetchQueries({
       queryKey: ["profile"],
     });
-    // Wait a bit for the query to refetch
-    await new Promise(resolve => setTimeout(resolve, 500));
-    router.replace("/dashboard");
+    // LoginForm will handle the redirect
   },
 
   onError: (error) => {
@@ -58,9 +56,8 @@ const profileQuery = useQuery({
   mutationFn: auth.register,
 
   onSuccess: async () => {
-    await queryClient.invalidateQueries({ queryKey: ["profile"] });
-    await new Promise(resolve => setTimeout(resolve, 500));
-    router.replace("/dashboard");
+    await queryClient.refetchQueries({ queryKey: ["profile"] });
+    // RegisterForm will handle the redirect
   },
 
   onError: (error) => {

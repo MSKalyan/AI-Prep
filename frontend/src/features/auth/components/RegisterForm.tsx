@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { ApiError } from "@/features/auth/types/apiError";
+import { useRouter } from "next/navigation";
 
 export default function RegisterForm() {
 
   const { register, registerLoading } = useAuth();
+  const router = useRouter();
 
   const [form, setForm] = useState({
     email: "",
@@ -38,6 +40,8 @@ export default function RegisterForm() {
     try {
 
       await register(form);
+      // Redirect to dashboard after successful registration
+      router.replace("/dashboard");
 
     } catch (err) {
 
