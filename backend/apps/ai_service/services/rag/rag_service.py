@@ -5,7 +5,7 @@ from .vector_search import semantic_search
 class RAGService:
 
     @staticmethod
-    def retrieve_relevant_documents(query, exam_type="", top_k=5):
+    def retrieve_relevant_documents(query, user=None, exam_type="", top_k=5):
 
         # =========================
         # 🔥 DYNAMIC TOP-K
@@ -30,7 +30,7 @@ class RAGService:
         # =========================
         # 🔍 SEMANTIC SEARCH
         # =========================
-        results = semantic_search(query, top_k=20)
+        results = semantic_search(query, user=user, top_k=20)
 
         reranked = []
         seen_ids = set()

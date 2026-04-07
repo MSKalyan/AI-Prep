@@ -118,6 +118,10 @@ class StudyContentService:
                 res = requests.get(url, params=params)
                 data = res.json()
 
+                if res.status_code != 200:
+                    print(f"YouTube API error: {data}")
+                    continue
+
                 for item in data.get("items", []):
                     video_id = item["id"]["videoId"]
                     title = item["snippet"]["title"]
@@ -127,7 +131,8 @@ class StudyContentService:
                             f"https://www.youtube.com/watch?v={video_id}"
                         )
 
-            except Exception:
+            except Exception as e:
+                print(f"YouTube fetch error: {e}")
                 continue
 
         return list(dict.fromkeys(videos))[:3]

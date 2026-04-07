@@ -142,7 +142,7 @@ class DocumentUploadAPIView(APIView):
 
     def post(self, request):
 
-        serializer = DocumentUploadSerializer(data=request.data)
+        serializer = DocumentUploadSerializer(data=request.data, context={"request": request})
 
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -300,7 +300,7 @@ class SemanticSearchAPIView(APIView):
         if not query:
             return Response({"error": "query required"}, status=400)
 
-        chunks = RAGService.retrieve_relevant_documents(query=query, top_k=5)
+        chunks = RAGService.retrieve_relevant_documents(query=query, user=request.user, top_k=5)
 
         response = []
 
@@ -323,7 +323,7 @@ class ProcessDocumentAPIView(APIView):
 
     def post(self, request):
 
-        serializer = DocumentUploadSerializer(data=request.data)
+        serializer = DocumentUploadSerializer(data=request.data, context={"request": request})
 
         if not serializer.is_valid():
             return Response(serializer.errors, status=400)

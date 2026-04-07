@@ -16,7 +16,7 @@ def extract_keywords(query):
     return [w for w in words if w not in STOPWORDS and len(w) > 2]
 
 
-def semantic_search(query, top_k=20):
+def semantic_search(query, user=None, top_k=20):
 
     # =========================
     # 🔍 STEP 1 — KEYWORDS
@@ -33,6 +33,8 @@ def semantic_search(query, top_k=20):
                 parent_document__isnull=False,
                 content__icontains=word
             )
+            if user:
+                condition = condition.filter(user=user)
 
             query_filter = condition if query_filter is None else query_filter | condition
 
@@ -75,7 +77,7 @@ def semantic_search(query, top_k=20):
 
             for cid, score in raw_results:
                 chunk = chunk_map.get(cid)
-                if chunk:
+                if chunk and (not user or chunk.user == user or chunk.user is None):
                     vector_results.append((chunk, score))
 
     # =========================

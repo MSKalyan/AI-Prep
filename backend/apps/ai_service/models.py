@@ -17,6 +17,15 @@ class Document(models.Model):
         ("scraped", "Scraped"),
     ]
 
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='documents',
+        db_index=True,
+        null=True,
+        blank=True
+    )
+
     title = models.CharField(max_length=500)
 
     file = models.FileField(upload_to="documents/", null=True, blank=True)

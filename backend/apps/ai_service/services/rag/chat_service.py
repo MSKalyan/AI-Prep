@@ -41,6 +41,7 @@ class AIService:
 
             relevant_docs = RAGService.retrieve_relevant_documents(
                 query=question,
+                user=user,
                 exam_type=exam_type,
                 top_k=settings.TOP_K_RESULTS
             )

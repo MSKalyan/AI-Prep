@@ -133,3 +133,9 @@ class DocumentUploadSerializer(serializers.ModelSerializer):
             "exam_type",
             "document_type",
         ]
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        if request is not None and hasattr(request, 'user') and request.user.is_authenticated:
+            validated_data['user'] = request.user
+        return super().create(validated_data)
