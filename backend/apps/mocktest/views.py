@@ -4,10 +4,8 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
-
 from .models import Question, MockTest, TestAttempt
 from apps.roadmap.models import Roadmap, Topic
-
 from .serializers import (
     QuestionSerializer,
     MockTestSerializer,
@@ -16,9 +14,15 @@ from .serializers import (
     SubmitAnswerSerializer,
     GeneratePracticeSerializer
 )
-
 from .services import MockTestService
 from apps.analytics.services.services import AnalyticsService
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from groq import Groq
+from django.conf import settings
+from .models import Question
+
 
 
 class QuestionListView(APIView):
@@ -39,13 +43,12 @@ class QuestionListView(APIView):
         if difficulty:
             questions = questions.filter(difficulty=difficulty)
         if topic:
-            questions = questions.filter(topic__icontains=topic)
+            questions = questions.filter(topic__name__icontains=topic)
 
         serializer = QuestionSerializer(questions[:50], many=True)
         return Response(serializer.data)
 
 
-# ❌ (UNCHANGED - not used in your system, left as-is)
 
 
 class MockTestDetailView(APIView):
@@ -99,7 +102,6 @@ class MockTestDetailView(APIView):
                     if ans:
                         selected_answer = ans.user_answer
 
-                # ✅ FIX 3: correct indentation (always append)
                 questions_data.append({
                     "id": q.id,
                     "question_text": q.question_text,
@@ -112,6 +114,9 @@ class MockTestDetailView(APIView):
 
             return Response({
                 "id": mock_test.id,
+                "topics": list(
+    mock_test.questions.values_list("topic__name", flat=True).distinct()
+),
                 "title": mock_test.title,
                 "description": mock_test.description,
                 "duration_minutes": mock_test.duration_minutes,
@@ -217,29 +222,46 @@ class TestResultView(APIView):
             attempts = TestAttempt.objects.filter(
                 user=request.user,
                 submitted_at__isnull=False
+            ).select_related(
+                "mock_test",
+              
             ).order_by('-submitted_at')[:20]
 
             result_list = []
 
             for attempt in attempts:
+                answers = attempt.answers.select_related("question__topic").all()
+
+                topic_name = None
+                subject = None
+
+                first_answer = answers.first()
+
+                if first_answer and first_answer.question.topic:
+                    topic = first_answer.question.topic
+                    topic_name = topic.name
+                    subject = topic.parent.name if topic.parent else None
+
                 result_list.append({
                     "attempt_id": attempt.id,
                     "mock_test_id": attempt.mock_test.id,
-                    "title": attempt.mock_test.title,
+                    "title": (
+                        f"{subject} - {topic_name}"
+                        if topic_name
+                        else attempt.mock_test.title
+                    ),
+                    "topic": topic_name,
+                    "subject": subject,
                     "score": attempt.score,
                     "percentage": attempt.percentage,
                     "correct": attempt.correct_answers,
                     "incorrect": attempt.incorrect_answers,
                     "date": attempt.submitted_at
                 })
-
             return Response(result_list)
 
         except Exception as e:
-            return Response(
-                {"error": str(e)},
-                status=500
-            )
+            return Response({"error": str(e)}, status=500)
 
     def post(self, request):
         attempt_id = request.data.get('attempt_id')
@@ -303,7 +325,10 @@ class TestResultDetailView(APIView):
             )
 
             answers = attempt.answers.select_related('question')
+            topic = getattr(attempt.mock_test, "topic", None)
 
+            topic_name = topic.name if topic else None
+            subject = topic.parent.name if topic and topic.parent else None
             questions = []
 
             for ans in answers:
@@ -322,6 +347,8 @@ class TestResultDetailView(APIView):
 
             return Response({
                 "attempt_id": attempt.id,
+                "topic": topic_name,
+                "subject": subject,
                 "score": attempt.score,
                 "total_marks": attempt.total_marks,
                 "percentage": attempt.percentage,
@@ -389,15 +416,6 @@ class GenerateMockTestView(APIView):
                 {"error": f"Failed to generate test: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
-from groq import Groq
-from django.conf import settings
-from .models import Question
-
 
 class ExplainQuestionView(APIView):
     permission_classes = [IsAuthenticated]

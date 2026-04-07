@@ -140,9 +140,9 @@ class StudyContentService:
 
     # ================= MAIN =================
     @staticmethod
-    def get_study_content(topic_id):
+    def get_study_content(topic_name):
         try:
-            topic = Topic.objects.get(id=topic_id)
+            topic = Topic.objects.filter(name__iexact=topic_name).first()
         except Topic.DoesNotExist:
             return None
 

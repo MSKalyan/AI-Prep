@@ -169,7 +169,8 @@ AUTH_USER_MODEL = 'users.User'
 CORS_ALLOWED_ORIGINS = [
     "https://ai-prep-oetysp5yb-mskalyans-projects.vercel.app",
     "https://ai-prep-plum.vercel.app",    # << add yours
-    "https://ai-prep-3cnt.onrender.com",   # if used for plain frontend testing
+    "https://ai-prep-3cnt.onrender.com",
+    "http://localhost:3000"   # if used for plain frontend testing
 ]
 
 CORS_ALLOW_CREDENTIALS = True

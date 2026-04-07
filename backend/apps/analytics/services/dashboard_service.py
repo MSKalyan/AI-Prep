@@ -133,14 +133,13 @@ class DashboardService:
 
         today = timezone.now().date()
 
+        # allow streak even if today missed
+        current_date = today if today in progress_dates else today - timedelta(days=1)
+
         streak = 0
-        current_date = today
 
         while current_date in progress_dates:
             streak += 1
             current_date -= timedelta(days=1)
 
         return streak
-    
-
-    

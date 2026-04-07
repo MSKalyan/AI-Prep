@@ -4,7 +4,7 @@ from apps.analytics.services.performance_service import PerformanceService
 from apps.analytics.services.adaptive_service import AdaptiveRoadmapService
 from apps.analytics.services.roadmap_service import RoadmapService
 from apps.analytics.services.study_content_service import StudyContentService
-from apps.mocktest.models import MockTest
+from apps.mocktest.models import Answer, MockTest
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -103,8 +103,12 @@ class TodayStudyPlanView(APIView):
 class StudyContentView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, topic_id):
-        data = StudyContentService.get_study_content(topic_id)
+    def get(self, request):
+        topic_name = request.query_params.get("topic_name")
+        if not topic_name:
+            return Response({"error": "topic_name is required"}, status=400)
+
+        data = StudyContentService.get_study_content(topic_name)
 
         if not data:
             return Response({"error": "Topic not found"}, status=404)
@@ -127,10 +131,9 @@ class UserAnalyticsView(APIView):
             analytics_data = AnalyticsService.get_user_analytics(request.user)
             total_mocktests = MockTest.objects.filter(user=request.user).count()
 
-            # NEW: total questions attempted
-            total_questions = TopicPerformance.objects.filter(user=request.user).aggregate(
-                total=Sum('total_attempts')
-            )['total'] or 0
+            total_questions = Answer.objects.filter(
+                attempt__user=request.user
+            ).count()
 
             # Serialize the data
             response_data = {

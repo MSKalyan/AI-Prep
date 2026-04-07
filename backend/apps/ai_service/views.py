@@ -1,5 +1,6 @@
 import traceback
-
+from django.http import JsonResponse
+from .models import Message
 from apps.ai_service.services.rag.scrape_document import scrape_and_store_document
 from apps.ai_service.services.rag.text_extractor import extract_text
 from apps.ai_service.services.rag.document_cleaner import clean_document
@@ -26,10 +27,7 @@ from .models import Conversation, Document
 
 
 class AskAIView(APIView):
-    """
-    POST /api/ask-ai/
-    Ask AI a question and get answer using RAG
-    """
+
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
@@ -65,17 +63,31 @@ class AskAIView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def get(self, request):
-        """Get user's conversations"""
         conversations = Conversation.objects.filter(user=request.user)[:20]
         serializer = ConversationSerializer(conversations, many=True)
         return Response(serializer.data)
 
 
+
+
+    def get_messages(request, conversation_id):
+        messages = Message.objects.filter(
+            conversation_id=conversation_id
+        ).order_by('-created_at')[:10]
+
+        messages = list(messages)[::-1]
+
+        return JsonResponse([
+            {
+                "role": m.role,
+                "content": m.content,
+                "retrieved_documents": m.retrieved_documents
+            }
+            for m in messages
+        ], safe=False)
+
 class GenerateQuestionsView(APIView):
-    """
-    POST /api/generate-questions/
-    Generate questions using AI
-    """
+
     permission_classes = [IsAuthenticated]
     
     def post(self, request):
@@ -126,7 +138,7 @@ class DocumentUploadAPIView(APIView):
 
     parser_classes = [MultiPartParser, FormParser]
 
-    ALLOWED_EXTENSIONS = [".pdf", ".txt", ".md"]
+    ALLOWED_EXTENSIONS = [".pdf", ".txt", ".md", ".docx"]
 
     def post(self, request):
 
@@ -142,8 +154,14 @@ class DocumentUploadAPIView(APIView):
 
         document = serializer.save(source_type="upload")
 
-        text = extract_text(document.file.path)
-
+        try:
+            text = extract_text(document.file.path)
+        except Exception as e:
+            document.delete()
+            return Response(
+                {"error": f"Text extraction failed: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         document.content = text
         document.save()
 

@@ -42,52 +42,6 @@ class ExamListView(APIView):
         return Response(serializer.data)
 
 
-# # ==================================================
-# # GENERATE ROADMAP (ASYNC)
-# # ==================================================
-
-# class RoadmapGenerateView(APIView):
-
-#     permission_classes = [IsAuthenticated]
-
-#     def post(self, request):
-
-#         serializer = RoadmapGenerateSerializer(data=request.data)
-#         serializer.is_valid(raise_exception=True)
-
-#         data = serializer.validated_data
-
-#         # Create async job record
-#         job = RoadmapGenerationJob.objects.create(
-#             user=request.user,
-#             status="pending"
-#         )
-
-#         # Send async celery task
-#         generate_roadmap_async.delay(
-#             job.id,
-#             request.user.id,
-#             data["exam_id"],
-#             str(data["target_date"]),
-#             data["difficulty_level"],
-#             data["study_hours_per_day"],
-#             data.get("current_knowledge", ""),
-#             data.get("target_marks", None),
-#         )
-
-#         return Response(
-#             {
-#                 "job_id": job.id,
-#                 "status": "pending"
-#             },
-#             status=status.HTTP_202_ACCEPTED
-#         )
-
-
-# ==================================================
-# JOB STATUS (POLLING ENDPOINT)
-# ==================================================
-
 class RoadmapJobStatusView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -107,11 +61,6 @@ class RoadmapJobStatusView(APIView):
             "error": getattr(job, "error_message", None)
         })
 
-
-# ==================================================
-# LIST USER ROADMAPS
-# ==================================================
-
 class RoadmapListView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -128,11 +77,6 @@ class RoadmapListView(APIView):
 
         return Response(serializer.data)
 
-
-# ==================================================
-# ROADMAP DETAIL + ACTIONS
-# ==================================================
-
 class RoadmapDetailView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -147,7 +91,6 @@ class RoadmapDetailView(APIView):
             user=request.user
         )
 
-    # ---------- GET SINGLE ROADMAP ----------
 
     def get(self, request, pk):
 
@@ -157,7 +100,6 @@ class RoadmapDetailView(APIView):
 
         return Response(serializer.data)
 
-    # ---------- PATCH (UPDATE / COMPLETE TOPIC) ----------
 
     def patch(self, request, pk):
 
@@ -182,7 +124,6 @@ class RoadmapDetailView(APIView):
                 RoadmapTopicSerializer(topic).data
             )
 
-        # Normal update
 
         serializer = RoadmapSerializer(
             roadmap,
@@ -195,7 +136,6 @@ class RoadmapDetailView(APIView):
 
         return Response(serializer.data)
 
-    # ---------- DELETE ----------
 
     def delete(self, request, pk):
 
@@ -243,12 +183,13 @@ class WeekPlanView(APIView):
 
     def get(self, request, roadmap_id, week_number):
 
-        topics = RoadmapTopic.objects.select_related("topic").filter(
+        # ---------- FETCH TOPICS ----------
+        topics = RoadmapTopic.objects.select_related("topic", "topic__parent").filter(
             roadmap_id=roadmap_id,
             week_number=week_number
         ).order_by("day_number")
 
-        # ---------- NORMAL ROADMAP DATA ----------
+        # ---------- SERIALIZE ----------
         data = [
             {
                 "id": t.id,
@@ -262,51 +203,67 @@ class WeekPlanView(APIView):
             for t in topics
         ]
 
-        # ---------- FIND CURRENT DAY ----------
+        # ---------- GROUP BY DAY ----------
         day_groups = {}
 
         for t in topics:
             day_groups.setdefault(t.day_number, []).append(t)
 
+        # ---------- FIND CURRENT DAY ----------
         current_day = None
 
-        for day in sorted(day_groups.keys()):
-            day_items = day_groups[day]
-            if not all(t.is_completed for t in day_items):
-                current_day = day
-                break
+        if day_groups:
+            for day in sorted(day_groups.keys()):
+                day_items = day_groups[day]
+                if not all(t.is_completed for t in day_items):
+                    current_day = day
+                    break
 
-        if current_day is None:
-            current_day = max(day_groups.keys())
+            if current_day is None:
+                current_day = max(day_groups.keys())
+        else:
+            current_day = 1  # fallback
 
-
-        # ---------- ADAPTIVE REVISION ----------
+        # ---------- PRIORITY TOPICS ----------
         priority_topics = AdaptiveRoadmapService.generate_priority(request.user)
 
-        # Day 1 → no revision
-        if current_day == 1:
-            revision = []
-        else:
+        # ---------- REVISION ----------
+        revision = []
+
+        if current_day != 1:
+
             weak_topics = [
                 t for t in priority_topics
                 if t["strength"] == "weak"
             ]
 
-            # exclude today's learning topics
             today_topic_ids = set(
                 t.topic_id for t in day_groups.get(current_day, [])
             )
 
-            revision = [
-                {
-                    "topic_id": t["topic_id"],
-                    "topic_name": t["topic_name"],
-                    "priority": t["priority"]
-                }
-                for t in weak_topics
-                if t["topic_id"] not in today_topic_ids
-            ][:3]
+            # 🔥 Avoid N+1 query
+            roadmap_topics_map = {
+                t.topic_id: t.id
+                for t in RoadmapTopic.objects.filter(roadmap_id=roadmap_id)
+            }
 
+            for t in weak_topics:
+                if t["topic_id"] in today_topic_ids:
+                    continue
+
+                roadmap_topic_id = roadmap_topics_map.get(t["topic_id"])
+
+                if roadmap_topic_id:
+                    revision.append({
+                        "topic_id": t["topic_id"],
+                        "topic_name": t["topic_name"],
+                        "priority": t["priority"],
+                        "roadmap_topic_id": roadmap_topic_id
+                    })
+
+            revision = revision[:3]
+
+        # ---------- RESPONSE ----------
         return Response({
             "status": "success",
             "data": data,

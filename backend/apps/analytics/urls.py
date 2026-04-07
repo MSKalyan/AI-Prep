@@ -14,6 +14,6 @@ urlpatterns = [
     path('performance/', TopicPerformanceView.as_view(), name='topic-performance'),
     path('adaptive-roadmap/', AdaptiveRoadmapView.as_view(), name='adaptive-roadmap'),
     path('adaptive-study-plan/', AdaptiveStudyPlanView.as_view(),name='adaptive-study-plan'),
-    path("study-content/<int:topic_id>/", StudyContentView.as_view(),name="study-content"),
+    path("study-content/", StudyContentView.as_view(), name="study-content"),
     path('adaptive-revision/', AdaptiveRevisionView.as_view(), name='adaptive-revision'),
 ]

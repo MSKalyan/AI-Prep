@@ -1,5 +1,4 @@
 import re
-
 from .embedding_service import generate_embedding
 from .faiss_store import FAISSVectorStore
 from ...models import Document

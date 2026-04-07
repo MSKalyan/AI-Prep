@@ -2,10 +2,46 @@ import re
 
 from apps.roadmap.models import RoadmapTopic, PYQ
 from apps.ai_service.services.rag.llm_service import LLMService
-
-
+from apps.analytics.services.study_content_service import StudyContentService
 class StudyService:
+    @staticmethod
+    def generate_explanation(topic_name):
 
+        prompt = f"""
+    Explain the topic "{topic_name}" for competitive exams.
+
+    Format:
+    - Definition (clear and simple)
+    - Key Concepts (bullet points)
+    - Important Points (exam-focused)
+    - Formula or Rules (if applicable)
+    - Quick Revision Summary (short)
+
+    Keep it concise, structured, and easy to revise.
+    """
+
+        try:
+            return LLMService().generate_response(prompt=prompt)
+
+        except Exception as e:
+            print("Groq failed:", e)
+
+            # fallback
+            return f"""
+    Topic: {topic_name}
+
+    • Definition:
+    Understand the meaning of {topic_name}
+
+    • Key Concepts:
+    Focus on core principles
+
+    • Important Points:
+    Revise frequently asked areas
+
+    • Tip:
+    Practice PYQs
+    """
     @staticmethod
     def get_topic_study_data(topic_id):
 
@@ -20,59 +56,17 @@ class StudyService:
             if topic.topic.parent
             else topic.topic.name
         )
-
-#         # -----------------------------
-#         # Generate AI explanation once
-#         # -----------------------------
-#         if not topic.ai_explanation:
-
-#             llm = LLMService()
-
-#             prompt = f"""
-# You are an expert tutor helping a student prepare for competitive exams.
-
-# Topic: {topic.topic.name}
-# Subject: {subject}
-
-# Explain the topic as concise study notes.
-
-# Instructions:
-# - Use simple language.
-# - Limit the entire explanation to about 120 words.
-# - Focus only on key exam concepts.
-# - Do not use markdown symbols like ** or ##.
-# - Keep formatting exactly as shown below.
-
-# Output format:
-
-# Concept Overview:
-# A short explanation (2–3 sentences).
-
-# Key Points:
-# - Important idea
-# - Important idea
-# - Important idea
-
-# Exam Focus:
-# - What exam questions usually test
-# - Important formula, rule, or comparison
-# """
-
-#             explanation = llm.generate_response(prompt, user=topic.roadmap.user, endpoint="topic-explanation") or "Explanation unavailable."
-#             print("Generated AI Explanation:", explanation)
-#             if explanation:
-#                 explanation = re.sub(r'(?<=:)\s+', '\n', explanation)
-#                 explanation = explanation.replace("**", "").strip()
-#             topic.ai_explanation = explanation
-#             topic.save(update_fields=["ai_explanation"])
-
-        # -----------------------------
-        # Fetch PYQs
-        # -----------------------------
+        if not topic.ai_explanation:
+                    topic.ai_explanation = StudyService.generate_explanation(
+                        topic.topic.name
+                    )
+                    topic.save(update_fields=["ai_explanation"])
         pyqs = PYQ.objects.filter(
             topic=topic.topic
         ).values("year", "marks")
-
+        youtube_data = StudyContentService.get_study_content(
+            topic.topic.name
+        )
         return {
             "roadmap_id": topic.roadmap.id,
             "topic_id":topic.id,
@@ -83,13 +77,9 @@ class StudyService:
             "estimated_hours": topic.estimated_hours,
             "ai_explanation": topic.ai_explanation,
             "pyqs": list(pyqs),
-            "youtube_resources": [],
-            "mock_tests": []
+    "youtube_resources": youtube_data.get("youtube_links", []) if youtube_data else [],            "mock_tests": []
         }
 
-    # --------------------------------
-    # Sidebar Topics
-    # --------------------------------
 
     @staticmethod
     def get_roadmap_topics(roadmap_id):

@@ -10,15 +10,6 @@ from groq import Groq
 from ..models import Document, Conversation, Message, AIUsageLog
 
 
-# =====================================================
-# RAG SERVICE
-# =====================================================
-
-
-# =====================================================
-# AI SERVICE
-# =====================================================
-
 class AIService:
 
     def __init__(self):
@@ -35,7 +26,7 @@ class AIService:
 
   
     
-    # =====================================================
+    
 
     def _mock_response(self, messages):
 
@@ -51,6 +42,6 @@ You asked:
 This is simulated AI output.
 """
 
-    # =====================================================
+
 
     

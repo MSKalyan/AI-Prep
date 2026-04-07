@@ -1,18 +1,17 @@
 import os
 import time
+from django.http import JsonResponse
 from config import settings
 from groq import Groq
-
 from .rag_service import RAGService
 from ...models import Conversation, Message, AIUsageLog
 import google as genai
 
-
 class AIService:
-    LOW_CONFIDENCE_THRESHOLD = 0.4
+    LOW_CONFIDENCE_THRESHOLD = 0.7
 
     def __init__(self):
-        self.ai_mode = os.getenv("AI_MODE", "mock")
+        self.ai_mode = os.getenv("AI_MODE")
         self.groq_api_key = os.getenv("GROQ_API_KEY")
         self.gemini_api_key = os.getenv("GEMINI_API_KEY")
         self.model = settings.LLM_MODEL
@@ -24,21 +23,15 @@ class AIService:
         elif self.ai_mode == "gemini" and self.gemini_api_key:
                 genai.configure(api_key=self.gemini_api_key)
                 self.gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-    # =====================================================
-    # ASK AI
-    # =====================================================
-
+  
     def ask_ai(self, user, question: str, context: str = "",
                conversation_id: int = None, exam_type: str = ""):
 
         start_time = time.time()
-
+        print("AI_MODE at runtime", self.ai_mode)
         try:
             question_clean = question.strip().lower()
 
-            # =========================
-            # 🚫 HANDLE VAGUE QUERIES
-            # =========================
             if question_clean in ["ok", "okay", "proceed", "continue", "yes"]:
                 return {
                     "answer": "Please specify what you'd like to proceed with.",
@@ -46,23 +39,18 @@ class AIService:
                     "confidence": 0
                 }
 
-            # =========================
-            # 🔍 RETRIEVAL
-            # =========================
             relevant_docs = RAGService.retrieve_relevant_documents(
                 query=question,
                 exam_type=exam_type,
                 top_k=settings.TOP_K_RESULTS
             )
 
-            top_k_scores = [score for _, score in relevant_docs[:3]]
-            avg_score = sum(top_k_scores) / len(top_k_scores) if top_k_scores else 0
-
+            
+            top_score = relevant_docs[0][1] if relevant_docs else 0
+            if top_score < self.LOW_CONFIDENCE_THRESHOLD:
+                mode = "llm"
             knowledge_context = RAGService.build_context(relevant_docs)
 
-            # =========================
-            # 🧵 CONVERSATION
-            # =========================
             if conversation_id:
                 conversation = Conversation.objects.get(id=conversation_id, user=user)
             else:
@@ -76,17 +64,12 @@ class AIService:
                 conversation.messages.all().order_by('-created_at')[:5]
             )[::-1]
 
-            # =========================
-            # 🧠 HISTORY FILTERING
-            # =========================
+           
             previous_messages = self._filter_relevant_history(question, previous_messages)
 
-            # =========================
-            # 🧠 PROMPT SELECTION
-            # =========================
             system_prompt = self._build_system_prompt(context, exam_type)
 
-            if not relevant_docs or avg_score < self.LOW_CONFIDENCE_THRESHOLD:
+            if not relevant_docs or top_score < self.LOW_CONFIDENCE_THRESHOLD:
                 user_prompt = self._build_llm_prompt(question)
                 mode = "llm"
                 previous_messages = []
@@ -107,17 +90,13 @@ class AIService:
                 "content": user_prompt
             })
 
-            # =========================
-            # 🤖 CALL LLM
-            # =========================
+          
             response = self._call_llm(messages)
 
             answer = response['choices'][0]['message']['content']
             usage = response.get('usage', {})  # ✅ always dict now
 
-            # =========================
-            # 💾 STORE
-            # =========================
+           
             Message.objects.create(
                 conversation=conversation,
                 role='user',
@@ -139,9 +118,6 @@ class AIService:
                 ]
             )
 
-            # =========================
-            # 📊 LOGGING
-            # =========================
             response_time = int((time.time() - start_time) * 1000)
 
             self._log_usage(
@@ -152,13 +128,10 @@ class AIService:
                 success=True
             )
 
-            # =========================
-            # 📤 RESPONSE
-            # =========================
             return {
                 "answer": answer,
                 "mode": mode,
-                "confidence": round(avg_score, 3),
+                "confidence": round(top_score, 3),
                 "conversation_id": conversation.id,
                 "retrieved_documents": [
                     {
@@ -184,10 +157,7 @@ class AIService:
             )
             raise e
 
-    # =====================================================
-    # HISTORY FILTERING
-    # =====================================================
-
+    
     def _filter_relevant_history(self, question, previous_messages):
         if not previous_messages:
             return []
@@ -199,10 +169,7 @@ class AIService:
             if len(question_words & set(msg.content.lower().split())) > 0
         ]
 
-    # =====================================================
-    # LLM CALL (🔥 FIXED HERE)
-    # =====================================================
-
+  
     def _call_llm(self, messages):
 
         if self.ai_mode == "mock":
@@ -219,7 +186,6 @@ class AIService:
                 max_tokens=self.max_tokens
             )
 
-            # 🔥 NORMALIZE USAGE OBJECT → DICT
             usage_obj = getattr(response, "usage", None)
 
             usage = {
@@ -236,7 +202,6 @@ class AIService:
             }
         if self.ai_mode == "gemini":
 
-            # Convert messages → prompt
             prompt = ""
             for msg in messages:
                 role = msg.get("role", "")
@@ -263,9 +228,7 @@ class AIService:
             }
         raise Exception("Invalid AI_MODE")
 
-    # =====================================================
-    # PROMPTS
-    # =====================================================
+  
 
     def _build_system_prompt(self, context, exam_type):
         base = "You are an expert AI tutor helping students."
@@ -283,9 +246,9 @@ class AIService:
 Answer using the provided context.
 
 IMPORTANT:
-- Cite sources using [number] format
-- Example: "Operating System manages memory [1]"
-- Use multiple citations if needed: [1][2]
+- Use the context ONLY if it is relevant
+- Cite sources using [number] ONLY when clearly applicable
+- If context is insufficient, answer normally without forcing citations
 
 Context:
 {context}
@@ -304,9 +267,6 @@ Question:
 {question}
 """
 
-    # =====================================================
-    # LOGGING
-    # =====================================================
 
     def _log_usage(self, user, endpoint, usage, response_time, success, error_message=None):
         try:
@@ -323,3 +283,6 @@ Question:
             )
         except Exception as e:
             print("AIUsageLog failed:", e)
+
+
+    

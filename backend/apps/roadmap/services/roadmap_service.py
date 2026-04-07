@@ -13,9 +13,7 @@ class RoadmapService:
         WeightageService.compute_weightage(exam)
         plan_result = TimeDistributionService.generate_plan(exam, target_date, study_hours_per_day)
 
-        # 2. Hard Reset
-        Roadmap.objects.filter(user=user, is_active=True).delete() 
-        
+        Roadmap.objects.filter(user=user, is_active=True).update(is_active=False)        
         roadmap = Roadmap.objects.create(
             user=user, 
             exam=exam, 

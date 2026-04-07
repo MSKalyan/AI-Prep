@@ -5,14 +5,18 @@ app_name = 'ai_service'
 
 urlpatterns = [
     path('ask-ai/', AskAIView.as_view(), name='ask-ai'),
+    path(
+        "conversations/<int:conversation_id>/messages/",
+        AskAIView.get_messages,
+        name="get-messages"
+    ),
     path('generate-questions/', GenerateQuestionsView.as_view(), name='generate-questions'),
     path("health/", HealthCheckView.as_view()),
     path("documents/upload/", DocumentUploadAPIView.as_view(), name="document-upload"),
     path("documents/scrape/", ScrapeDocumentAPIView.as_view(), name="document-scrape"),
-path("documents/clean/", CleanDocumentAPIView.as_view(), name="clean-document"),
-path("documents/chunk/", ChunkDocumentAPIView.as_view(), name="chunk-document"),
-path("documents/embed/", EmbedDocumentAPIView.as_view(), name="embed-document"),
-path("documents/search/", SemanticSearchAPIView.as_view(), name="semantic-search"),
-
-path("documents/process/", ProcessDocumentAPIView.as_view(), name="document-process"),
+    path("documents/clean/", CleanDocumentAPIView.as_view(), name="clean-document"),
+    path("documents/chunk/", ChunkDocumentAPIView.as_view(), name="chunk-document"),
+    path("documents/embed/", EmbedDocumentAPIView.as_view(), name="embed-document"),
+    path("documents/search/", SemanticSearchAPIView.as_view(), name="semantic-search"),
+    path("documents/process/", ProcessDocumentAPIView.as_view(), name="document-process"),
 ]
