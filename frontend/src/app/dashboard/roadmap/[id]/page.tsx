@@ -34,13 +34,13 @@ export default function RoadmapDetailPage() {
   }
 
   if (!data) {
-    return <div className="p-6 text-sm text-gray-600">Roadmap not found.</div>;
+    return <div className="px-4 sm:px-6 py-6 text-sm text-gray-600">Roadmap not found.</div>;
   }
 
   const weeks = Array.from({ length: data.total_weeks }, (_, i) => i + 1);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="px-4 sm:px-6 py-6 max-w-5xl mx-auto space-y-6">
 
       <RoadmapPreview roadmap={data} />
 

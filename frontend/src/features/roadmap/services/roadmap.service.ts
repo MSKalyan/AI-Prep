@@ -33,13 +33,17 @@ export interface WeekProgress {
   completed_topics: number;
   progress: number;
 }
+
+export interface RevisionItem {
+  topic_id: number;
+  topic_name: string;
+  priority: number;
+  roadmap_topic_id: number;
+}
+
 export interface WeekPlanResponse {
   data: WeekTopic[];
-  today_revision: {
-    topic_id: number;
-    topic_name: string;
-    priority: number;
-  }[];
+  today_revision: RevisionItem[];
 }
 /* ======================
    EXAMS

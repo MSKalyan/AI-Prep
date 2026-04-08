@@ -16,8 +16,8 @@ export default function RoadmapPage() {
   };
 
   return (
-    <div className="p-6">
-      <CreateRoadmapForm  />
+    <div className="px-4 sm:px-6 py-6">
+      <CreateRoadmapForm />
     </div>
   );
 }

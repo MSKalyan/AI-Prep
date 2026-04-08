@@ -90,7 +90,7 @@ export default function MockTestAttemptPage() {
 }, [currentIndex]);
   // ✅ Prevent render before state is ready
   if (isLoading || !data || timeLeft === null) {
-    return <div className="p-6">Loading...</div>;
+    return <div className="p-4 sm:p-6">Loading...</div>;
   }
 
   const question = data.questions[currentIndex];
@@ -131,43 +131,51 @@ const handleSubmit = async () => {
   const seconds = timeLeft % 60;
 
   return (
-    <div className="flex">
+    <div className="flex flex-col lg:flex-row min-h-screen">
       {/* Question Panel */}
-      <div className="flex-1 p-6 space-y-6">
+      <div className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
         {/* Timer */}
-        <div className="text-right font-medium">
+        <div className="text-right font-medium text-sm sm:text-base">
           Time Left: {minutes}:{seconds.toString().padStart(2, "0")}
         </div>
-
-        <h2 className="font-semibold">
+{/* Topics */}
+{data.topics && (
+  <div className="mb-4 text-xs sm:text-sm">
+    <span className="font-semibold">Topics: </span>
+    {data.topics.join(", ")}
+  </div>
+)}
+        <h2 className="font-semibold text-lg sm:text-xl">
           Question {currentIndex + 1}
         </h2>
 
-        <p>{question.question_text}</p>
+        <p className="text-sm sm:text-base leading-relaxed">{question.question_text}</p>
 
         {/* Options */}
-        {question.options.map((opt: any) => (
-          <label
-            key={opt.key}
-            className="block border p-2 rounded mt-2 cursor-pointer"
-          >
-            <input
-              type="radio"
-              name={`q-${question.id}`}
-              checked={selected[question.id] === opt.key}
-              onChange={() => handleSelect(opt.key)}
-              className="mr-2"
-            />
-            {opt.text}
-          </label>
-        ))}
+        <div className="space-y-2">
+          {question.options.map((opt: any) => (
+            <label
+              key={opt.key}
+              className="block border p-2 sm:p-3 rounded cursor-pointer hover:bg-gray-50 transition"
+            >
+              <input
+                type="radio"
+                name={`q-${question.id}`}
+                checked={selected[question.id] === opt.key}
+                onChange={() => handleSelect(opt.key)}
+                className="mr-2"
+              />
+              <span className="text-sm sm:text-base">{opt.text}</span>
+            </label>
+          ))}
+        </div>
 
         {/* Navigation */}
-        <div className="flex justify-between mt-6">
+        <div className="flex flex-col sm:flex-row gap-3 mt-6">
           <button
             disabled={currentIndex === 0}
             onClick={() => setCurrentIndex((prev) => prev - 1)}
-            className="px-4 py-2 border rounded"
+            className="px-4 py-2 border rounded text-sm sm:text-base disabled:opacity-50 flex-1 sm:flex-none"
           >
             Previous
           </button>
@@ -175,7 +183,7 @@ const handleSubmit = async () => {
           <button
             disabled={currentIndex === data.questions.length - 1}
             onClick={() => setCurrentIndex((prev) => prev + 1)}
-            className="px-4 py-2 border rounded"
+            className="px-4 py-2 border rounded text-sm sm:text-base disabled:opacity-50 flex-1 sm:flex-none"
           >
             Next
           </button>
@@ -183,22 +191,22 @@ const handleSubmit = async () => {
 
         <button
           onClick={handleSubmit}
-          className="mt-4 bg-red-600 text-white px-4 py-2 rounded"
+          className="mt-4 w-full sm:w-auto bg-red-600 text-white px-4 py-2 rounded text-sm sm:text-base"
         >
           Submit Test
         </button>
       </div>
 
-      {/* Navigation Panel */}
-      <div className="w-64 border-l p-4 space-y-2">
-        <h3 className="font-semibold">Questions</h3>
+      {/* Navigation Panel - Hidden on mobile, visible on lg+ */}
+      <div className="hidden lg:flex lg:w-64 border-l border-t lg:border-t-0 p-4 space-y-2 flex-col">
+        <h3 className="font-semibold text-sm">Questions</h3>
 
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-5 gap-2 overflow-y-auto">
           {data.questions.map((q: any, index: number) => (
             <button
               key={q.id}
               onClick={() => setCurrentIndex(index)}
-              className={`p-2 rounded text-sm
+              className={`p-2 rounded text-xs
                 ${
                   selected[q.id]
                     ? "bg-green-500 text-white"

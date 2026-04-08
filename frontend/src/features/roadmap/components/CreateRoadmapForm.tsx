@@ -73,10 +73,10 @@ if (selectedExam?.exam_date && selectedDate > new Date(selectedExam.exam_date)) 
 };
 
   return (
-    <div className="flex justify-center p-6">
+    <div className="flex justify-center px-4 sm:px-6 py-6">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md space-y-4 rounded-lg border bg-white p-6 shadow-md"
+        className="w-full max-w-md space-y-4 rounded-lg border bg-white p-4 sm:p-6 shadow-md"
       >
         <h2 className="text-xl font-semibold text-gray-800">
           Create Study Roadmap
@@ -136,7 +136,7 @@ if (selectedExam?.exam_date && selectedDate > new Date(selectedExam.exam_date)) 
 
         <button
           type="submit"
-          className="w-full rounded-md bg-blue-600 px-4 py-2 text-white"
+          className="w-full rounded-md bg-black px-4 py-2 text-white"
           disabled={loading}
         >
           {loading ? "Generating..." : "Generate Roadmap"}

@@ -20,12 +20,12 @@ const { mutate } = useDeleteRoadmap();
   }
 
   if (!data || data.length === 0) {
-    return <div className="p-6">No roadmaps found</div>;
+    return <div className="px-4 sm:px-6 py-6">No roadmaps found</div>;
   }
   return (
-    <div className="p-6 space-y-4">
+    <div className="px-4 sm:px-6 py-6 max-w-4xl mx-auto space-y-6">
 
-      <h2 className="text-xl font-semibold">
+      <h2 className="text-2xl sm:text-3xl font-semibold">
         Your Roadmaps
       </h2>
 
@@ -33,7 +33,7 @@ const { mutate } = useDeleteRoadmap();
 
         <div
           key={roadmap.id}
-          className="flex items-center justify-between rounded-md border p-4 shadow-sm"
+          className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-center rounded-md border bg-white p-4 sm:p-5 shadow-sm"
         >
 
           <div>
@@ -49,13 +49,13 @@ const { mutate } = useDeleteRoadmap();
             onClick={() =>
               router.push(`/dashboard/roadmap/${roadmap.id}`)
             }
-            className="rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            className="rounded-md bg-black px-4 py-2 text-white hover:bg-black/80"
           >
             View
           </button>
           <button
             onClick={() => mutate(roadmap.id)}
-            className="ml-2 rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+            className="rounded-md bg-red-600 px-4 py-2 text-white hover:bg-red-700"
           >
             Delete
           </button>

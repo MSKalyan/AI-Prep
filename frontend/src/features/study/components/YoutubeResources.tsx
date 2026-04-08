@@ -13,11 +13,11 @@ export default function YouTubeResources({
 
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-4">
+      <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
         🎥 Recommended Videos
       </h2>
 
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
         {youtubeLinks.map((link, index) => {
           const videoId = extractYouTubeId(link);
 
@@ -31,13 +31,13 @@ export default function YouTubeResources({
                 <img
                   src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
                   alt="video thumbnail"
-                  className="w-full h-48 object-cover"
+                  className="w-full h-40 sm:h-48 object-cover"
                 />
               </a>
 
               {/* Content */}
-              <div className="p-4">
-                <p className="text-sm font-medium">
+              <div className="p-3 sm:p-4">
+                <p className="text-xs sm:text-sm font-medium">
                   Learn {topicName}
                 </p>
 
@@ -49,7 +49,7 @@ export default function YouTubeResources({
                   href={link}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-block mt-3 text-blue-600 text-sm font-medium"
+                  className="inline-block mt-2 sm:mt-3 text-blue-600 text-xs sm:text-sm font-medium"
                 >
                   Watch →
                 </a>

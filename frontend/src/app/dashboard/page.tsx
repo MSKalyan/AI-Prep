@@ -4,8 +4,9 @@ import { useDashboardStats, useStudyPlan, usePerformance } from "@/features/anal
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import { apiClient } from "@/lib/apiClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {useRouter} from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useEffect } from "react";
 
 const services = [
   {
@@ -19,11 +20,6 @@ const services = [
     href: "/dashboard/analytics",
   },
   {
-    name: "Study Plan",
-    description: "Adaptive plan based on your weak areas and priorities.",
-    href: "/dashboard/study-plan",
-  },
-  {
     name: "Mock Tests",
     description: "Attempt mock exams and evaluate your performance.",
     href: "/dashboard/mocktest",
@@ -31,7 +27,6 @@ const services = [
 ];
 
 export default function DashboardPage() {
-  // ✅ All hooks at TOP - before any conditional logic
   const queryClient = useQueryClient();
   const router = useRouter();
   const { user, isLoading } = useAuth();
@@ -39,7 +34,6 @@ export default function DashboardPage() {
   const { data: studyPlan = [] } = useStudyPlan();
   const { data: performanceData } = usePerformance();
 
-  // Must be at top level - BEFORE conditionals
   const activateMutation = useMutation({
     mutationFn: (id: number) =>
       apiClient.post(`/roadmap/activate/${id}/`),
@@ -48,21 +42,20 @@ export default function DashboardPage() {
     },
   });
 
-  // ✅ NOW do conditional checks
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/login");
+    }
+  }, [user, isLoading, router]);
 
-  if (!user) {
-    router.replace("/login");
-    return null;
-  }
+  if (isLoading) return <div className="p-10 text-center">Loading...</div>;
+
+  if (!user) return null;
 
   if (statsLoading || !data) {
-    return <div>Loading dashboard...</div>;
+    return <div className="p-10 text-center">Loading dashboard...</div>;
   }
 
-  // safe extraction
   const performance = Array.isArray(performanceData?.topics)
     ? performanceData.topics
     : [];
@@ -73,64 +66,43 @@ export default function DashboardPage() {
     activateMutation.mutate(id);
   }
 
-  if (isLoading || !data) {
-    return <div className="p-10 text-center">Loading dashboard...</div>;
-  }
-
   return (
-    <div className="min-h-screen bg-gray-100 px-6 py-8">
-      <div className="max-w-7xl mx-auto space-y-10">
+<div className="w-full h-full px-4 sm:px-6 py-6 sm:py-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8 sm:space-y-12">
 
-        <h1 className="text-3xl font-bold">Dashboard</h1>
+        {/* HEADER */}
+        <div>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight">Dashboard</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+            Overview of your progress and activity
+          </p>
+        </div>
 
         {/* ================= STATS ================= */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard title="Study Streak" value={`${data.study_streak} days`} />
           <StatCard title="Topics Completed" value={data.topics_completed} />
           <StatCard title="Roadmap Progress" value={`${data.roadmap_progress}%`} />
           <StatCard title="Average Score" value={`${data.average_score}%`} />
         </div>
 
-        {/* ================= STUDY PLAN CTA ================= */}
-        <div className="bg-blue-600 text-white p-6 rounded-xl flex justify-between items-center shadow">
-          <div>
-            <h2 className="text-lg font-semibold">
-              Your Personalized Study Plan
-            </h2>
-            <p className="text-sm opacity-90">
-              Focus on your weak topics and improve faster
-            </p>
-          </div>
-
-          <Link
-            href="/dashboard/study-plan"
-            className="bg-white text-blue-600 px-4 py-2 rounded-lg font-medium"
-          >
-            View Plan →
-          </Link>
-        </div>
-
-
-
         {/* ================= WEAK TOPICS ================= */}
         {weakTopics.length > 0 && (
-          <div className="bg-red-50 border border-red-200 rounded-xl p-6 shadow-sm">
+          <div className="border border-gray-200 rounded-2xl p-4 sm:p-6">
 
-            <h2 className="text-lg font-semibold mb-3">
-              ⚠ Weak Topics
-            </h2>
+            <h2 className="text-base sm:text-lg font-semibold mb-4">Weak Topics</h2>
 
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
               {weakTopics.slice(0, 6).map((t: any) => (
                 <div
                   key={t.topic_id}
-                  className="flex justify-between bg-white p-3 rounded"
+                  className="flex justify-between bg-gray-50 p-3 rounded-lg text-sm"
                 >
-                  <span>
+                  <span className="truncate">
                     {t.topic_name || `Topic ${t.topic_id}`}
                   </span>
 
-                  <span className="text-sm text-gray-600">
+                  <span className="text-xs sm:text-sm text-gray-500 ml-2">
                     {(t.accuracy * 100).toFixed(0)}%
                   </span>
                 </div>
@@ -142,16 +114,18 @@ export default function DashboardPage() {
 
         {/* ================= CONTINUE ================= */}
         {data.continue_studying && (
-          <div className="bg-white rounded-xl p-6 shadow-sm flex justify-between items-center">
+          <div className="border border-gray-200 rounded-2xl p-4 sm:p-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
 
             <div>
-              <h2 className="font-semibold">Continue Studying</h2>
-              <p>{data.continue_studying.topic_name}</p>
+              <h2 className="font-semibold text-base sm:text-lg">Continue Studying</h2>
+              <p className="text-gray-600 text-xs sm:text-sm">
+                {data.continue_studying.topic_name}
+              </p>
             </div>
 
             <Link
               href={`/dashboard/study/${data.continue_studying.topic_id}`}
-              className="bg-blue-600 text-white px-4 py-2 rounded"
+              className="bg-black text-white px-4 py-2 rounded-lg hover:opacity-80 transition text-sm sm:text-base whitespace-nowrap w-full sm:w-auto text-center"
             >
               Resume
             </Link>
@@ -161,23 +135,23 @@ export default function DashboardPage() {
 
         {/* ================= ROADMAPS ================= */}
         <div>
-          <h2 className="text-xl font-semibold mb-4">Your Roadmaps</h2>
+          <h2 className="text-lg sm:text-xl font-semibold mb-4">Your Roadmaps</h2>
 
-          <div className="bg-white rounded-xl shadow-sm divide-y">
+          <div className="border border-gray-200 rounded-2xl divide-y">
             {data.roadmaps.map((roadmap: any) => (
-              <div key={roadmap.id} className="flex justify-between p-4">
+              <div key={roadmap.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 sm:p-4 gap-3 sm:gap-0">
 
                 <div>
-                  <span>{roadmap.exam_name}</span>
+                  <span className="font-medium text-sm sm:text-base">{roadmap.exam_name}</span>
                   {roadmap.is_active && (
-                    <p className="text-green-600 text-sm">Active</p>
+                    <p className="text-xs text-gray-500">Active</p>
                   )}
                 </div>
 
                 {!roadmap.is_active && (
                   <button
                     onClick={() => activateRoadmap(roadmap.id)}
-                    className="bg-blue-600 text-white px-3 py-1 rounded"
+                    className="bg-black text-white px-3 py-1 rounded-lg hover:opacity-80 transition text-sm w-full sm:w-auto"
                   >
                     Activate
                   </button>
@@ -190,17 +164,17 @@ export default function DashboardPage() {
 
         {/* ================= SERVICES ================= */}
         <div>
-          <h2 className="text-xl font-semibold mb-4">Platform Services</h2>
+          <h2 className="text-lg sm:text-xl font-semibold mb-4">Platform Services</h2>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {services.map((service) => (
               <Link
                 key={service.name}
                 href={service.href}
-                className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition"
+                className="border border-gray-200 rounded-2xl p-4 sm:p-6 hover:shadow-md hover:-translate-y-1 transition"
               >
-                <h3 className="font-semibold">{service.name}</h3>
-                <p className="text-sm text-gray-600">
+                <h3 className="font-semibold text-base sm:text-lg">{service.name}</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
                   {service.description}
                 </p>
               </Link>
@@ -215,9 +189,9 @@ export default function DashboardPage() {
 
 function StatCard({ title, value }: any) {
   return (
-    <div className="bg-white rounded-xl p-6 shadow-sm">
-      <p className="text-sm text-gray-500">{title}</p>
-      <h2 className="text-xl font-semibold">{value}</h2>
+    <div className="border border-gray-200 rounded-2xl p-4 sm:p-6 hover:shadow-md transition">
+      <p className="text-xs text-gray-500 uppercase tracking-wide">{title}</p>
+      <h2 className="text-xl sm:text-2xl font-semibold mt-1">{value}</h2>
     </div>
   );
 }

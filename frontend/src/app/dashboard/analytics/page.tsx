@@ -7,11 +7,12 @@ import { TopicPerformance } from "@/features/analytics/services/analytics.servic
 
 export default function AnalyticsPage() {
   const { data, isLoading } = usePerformance();
-    const topics=data?.topics||[];
+  const topics = data?.topics || [];
 
   const { data: summary } = useAnalyticsSummary();
+
   if (isLoading) {
-    return <div className="p-6 text-center">Loading analytics...</div>;
+    return <div className="p-10 text-center text-gray-500">Loading analytics...</div>;
   }
 
   // ---------------- SUMMARY DATA ----------------
@@ -37,47 +38,41 @@ export default function AnalyticsPage() {
       : 0;
 
   return (
-    <div className="p-6 space-y-8">
-      <h1 className="text-3xl font-bold">Analytics</h1>
+    <div className="min-h-screen bg-white text-black">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8 sm:space-y-12">
 
-      {/* ================= SUMMARY ================= */}
-      <div className="grid md:grid-cols-4 gap-4">
-        <StatCard title="Mock Tests Attempted" value={totalMocktests} />
+        {/* HEADER */}
+        <div>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight">Analytics</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-1">
+            Track your performance, accuracy, and weak areas
+          </p>
+        </div>
 
-        <StatCard title="Questions Attempted" value={totalQuestions} />
+        {/* ================= SUMMARY ================= */}
+        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard title="Mock Tests Attempted" value={totalMocktests} />
+          <StatCard title="Questions Attempted" value={totalQuestions} />
+          <StatCard
+            title="Avg Accuracy"
+            value={`${(avgAccuracy * 100).toFixed(1)}%`}
+          />
+          <StatCard
+            title="Avg Time / Question"
+            value={`${avgTime.toFixed(1)} sec`}
+          />
+        </div>
 
-        <StatCard
-          title="Avg Accuracy"
-          value={`${(avgAccuracy * 100).toFixed(1)}%`}
+        {/* ================= SECTIONS ================= */}
+        <Section
+          title="Weak Topics"
+          data={weak}
+          emptyText="No weak topics — good progress"
         />
 
-        <StatCard
-          title="Avg Time / Question"
-          value={`${avgTime.toFixed(1)} sec`}
-        />
+  
+
       </div>
-
-      {/* ================= SECTIONS ================= */}
-      <Section
-        title="🔴 Weak Topics (Focus Here)"
-        data={weak}
-        color="bg-red-100"
-        emptyText="No weak topics — good progress"
-      />
-
-      <Section
-        title="🟡 Needs Improvement"
-        data={moderate}
-        color="bg-yellow-100"
-        emptyText="No moderate topics"
-      />
-
-      <Section
-        title="🟢 Strong Areas"
-        data={strong}
-        color="bg-green-100"
-        emptyText="No strong topics yet"
-      />
     </div>
   );
 }
@@ -87,42 +82,34 @@ export default function AnalyticsPage() {
 function Section({
   title,
   data,
-  color,
   emptyText,
 }: {
   title: string;
   data: TopicPerformance[];
-  color: string;
   emptyText: string;
 }) {
   return (
     <div>
-      <h2 className="text-xl font-semibold mb-3">{title}</h2>
+      <h2 className="text-base sm:text-lg md:text-xl font-semibold mb-4">{title}</h2>
 
       {data.length === 0 ? (
-        <p className="text-gray-500">{emptyText}</p>
+        <p className="text-xs sm:text-sm text-gray-500">{emptyText}</p>
       ) : (
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {data.map((t) => (
             <div
               key={t.topic_id}
-              className={`p-4 rounded shadow-sm ${color}`}
+              className="border border-gray-200 rounded-2xl p-4 sm:p-5 hover:shadow-md transition"
             >
-              <p className="font-medium">
+              <p className="font-medium text-sm sm:text-base mb-2">
                 {t.topic_name || `Topic ${t.topic_id}`}
               </p>
 
-              <p className="text-sm text-gray-700">
-                Accuracy: {(t.accuracy * 100).toFixed(1)}%
-              </p>
-
-              <p className="text-sm text-gray-700">
-                Avg Time: {t.avg_time}s
-              </p>
-
-              <p className="text-sm text-gray-700">
-                Attempts: {t.total_attempts}
-              </p>
+              <div className="space-y-1 text-xs sm:text-sm text-gray-600">
+                <p>Accuracy: {(t.accuracy * 100).toFixed(1)}%</p>
+                <p>Avg Time: {t.avg_time}s</p>
+                <p>Attempts: {t.total_attempts}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -141,9 +128,9 @@ function StatCard({
   value: string | number;
 }) {
   return (
-    <div className="bg-white p-4 rounded shadow-sm">
-      <p className="text-sm text-gray-500">{title}</p>
-      <h2 className="text-xl font-semibold">{value}</h2>
+    <div className="border border-gray-200 rounded-2xl p-4 sm:p-5 hover:shadow-md transition">
+      <p className="text-xs text-gray-500 uppercase tracking-wide">{title}</p>
+      <h2 className="text-lg sm:text-2xl font-semibold mt-1">{value}</h2>
     </div>
   );
 }

@@ -63,7 +63,7 @@ function MockTestContent() {
     init();
   }, [params, router]);
 
-  return <div className="p-6">Starting test...</div>;
+  return <div className="p-4 sm:p-6">Starting test...</div>;
 }
 
 /* -------------------- PAGE (WRAPPER) -------------------- */
@@ -72,7 +72,7 @@ export const dynamic = "force-dynamic";
 
 export default function MockTestPage() {
   return (
-    <Suspense fallback={<div className="p-6">Loading...</div>}>
+    <Suspense fallback={<div className="p-4 sm:p-6">Loading...</div>}>
       <MockTestContent />
     </Suspense>
   );

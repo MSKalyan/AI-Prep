@@ -1,7 +1,7 @@
 import axios from "axios";
 
 
-const API=process.env.NEXT_PUBLIC_API_URL ;
+const API=process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 export const apiClient = axios.create({
   baseURL: `${API}/api`,
   withCredentials: true,
@@ -27,11 +27,8 @@ apiClient.interceptors.response.use(
         await apiClient.post("/auth/refresh/");
         return apiClient(originalRequest);
       } catch (refreshError) {
-        if (typeof window !== "undefined") {
-          window.location.href = "/login";
-        }
         return Promise.reject(refreshError);
-      }
+        }
     }
 
     return Promise.reject(error);

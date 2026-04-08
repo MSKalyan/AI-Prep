@@ -4,70 +4,74 @@ import Link from "next/link";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 
 export default function Navbar() {
-
   const { user, logout } = useAuth();
 
   return (
-    <nav className="flex items-center justify-between bg-white px-6 py-4 shadow-sm">
+    <nav className="sticky top-0 z-50 bg-white border-b border-gray-200">
 
-      {/* LEFT SIDE */}
-      <div className="flex items-center space-x-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4">
 
-        <Link
-          href="/"
-          className="text-lg font-semibold text-gray-800 hover:text-blue-600"
-        >
-          AI Exam Prep
-        </Link>
+        {/* LEFT SIDE */}
+        <div className="flex items-center gap-8">
 
-        {user && (
-          <>
-            <Link
-              href="/dashboard"
-              className="text-gray-600 hover:text-blue-600"
-            >
-              Dashboard
-            </Link>
-
-
-            <Link
-              href="/profile"
-              className="text-gray-600 hover:text-blue-600"
-            >
-              Profile
-            </Link>
-          </>
-        )}
-
-      </div>
-
-      {/* RIGHT SIDE */}
-      <div className="flex items-center space-x-4">
-
-        {user ? (
-          <button
-            onClick={() => logout()}
-            className="rounded-md bg-red-500 px-4 py-2 text-white transition hover:bg-red-600"
+          {/* Logo */}
+          <Link
+            href="/"
+            className="text-lg font-semibold tracking-tight hover:opacity-80 transition"
           >
-            Logout
-          </button>
-        ) : (
-          <>
-            <Link
-              href="/login"
-              className="text-gray-600 hover:text-blue-600"
-            >
-              Login
-            </Link>
+            AI Exam Prep
+          </Link>
 
-            <Link
-              href="/register"
-              className="rounded-md bg-blue-600 px-4 py-2 text-white transition hover:bg-blue-700"
+          {/* Navigation Links */}
+          {user && (
+            <div className="flex items-center gap-6 text-sm">
+              <Link
+                href="/dashboard"
+                className="text-gray-600 hover:text-black transition"
+              >
+                Dashboard
+              </Link>
+
+              <Link
+                href="/profile"
+                className="text-gray-600 hover:text-black transition"
+              >
+                Profile
+              </Link>
+            </div>
+          )}
+
+        </div>
+
+        {/* RIGHT SIDE */}
+        <div className="flex items-center gap-4 text-sm">
+
+          {user ? (
+            <button
+              onClick={() => logout()}
+              className="px-4 py-2 rounded-lg bg-black text-white hover:opacity-80 transition"
             >
-              Register
-            </Link>
-          </>
-        )}
+              Logout
+            </button>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="text-gray-600 hover:text-black transition"
+              >
+                Login
+              </Link>
+
+              <Link
+                href="/register"
+                className="px-4 py-2 rounded-lg bg-black text-white hover:opacity-80 transition"
+              >
+                Register
+              </Link>
+            </>
+          )}
+
+        </div>
 
       </div>
 

@@ -20,7 +20,7 @@ export type StudyContent = {
   topic_id: number;
   topic_name: string;
   description: string;
-  youtube_links: string[];  // ✅ ADD THIS
+  youtube_links: string[]; 
 };
 
 export interface TopicExplanationResponse {
@@ -28,7 +28,6 @@ export interface TopicExplanationResponse {
 }
 
 export async function getTopicStudy(topicId: number) {
-  // 1️⃣ Roadmap study API
   const studyRes = await apiClient.get(
     `/roadmap/topics/${topicId}/study/`
   );
@@ -40,9 +39,16 @@ export async function getTopicStudy(topicId: number) {
   const realTopicId = studyData.topic_id;
 console.log("REAL TOPIC ID:", realTopicId);
   try {
-    const contentRes = await apiClient.get(
-      `/analytics/study-content/${realTopicId}/`
-    );
+    const topicName = studyData.topic;
+
+   const contentRes = await apiClient.get(
+  `/analytics/study-content/`,
+  {
+    params: {
+      topic_name: topicName,
+    },
+  }
+);
 
     console.log("YT RESPONSE:", contentRes.data);
 

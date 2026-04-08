@@ -73,14 +73,14 @@ export default function StudyPage() {
   };
 if (data?.error) {
   return (
-    <div className="p-6 text-red-600">
+    <div className="p-4 sm:p-6 text-red-600">
       Invalid revision topic. Please try again.
     </div>
   );
 }
   if (isLoading) {
     return (
-      <div className="p-6 animate-pulse space-y-3">
+      <div className="p-4 sm:p-6 animate-pulse space-y-3">
         <div className="h-6 w-48 bg-gray-200 rounded"></div>
         <div className="h-4 w-full bg-gray-200 rounded"></div>
         <div className="h-4 w-5/6 bg-gray-200 rounded"></div>
@@ -90,7 +90,7 @@ if (data?.error) {
 
   if (isError || !data) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-4">
         <div className="text-red-600 font-medium">
           Failed to load topic data.
         </div>
@@ -107,10 +107,10 @@ if (data?.error) {
   }
 
   return (
-    <div className="flex h-[calc(100vh-80px)]">
+    <div className="flex flex-col lg:flex-row lg:min-h-[calc(100vh-80px)]">
 
       {/* ================= LEFT (PLANNER) ================= */}
-      <div className="w-[350px] border-r bg-white overflow-y-auto">
+      <div className="hidden lg:flex lg:w-80 border-r border-b lg:border-b-0 bg-white overflow-y-auto">
         <WeekPlanner
           roadmapId={data.roadmap_id}
           week={data.week}
@@ -121,21 +121,21 @@ if (data?.error) {
       </div>
 
       {/* ================= RIGHT (CONTENT) ================= */}
-      <div className="flex-1 p-6 space-y-6 overflow-y-auto">
+      <div className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
 
         {/* BACK */}
         <button
           onClick={() =>
             router.push(`/dashboard/roadmap/${data.roadmap_id}`)
           }
-          className="text-sm text-blue-600 hover:underline"
+          className="text-xs sm:text-sm text-blue-600 hover:underline"
         >
           ← Back to Roadmap
         </button>
 
         {/* ✅ REVISION MODE BANNER */}
         {mode === "revision" && (
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-700">
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs sm:text-sm text-yellow-700">
             🔁 Revision Mode — Focus on weak areas and recall actively
           </div>
         )}
@@ -161,19 +161,19 @@ if (data?.error) {
         </div>
 
         {/* CTA */}
-        <div className="mt-6 flex gap-3">
+        <div className="mt-6 flex flex-col sm:flex-row gap-3">
 
           {/* Mock Test */}
           <button
             onClick={handleStartTest}
-            className="bg-blue-600 text-white px-4 py-2 rounded"
+            className="bg-blue-600 text-white px-4 py-2 rounded text-sm sm:text-base"
           >
             Start Mock Test
           </button>
 
           {/* ✅ Optional: Mark Revised */}
           {mode === "revision" && (
-            <button className="bg-green-100 text-green-700 px-4 py-2 rounded">
+            <button className="bg-green-100 text-green-700 px-4 py-2 rounded text-sm sm:text-base">
               Mark as Revised
             </button>
           )}

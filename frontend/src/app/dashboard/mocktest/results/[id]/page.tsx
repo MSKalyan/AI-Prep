@@ -41,12 +41,12 @@ const [loadingExplain, setLoadingExplain] = useState<number | null>(null);
   // ✅ INVALID CASE
   if (!attemptId) {
     return (
-      <div className="p-6 space-y-4">
+      <div className="p-4 sm:p-6 space-y-4">
         <p className="text-red-600">Invalid result page</p>
 
         <button
           onClick={() => router.replace("/dashboard/mocktest/results")}
-          className="px-4 py-2 bg-blue-600 text-white rounded"
+          className="px-4 py-2 text-sm bg-blue-600 text-white rounded"
         >
           Go to Results List
         </button>
@@ -61,17 +61,17 @@ const [loadingExplain, setLoadingExplain] = useState<number | null>(null);
   });
   
 
-  if (isLoading) return <div className="p-6">Loading...</div>;
-  if (!data) return <div className="p-6">No data</div>;
+  if (isLoading) return <div className="p-4 sm:p-6">Loading...</div>;
+  if (!data) return <div className="p-4 sm:p-6">No data</div>;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
 
       {/* ✅ NAVIGATION */}
-      <div className="flex gap-3">
+      <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={() => router.back()}
-          className="px-3 py-1.5 border rounded"
+          className="px-3 py-1.5 border rounded text-sm sm:text-base"
         >
           ← Back
         </button>
@@ -79,29 +79,26 @@ const [loadingExplain, setLoadingExplain] = useState<number | null>(null);
         {/* ✅ FIXED */}
         <button
           onClick={() => router.push("/dashboard/mocktest/results")}
-          className="px-3 py-1.5 bg-gray-200 rounded"
+          className="px-3 py-1.5 bg-gray-200 rounded text-sm sm:text-base"
         >
           All Results
         </button>
 
-        <button
-          onClick={() => router.push("/dashboard/roadmap")}
-          className="px-3 py-1.5 bg-blue-600 text-white rounded"
-        >
-          Back to Study
-        </button>
+    
       </div>
 
       {/* ✅ SUMMARY */}
-      <div className="border p-4 rounded bg-gray-50">
-        <h2 className="text-xl font-semibold">Test Summary</h2>
+      <div className="border p-3 sm:p-4 rounded bg-gray-50">
+        <h2 className="text-lg sm:text-xl font-semibold">Test Summary</h2>
 
-        <p>Score: {data.score} / {data.total_marks}</p>
-        <p>Percentage: {data.percentage?.toFixed(2)}%</p>
-        <p>Correct: {data.correct}</p>
-        <p>Incorrect: {data.incorrect}</p>
-        <p>Unanswered: {data.unanswered}</p>
-        <p>Time: {data.time_taken} mins</p>
+        <div className="mt-3 space-y-1 text-xs sm:text-sm">
+          <p>Score: {data.score} / {data.total_marks}</p>
+          <p>Percentage: {data.percentage?.toFixed(2)}%</p>
+          <p>Correct: {data.correct}</p>
+          <p>Incorrect: {data.incorrect}</p>
+          <p>Unanswered: {data.unanswered}</p>
+          <p>Time: {data.time_taken} mins</p>
+        </div>
       </div>
 
       {/* ✅ QUESTIONS REVIEW */}
