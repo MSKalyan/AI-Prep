@@ -1,92 +1,65 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import * as auth from "../services/auth.service";
+import { login, register, getProfile, updateProfile, logout, ApiError } from "../services/auth.service";
 import { useRouter } from "next/navigation";
-import { ApiError } from "../types/apiError";
-import { register } from "module";
-export function useAuth(){
 
+export function useAuth() {
   const queryClient = useQueryClient();
   const router = useRouter();
 
+  const profileQuery = useQuery({
+    queryKey: ["profile"],
+    queryFn: getProfile,
+    retry: false,
+    staleTime: 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+  });
 
-const profileQuery = useQuery({
-  queryKey: ["profile"],
-  queryFn: auth.getProfile,
-  retry: false,
-  staleTime: 0,   // Always refetch when needed
-  refetchOnMount: true,
-  refetchOnWindowFocus: false,
-});
+  const loginMutation = useMutation<any, ApiError, { email: string; password: string }>({
+    mutationFn: login,
+    onError: (error) => {
+      console.error("Login failed:", error.message);
+    },
+  });
 
-
-  const loginMutation = useMutation<
-  any,
-  ApiError,
-  { email: string; password: string }
->({
-  mutationFn: auth.login,
-
-  onSuccess: async () => {
-    // Profile will be refetched automatically when dashboard loads
-  },
-
-  onError: (error) => {
-    console.error("Login failed:", error.message);
-  }
-});
-
-
-  const registerMutation = useMutation<
-  any,
-  ApiError,
-  {
+  const registerMutation = useMutation<any, ApiError, {
     email: string;
     username: string;
     password: string;
     password_confirm: string;
     full_name?: string;
-  }
->({
-  mutationFn: auth.register,
+  }>({
+    mutationFn: register,
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["profile"] });
+    },
+    onError: (error) => {
+      console.error("Registration failed:", error.message);
+    },
+  });
 
-  onSuccess: async () => {
-    await queryClient.refetchQueries({ queryKey: ["profile"] });
-    // RegisterForm will handle the redirect
-  },
-
-  onError: (error) => {
-    console.error("Registration failed:", error.message);
-  }
-});
-
- const logoutMutation = useMutation({
-  mutationFn: auth.logout,
-  onSuccess: () => {
-     queryClient.clear();
-
-     router.replace("/login");
-  }
-});
-
+  const logoutMutation = useMutation({
+    mutationFn: logout,
+    onSuccess: () => {
+      queryClient.clear();
+      router.replace("/login");
+    },
+  });
 
   const updateProfileMutation = useMutation({
-    mutationFn: auth.updateProfile,
+    mutationFn: updateProfile,
     onSuccess: () => {
-
-      queryClient.invalidateQueries({ queryKey:["profile"] });
-
+      queryClient.invalidateQueries({ queryKey: ["profile"] });
       router.push("/dashboard");
-    }
+    },
   });
 
   return {
-
     user: profileQuery.data,
     isLoading: profileQuery.isLoading,
     isAuthenticated: !!profileQuery.data,
-
     login: loginMutation.mutateAsync,
     loginError: loginMutation.error,
     loginLoading: loginMutation.isPending,

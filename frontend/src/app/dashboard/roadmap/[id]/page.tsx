@@ -4,9 +4,8 @@ import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { getRoadmapDetail } from "@/features/roadmap/services/roadmap.service";
-import RoadmapPreview from "@/features/roadmap/components/RoadmapPreview";
-import WeekPlanner from "@/features/roadmap/components/WeekPlanner";
+import { getRoadmapDetail } from "@/features/roadmap/services";
+import { RoadmapPreview, WeekPlanner } from "@/features/roadmap/components";
 
 export default function RoadmapDetailPage() {
 

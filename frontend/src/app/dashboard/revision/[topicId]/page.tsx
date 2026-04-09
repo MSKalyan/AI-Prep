@@ -2,8 +2,8 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { getTopicStudy } from "@/features/study/services/study.service";
-import { createMockTest } from "@/features/mocktest/services/mocktest.services";
+import { getTopicStudy } from "@/features/study/services";
+import { createMockTest } from "@/features/mocktest/services";
 
 export default function RevisionPage() {
   const params = useParams();

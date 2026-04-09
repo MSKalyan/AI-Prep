@@ -16,38 +16,6 @@ class MockTestService:
 
         topic_ids = sorted([t.id for t in topics])
 
-        existing_test = MockTest.objects.filter(
-            user=user,
-            roadmap=roadmap,
-            status="active",
-            generation_reason="daily_practice",
-            generation_topics=topic_ids  # exact match
-        ).first()
-
-        if existing_test:
-            attempt = TestAttempt.objects.filter(
-                user=user,
-                mock_test=existing_test,
-                submitted_at__isnull=True
-            ).first()
-
-            
-            if existing_test.started_at:
-                existing_test.started_at = None
-                existing_test.save(update_fields=["started_at"])
-
-            if not attempt:
-                attempt = TestAttempt.objects.create(
-                    user=user,
-                    mock_test=existing_test,
-                    total_marks=existing_test.total_marks
-                )
-
-            return {
-                "mock_test": existing_test,
-                "attempt": attempt
-            }
-
         pyq_questions = list(
             Question.objects.filter(
                 topic__in=topics,
@@ -60,63 +28,19 @@ class MockTestService:
         remaining = num_questions - len(selected_questions)
 
         if remaining > 0:
-            llm_questions = MockTestService._generate_llm_questions(
+            llm_questions = MockTestService._generate_llm_questions_with_retry(
                 topics=topics,
                 count=remaining
             )
             selected_questions.extend(llm_questions)
 
-        if not selected_questions:
-            fallback_questions = list(
-                Question.objects.filter(source='pyq')
-                .order_by('?')[:num_questions]
+        if len(selected_questions) == 0:
+            selected_questions = MockTestService._generate_llm_questions_with_retry(
+                topics=topics,
+                count=num_questions
             )
 
-            if fallback_questions:
-                selected_questions = fallback_questions
-            else:
-                raise ValueError("No questions available in system")
         selected_questions = selected_questions[:num_questions]
-
-        if len(selected_questions) < num_questions:
-            selected_ids = [q.id for q in selected_questions]
-
-            if len(selected_questions) < num_questions:
-                needed = num_questions - len(selected_questions)
-
-                fallback = list(
-                    Question.objects.filter(topic__in=topics)
-                    .exclude(id__in=selected_ids)
-                    .order_by('?')[:needed]
-                )
-
-                selected_questions.extend(fallback)
-                selected_ids.extend([q.id for q in fallback])
-
-            if len(selected_questions) < num_questions:
-                needed = num_questions - len(selected_questions)
-
-                fallback = list(
-                    Question.objects.filter(source='pyq')
-                    .exclude(id__in=selected_ids)
-                    .order_by('?')[:needed]
-                )
-
-                selected_questions.extend(fallback)
-                selected_ids.extend([q.id for q in fallback])
-
-
-            if len(selected_questions) < num_questions:
-                needed = num_questions - len(selected_questions)
-
-                fallback = list(
-                    Question.objects.exclude(id__in=selected_ids)
-                    .order_by('?')[:needed]
-                )
-
-                selected_questions.extend(fallback)
-        if not selected_questions:
-            raise ValueError("No questions exist in database")
         random.shuffle(selected_questions)
         topic = topics[0]  # however you're selecting
 
@@ -307,6 +231,157 @@ class MockTestService:
         except Exception as e:
             print("LLM FAILED:", e)
             return []
+
+    @staticmethod
+    def _generate_llm_questions_with_retry(topics, count, retries=3):
+        questions = []
+        for _ in range(retries):
+            new_questions = MockTestService._generate_llm_questions(topics, count - len(questions))
+            questions.extend(new_questions)
+            if len(questions) >= count:
+                break
+        if len(questions) < count:
+            relaxed_questions = MockTestService._generate_llm_questions_relaxed(topics, count - len(questions))
+            questions.extend(relaxed_questions)
+        return questions[:count]
+
+    @staticmethod
+    def _generate_llm_questions_relaxed(topics, count):
+        client = Groq(api_key=settings.GROQ_API_KEY)
+
+        topic_names = [t.name for t in topics]
+
+        sample_pyqs = Question.objects.filter(
+            topic__in=topics,
+            source='pyq'
+        )[:5]
+
+        context = "\n".join([q.question_text for q in sample_pyqs])
+
+        prompt = f"""
+    Use these reference questions to understand topic style:
+    {context}
+
+    Topics: {", ".join(topic_names)}
+
+    Generate {count} HIGH-QUALITY GATE-level MCQs.
+
+    GUIDELINES:
+    - Questions should be related to these topics or conceptually similar
+    - Each question MUST be factually correct
+    - correct_answer must be EXACTLY one of A/B/C/D
+    - options must be meaningful and non-overlapping
+    - explanation must justify the correct answer
+    - Keep each question short (max 2 lines)
+    - Keep explanation under 3 lines
+
+    Return ONLY JSON:
+
+    [
+    {{
+        "question_text": "...",
+        "options": {{"A": "...", "B": "...", "C": "...", "D": "..."}},
+        "correct_answer": "A",
+        "explanation": "..."
+    }}
+    ]
+    """
+
+        try:
+            response = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                max_tokens=1200
+            )
+
+            content = response.choices[0].message.content.strip()
+
+            content = re.sub(r"```json|```", "", content).strip()
+
+            match = re.search(r"\[.*\]", content, re.DOTALL)
+            if match:
+                content = match.group(0)
+
+            def extract_json_array(text):
+                try:
+                    match = re.search(r"\[.*\]", text, re.DOTALL)
+                    if not match:
+                        return []
+
+                    json_str = match.group(0)
+
+                    # 🔥 FIX common LLM issues
+                    json_str = json_str.replace("\n", " ")
+                    json_str = re.sub(r",\s*}", "}", json_str)   # trailing commas
+                    json_str = re.sub(r",\s*]", "]", json_str)
+
+                    return json.loads(json_str)
+
+                except Exception:
+                    return []
+            data = extract_json_array(content)
+            questions = []
+
+            def validate_question(q):
+                required_fields = ["question_text", "options", "correct_answer"]
+                if not all(field in q for field in required_fields):
+                    return False
+
+                if not isinstance(q["options"], dict):
+                    return False
+
+                if set(q["options"].keys()) != {"A", "B", "C", "D"}:
+                    return False
+
+                if q["correct_answer"] not in q["options"]:
+                    return False
+
+                if len(q["question_text"].strip()) < 10:
+                    return False
+
+                correct_text = q["options"][q["correct_answer"]]
+                if not correct_text or len(correct_text.strip()) < 2:
+                    return False
+
+                return True
+
+            for q in data:
+                if len(questions) >= count:
+                    break
+
+                if not validate_question(q):
+                    continue
+
+                correct_answer = q["correct_answer"].strip().upper()
+
+                options = {
+                    key.strip().upper(): value.strip()
+                    for key, value in q["options"].items()
+                }
+
+                if correct_answer not in options:
+                    continue
+
+                question = Question.objects.create(
+                    question_text=q["question_text"].strip(),
+                    options=options,
+                    correct_answer=correct_answer,
+                    explanation=q.get("explanation", "").strip(),
+                    marks=1,
+                    negative_marks=0,
+                    source="llm",
+                    topic=random.choice(topics)
+                )
+
+                questions.append(question)
+
+            return questions
+
+        except Exception as e:
+            print("LLM RELAXED FAILED:", e)
+            return []
+
     @staticmethod
     def start_test_attempt(user, mock_test_id):
         try:

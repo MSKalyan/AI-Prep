@@ -2,10 +2,6 @@ from django.db import models
 from django.conf import settings
 from django.db.models import Q
 
-# =====================================================
-# EXAM MODEL (Dropdown source)
-# =====================================================
-
 class Exam(models.Model):
 
     name = models.CharField(max_length=200,unique=True)
@@ -61,7 +57,6 @@ class Topic(models.Model):
 
     order = models.PositiveIntegerField(default=0)
 
-      # NEW FIELDS
     weightage = models.FloatField(default=1.0)  # percentage
     pyq_total_marks = models.FloatField(default=0.0)  # sum of PYQ marks
     pyq_count = models.PositiveIntegerField(default=0)
@@ -96,9 +91,6 @@ class Subtopic(models.Model):
     def __str__(self):
         return f"{self.topic.name} - {self.name}"
 
-# =====================================================
-# ROADMAP MODEL (Main learning plan)
-# =====================================================
 
 class Roadmap(models.Model):
     """
@@ -147,10 +139,6 @@ class Roadmap(models.Model):
     def __str__(self):
         exam_name = self.exam.name if self.exam else "No Exam"
         return f"{exam_name} - {self.user}"
-
-# =====================================================
-# ROADMAP TOPIC MODEL
-# =====================================================
 
 class RoadmapTopic(models.Model):
     """
@@ -203,9 +191,6 @@ class RoadmapTopic(models.Model):
         return f"Week {self.week_number}: {self.topic.name}"
 
 
-# =====================================================
-# ASYNC GENERATION JOB MODEL (VERY IMPORTANT)
-# =====================================================
 
 class RoadmapGenerationJob(models.Model):
     """

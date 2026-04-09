@@ -1,54 +1,25 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { explainQuestion, getResultDetail } from "@/features/mocktest/services/mocktest.services";
-import { useState } from "react";
+import { getResultDetail } from "@/features/mocktest/services";
+import { useAttemptId, useAIExplanation } from "@/features/mocktest";
 
-export default function ResultDetailPage() {
-
-  const params = useParams();
+export default function ResultDetailPageImproved() {
+  const attemptId = useAttemptId();
   const router = useRouter();
-const [aiExplanations, setAiExplanations] = useState<Record<number, string>>({});
-const [loadingExplain, setLoadingExplain] = useState<number | null>(null);
-  // ✅ SAFE PARAM PARSING
-  const rawId = params?.id;
-  const attemptId =
-    typeof rawId === "string"
-      ? Number(rawId)
-      : Array.isArray(rawId)
-      ? Number(rawId[0])
-      : null;
 
-      const handleExplain = async (questionId: number) => {
-  try {
-    setLoadingExplain(questionId);
+  const { aiExplanations, loadingExplain, handleExplain } = useAIExplanation();
 
-    const res = await explainQuestion(questionId);
-
-    setAiExplanations(prev => ({
-      ...prev,
-      [questionId]: res.explanation
-    }));
-
-  } catch (err) {
-    alert("Failed to generate explanation");
-  } finally {
-    setLoadingExplain(null);
-  }
-};
-      
-  // ✅ INVALID CASE
   if (!attemptId) {
     return (
-      <div className="p-4 sm:p-6 space-y-4">
-        <p className="text-red-600">Invalid result page</p>
-
+      <div className="p-6">
+        <p className="text-red-600 mb-4">Invalid result page</p>
         <button
           onClick={() => router.replace("/dashboard/mocktest/results")}
-          className="px-4 py-2 text-sm bg-blue-600 text-white rounded"
+          className="px-4 py-2 bg-black text-white rounded-lg"
         >
-          Go to Results List
+          Go to Results
         </button>
       </div>
     );
@@ -59,108 +30,145 @@ const [loadingExplain, setLoadingExplain] = useState<number | null>(null);
     queryFn: () => getResultDetail(attemptId),
     enabled: !!attemptId,
   });
-  
 
-  if (isLoading) return <div className="p-4 sm:p-6">Loading...</div>;
-  if (!data) return <div className="p-4 sm:p-6">No data</div>;
+  if (isLoading || !data) {
+    return <div className="p-6">Loading...</div>;
+  }
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+    <div className="min-h-screen bg-gray-100 p-6">
+      {/* HEADER */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold">Test Result</h1>
 
-      {/* ✅ NAVIGATION */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <button
-          onClick={() => router.back()}
-          className="px-3 py-1.5 border rounded text-sm sm:text-base"
-        >
-          ← Back
-        </button>
-
-        {/* ✅ FIXED */}
-        <button
-          onClick={() => router.push("/dashboard/mocktest/results")}
-          className="px-3 py-1.5 bg-gray-200 rounded text-sm sm:text-base"
-        >
-          All Results
-        </button>
-
-    
-      </div>
-
-      {/* ✅ SUMMARY */}
-      <div className="border p-3 sm:p-4 rounded bg-gray-50">
-        <h2 className="text-lg sm:text-xl font-semibold">Test Summary</h2>
-
-        <div className="mt-3 space-y-1 text-xs sm:text-sm">
-          <p>Score: {data.score} / {data.total_marks}</p>
-          <p>Percentage: {data.percentage?.toFixed(2)}%</p>
-          <p>Correct: {data.correct}</p>
-          <p>Incorrect: {data.incorrect}</p>
-          <p>Unanswered: {data.unanswered}</p>
-          <p>Time: {data.time_taken} mins</p>
+        <div className="flex gap-3">
+        
+          <button
+            onClick={() => router.push("/dashboard/mocktest/results")}
+            className="px-4 py-2 bg-black text-white rounded-lg"
+          >
+            All Results
+          </button>
         </div>
       </div>
 
-      {/* ✅ QUESTIONS REVIEW */}
-      <div className="space-y-4">
-        {data.questions.map((q: any, index: number) => (
-          <div key={q.question_id} className="border p-4 rounded">
-
-            <p className="font-medium">
-              Q{index + 1}. {q.question_text}
-            </p>
-
-            {/* Options */}
-            <div className="mt-2 space-y-1">
-              {Object.entries(q.options).map(([key, text]: any) => (
-                <div
-                  key={key}
-                  className={`p-2 rounded
-                    ${q.correct_answer === key ? "bg-green-200" : ""}
-                    ${q.your_answer === key && q.your_answer !== q.correct_answer ? "bg-red-200" : ""}
-                  `}
-                >
-                  {key}. {text}
-                </div>
-              ))}
-            </div>
-
-            <p className="mt-2">
-              Your Answer: <b>{q.your_answer || "Not answered"}</b>
-            </p>
-
-            <p>
-              Correct Answer: <b>{q.correct_answer}</b>
-            </p>
-
-            <p>
-              Marks: {q.marks_obtained}
-            </p>
-
-            {/* DB Explanation */}
-            {q.explanation && (
-              <div className="mt-2 text-sm text-gray-700">
-                Explanation: {q.explanation}
-              </div>
-            )}
-
-            {/* 🔥 AI Explain Placeholder */}
-           <button
-  onClick={() => handleExplain(q.question_id)}
-  className="mt-2 text-blue-600 underline"
->
-  {loadingExplain === q.question_id ? "Generating..." : "Explain with AI"}
-</button>
-{aiExplanations[q.question_id] && (
-  <div className="mt-2 p-3 bg-blue-50 rounded text-sm">
-    {aiExplanations[q.question_id]}
-  </div>
-)}
-
-          </div>
-        ))}
+      {/* SUMMARY CARDS */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white p-4 rounded-2xl shadow">
+          <p className="text-sm text-gray-500">Score</p>
+          <p className="text-xl font-semibold">{data.score}/{data.total_marks}</p>
+        </div>
+        <div className="bg-white p-4 rounded-2xl shadow">
+          <p className="text-sm text-gray-500">Percentage</p>
+          <p className="text-xl font-semibold">{data.percentage?.toFixed(2)}%</p>
+        </div>
+        <div className="bg-white p-4 rounded-2xl shadow">
+          <p className="text-sm text-gray-500">Accuracy</p>
+          <p className="text-xl font-semibold">
+            {((data.correct / (data.correct + data.incorrect || 1)) * 100).toFixed(1)}%
+          </p>
+        </div>
+        <div className="bg-white p-4 rounded-2xl shadow">
+          <p className="text-sm text-gray-500">Time</p>
+          <p className="text-xl font-semibold">{data.time_taken} mins</p>
+        </div>
       </div>
 
+      {/* PERFORMANCE BAR */}
+      <div className="bg-white p-4 rounded-2xl shadow mb-6">
+        <div className="flex justify-between text-sm mb-2">
+          <span>Correct: {data.correct}</span>
+          <span>Incorrect: {data.incorrect}</span>
+          <span>Unanswered: {data.unanswered}</span>
+        </div>
+
+        <div className="flex h-3 rounded overflow-hidden">
+          <div
+            className="bg-green-500"
+            style={{ width: `${(data.correct / data.questions.length) * 100}%` }}
+          />
+          <div
+            className="bg-red-500"
+            style={{ width: `${(data.incorrect / data.questions.length) * 100}%` }}
+          />
+          <div
+            className="bg-gray-300"
+            style={{ width: `${(data.unanswered / data.questions.length) * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* QUESTIONS */}
+      <div className="space-y-4">
+        {data.questions.map((q: any, index: number) => {
+          const isCorrect = q.your_answer === q.correct_answer;
+
+          return (
+            <div
+              key={q.question_id}
+              className={`bg-white p-5 rounded-2xl shadow border-l-4 ${
+                isCorrect ? "border-green-500" : "border-red-500"
+              }`}
+            >
+              <div className="flex justify-between items-start">
+                <p className="font-medium">
+                  Q{index + 1}. {q.question_text}
+                </p>
+                <span
+                  className={`text-sm px-2 py-1 rounded ${
+                    isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                  }`}
+                >
+                  {isCorrect ? "Correct" : "Incorrect"}
+                </span>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {Object.entries(q.options).map(([key, text]: any) => {
+                  const isUser = q.your_answer === key;
+                  const isRight = q.correct_answer === key;
+
+                  return (
+                    <div
+                      key={key}
+                      className={`p-3 rounded-lg border ${
+                        isRight
+                          ? "bg-green-50 border-green-400"
+                          : isUser
+                          ? "bg-red-50 border-red-400"
+                          : ""
+                      }`}
+                    >
+                      {key}. {text}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-3 text-sm text-gray-600">
+                <p>Your Answer: {q.your_answer || "Not answered"}</p>
+                <p>Correct Answer: {q.correct_answer}</p>
+                <p>Marks: {q.marks_obtained}</p>
+              </div>
+
+              <button
+                onClick={() => handleExplain(q.question_id)}
+                className="mt-3 text-blue-600 text-sm underline"
+              >
+                {loadingExplain === q.question_id
+                  ? "Generating explanation..."
+                  : "Explain with AI"}
+              </button>
+
+              {aiExplanations[q.question_id] && (
+                <div className="mt-3 p-3 bg-blue-50 rounded text-sm leading-relaxed">
+                  {aiExplanations[q.question_id]}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

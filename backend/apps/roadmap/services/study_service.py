@@ -5,6 +5,18 @@ from apps.ai_service.services.rag.llm_service import LLMService
 from apps.analytics.services.study_content_service import StudyContentService
 class StudyService:
     @staticmethod
+    def clean_ai_output(text: str) -> str:
+        # Remove markdown bullets (*, -, etc.)
+        text = re.sub(r'^\s*[\*\-]\s+', '', text, flags=re.MULTILINE)
+
+        # Remove bold/italic markers (*, **)
+        text = re.sub(r'\*{1,2}', '', text)
+
+        # Normalize spacing
+        text = re.sub(r'\n{2,}', '\n\n', text)
+
+        return text.strip()
+    @staticmethod
     def generate_explanation(topic_name):
 
         prompt = f"""
@@ -21,8 +33,8 @@ class StudyService:
     """
 
         try:
-            return LLMService().generate_response(prompt=prompt)
-
+            raw = LLMService().generate_response(prompt=prompt)
+            return StudyService.clean_ai_output(raw)
         except Exception as e:
             print("Groq failed:", e)
 
@@ -41,7 +53,7 @@ class StudyService:
 
     • Tip:
     Practice PYQs
-    """
+    """.strip()
     @staticmethod
     def get_topic_study_data(topic_id):
 

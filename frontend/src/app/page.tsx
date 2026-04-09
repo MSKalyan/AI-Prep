@@ -1,86 +1,73 @@
+
 "use client";
 
 import { useRouter } from "next/navigation";
 
-export default function Home() {
+export default function HomeImproved() {
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-white text-black">
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-100 text-black">
 
       {/* HERO */}
-      <section className="px-4 sm:px-6 md:px-12 pt-16 sm:pt-24 md:pt-28 pb-16 sm:pb-20 md:pb-24 max-w-6xl mx-auto text-center">
+      <section className="px-6 md:px-12 pt-24 pb-20 max-w-6xl mx-auto text-center">
 
-        <p className="text-xs uppercase tracking-widest text-gray-400 mb-3 sm:mb-4">
+        <p className="text-xs tracking-widest text-gray-400 mb-4">
           AI STUDY SYSTEM
         </p>
 
-        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight tracking-tight">
+        <h1 className="text-4xl md:text-6xl xl:text-7xl font-bold leading-tight tracking-tight">
           Stop guessing.
           <br />
-          <span className="italic">Start preparing right.</span>
+          <span className="text-gray-500">Start preparing right.</span>
         </h1>
 
-        <p className="mt-4 sm:mt-6 text-gray-600 text-sm sm:text-base md:text-lg max-w-2xl mx-auto">
-          A structured system that tells you what to study, when to revise,
-          and how to improve — based on your performance.
+        <p className="mt-6 text-gray-600 text-base md:text-lg max-w-2xl mx-auto">
+          A performance-driven system that guides what to study, when to revise,
+          and how to improve — using real data from your attempts.
         </p>
 
-        <div className="mt-8 sm:mt-10">
+        <div className="mt-10 flex justify-center gap-4">
           <button
             onClick={() => router.push("/dashboard")}
-            className="px-6 sm:px-8 py-2 sm:py-3 bg-black text-white rounded-full text-xs sm:text-sm font-semibold hover:scale-105 transition"
+            className="px-8 py-3 bg-black text-white rounded-full font-medium hover:scale-105 transition"
           >
             Enter Dashboard
           </button>
+
         </div>
 
       </section>
 
-      {/* DIVIDER */}
-      <div className="border-t"></div>
+      {/* TRUST STRIP */}
+      <section className="border-y py-6 text-center text-sm text-gray-500">
+        Built for serious aspirants • Data-driven • Adaptive learning
+      </section>
 
-      {/* FEATURES GRID */}
-      <section className="px-4 sm:px-6 md:px-12 py-16 sm:py-20 md:py-24 max-w-6xl mx-auto">
+      {/* FEATURES */}
+      <section className="px-6 md:px-12 py-20 max-w-6xl mx-auto">
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 md:gap-10">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-semibold">Everything you need</h2>
+          <p className="text-gray-500 mt-2">Designed for structured preparation</p>
+        </div>
+
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
 
           {[
-            {
-              title: "Roadmap",
-              desc: "Every topic mapped with time allocation. No randomness."
-            },
-            {
-              title: "Revision",
-              desc: "Weak areas are automatically pushed back into your flow."
-            },
-            {
-              title: "Testing",
-              desc: "Topic-based tests that reflect real exam pressure."
-            },
-            {
-              title: "Analytics",
-              desc: "Track accuracy, speed, and consistency clearly."
-            },
-            {
-              title: "Explanations",
-              desc: "Short, structured explanations for fast recall."
-            },
-            {
-              title: "Focus",
-              desc: "Removes noise. Keeps you on what actually matters."
-            }
+            { title: "Roadmap", desc: "Structured daily plan with clear topic coverage" },
+            { title: "Revision", desc: "Automatically revisits weak areas" },
+            { title: "Mock Tests", desc: "Real exam-like test environment" },
+            { title: "Analytics", desc: "Accuracy, speed, and topic insights" },
+            { title: "AI Explanations", desc: "Concise explanations for fast revision" },
+            { title: "Focus System", desc: "Removes distractions and guides learning" }
           ].map((item, i) => (
             <div
               key={i}
-              className="group border p-4 sm:p-6 rounded-xl hover:bg-black hover:text-white transition duration-300"
+              className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-lg transition border"
             >
-              <h3 className="font-semibold text-base sm:text-lg mb-2">
-                {item.title}
-              </h3>
-              <p className="text-xs sm:text-sm text-gray-600 group-hover:text-gray-300">
-                {item.desc}
-              </p>
+              <h3 className="font-semibold text-lg mb-2">{item.title}</h3>
+              <p className="text-sm text-gray-600">{item.desc}</p>
             </div>
           ))}
 
@@ -88,43 +75,40 @@ export default function Home() {
 
       </section>
 
-      {/* VALUE SECTION */}
-      <section className="px-4 sm:px-6 md:px-12 py-16 sm:py-20 md:py-24 border-t text-center max-w-4xl mx-auto">
+      {/* VALUE */}
+      <section className="px-6 md:px-12 py-20 text-center max-w-4xl mx-auto">
 
-        <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold leading-snug">
-          Built for people who are serious about cracking exams.
+        <h2 className="text-3xl md:text-4xl font-semibold leading-snug">
+          Built for consistency, not motivation.
         </h2>
 
-        <p className="mt-4 sm:mt-6 text-gray-600 text-sm sm:text-base">
-          Not just tests.
-          <br />
-          A system that adapts to how you perform.
+        <p className="mt-6 text-gray-600 text-base">
+          The system adapts based on your performance and ensures you focus
+          on what actually improves your score.
         </p>
 
       </section>
 
-      {/* FINAL CTA */}
-      <section className="px-4 sm:px-6 md:px-12 py-16 sm:py-20 md:py-24 text-center">
+      {/* CTA */}
+      <section className="px-6 md:px-12 py-20 text-center">
 
-        <div className="inline-block border px-6 sm:px-10 py-8 sm:py-10 rounded-2xl">
-
-          <h3 className="text-lg sm:text-xl font-semibold mb-4">
-            Ready to start?
+        <div className="bg-black text-white rounded-2xl p-10 max-w-3xl mx-auto">
+          <h3 className="text-xl md:text-2xl font-semibold mb-4">
+            Start your preparation today
           </h3>
 
           <button
             onClick={() => router.push("/dashboard")}
-            className="px-5 sm:px-6 py-2 sm:py-3 bg-black text-white rounded-full text-xs sm:text-sm font-semibold hover:opacity-90 transition"
+            className="px-6 py-3 bg-white text-black rounded-full font-medium hover:opacity-90 transition"
           >
             Go to Dashboard
           </button>
-
         </div>
 
       </section>
 
       {/* FOOTER */}
-      <footer className="text-center text-xs text-gray-400 pb-4 sm:pb-6 px-4">
+      <footer className="text-center text-xs text-gray-400 pb-6">
         © {new Date().getFullYear()} PrepAI
       </footer>
 

@@ -18,9 +18,7 @@ def extract_keywords(query):
 
 def semantic_search(query, user=None, top_k=20):
 
-    # =========================
-    # 🔍 STEP 1 — KEYWORDS
-    # =========================
+
     keywords = extract_keywords(query)
 
     keyword_results = []
@@ -49,15 +47,12 @@ def semantic_search(query, user=None, top_k=20):
             if match_count > 0:
                 score += match_count * 1.0
 
-                # 🔥 definition boost
                 if "is a" in content or "defined as" in content:
                     score += 0.5
 
                 keyword_results.append((chunk, score))
 
-    # =========================
-    # 🧠 STEP 2 — VECTOR SEARCH
-    # =========================
+
     query_embedding = generate_embedding(query,is_query=True)
 
     store = FAISSVectorStore()
@@ -80,9 +75,6 @@ def semantic_search(query, user=None, top_k=20):
                 if chunk and (not user or chunk.user == user or chunk.user is None):
                     vector_results.append((chunk, score))
 
-    # =========================
-    # 🔀 STEP 3 — MERGE (SOFT LOGIC)
-    # =========================
     combined = {}
 
     for chunk, score in keyword_results:
@@ -95,11 +87,10 @@ def semantic_search(query, user=None, top_k=20):
 
         content = clean_text(chunk.content or "")
 
-        # 🔥 SOFT keyword scoring
         match_count = sum(1 for word in keywords if word in content)
 
         if match_count == 0:
-            score *= 0.3   # reduce but DO NOT drop
+            score *= 0.3   
         else:
             score += match_count * 0.2
 
@@ -109,19 +100,14 @@ def semantic_search(query, user=None, top_k=20):
         else:
             combined[chunk.id] = (chunk, score)
 
-    # =========================
-    # 🔥 FINAL FILTER (RELAXED)
-    # =========================
     filtered = []
 
     for chunk, score in combined.values():
-        if score < 0.2:   # only remove extremely weak results
+        if score < 0.2: 
             continue
         filtered.append((chunk, score))
 
-    # =========================
-    # SORT
-    # =========================
+
     filtered.sort(key=lambda x: x[1], reverse=True)
 
     return filtered[:top_k]

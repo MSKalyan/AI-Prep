@@ -1,9 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
 
-/* ======================
-   TYPES
-====================== */
-
 export interface DeterministicRoadmapPayload {
   exam_id: number;
   target_date: string;
@@ -24,7 +20,6 @@ export interface WeekTopic {
   hours: number;
   completed: boolean;
   phase: 'study' | 'revision' | 'practice';
-
 }
 
 export interface WeekProgress {
@@ -45,43 +40,21 @@ export interface WeekPlanResponse {
   data: WeekTopic[];
   today_revision: RevisionItem[];
 }
-/* ======================
-   EXAMS
-====================== */
 
 export const getExams = async () => {
   const { data } = await apiClient.get("/exams/");
   return data;
 };
 
-/* ======================
-   GENERATE ROADMAP
-====================== */
-
-export const generateRoadmap = async (
-  payload: DeterministicRoadmapPayload
-): Promise<DeterministicRoadmapResponse> => {
-
-  const { data } = await apiClient.post(
-    "/roadmap/generate/",
-    payload
-  );
-
+export const generateRoadmap = async (payload: DeterministicRoadmapPayload): Promise<DeterministicRoadmapResponse> => {
+  const { data } = await apiClient.post("/roadmap/generate/", payload);
   return data;
 };
-
-/* ======================
-   ROADMAP LIST
-====================== */
 
 export const getRoadmaps = async () => {
   const { data } = await apiClient.get("/roadmaps/");
   return data;
 };
-
-/* ======================
-   ROADMAP DETAIL
-====================== */
 
 export const getRoadmapDetail = async (id: number) => {
   const { data } = await apiClient.get(`/roadmap/${id}/`);
@@ -92,69 +65,27 @@ export const deleteRoadmap = async (id: number) => {
   await apiClient.delete(`/roadmap/${id}/`);
 };
 
-/* ======================
-   WEEK TOPICS
-====================== */
-
-export const getWeekTopics = async (
-  roadmapId: number,
-  week: number
-): Promise<WeekPlanResponse> => {
-
-  const { data } = await apiClient.get(
-    `/roadmap/${roadmapId}/week/${week}/`
-  );
-
+export const getWeekTopics = async (roadmapId: number, week: number): Promise<WeekPlanResponse> => {
+  const { data } = await apiClient.get(`/roadmap/${roadmapId}/week/${week}/`);
   return data;
 };
-
-/* ======================
-   TOGGLE TOPIC COMPLETE
-====================== */
 
 export const toggleTopic = async (topicId: number) => {
-
-  const { data } = await apiClient.patch(
-    `/roadmap/topic/${topicId}/complete/`
-  );
-
+  const { data } = await apiClient.patch(`/roadmap/topic/${topicId}/complete/`);
   return data;
 };
 
-/* ======================
-   WEEK PROGRESS
-====================== */
-
-export const getWeekProgress = async (
-  roadmapId: number,
-  week: number
-): Promise<WeekProgress> => {
-
-  const { data } = await apiClient.get(
-    `/roadmap/${roadmapId}/week/${week}/progress/`
-  );
-
+export const getWeekProgress = async (roadmapId: number, week: number): Promise<WeekProgress> => {
+  const { data } = await apiClient.get(`/roadmap/${roadmapId}/week/${week}/progress/`);
   return data;
 };
 
-/* ======================
-   AI EXPLANATION
-====================== */
-
-export const getTopicExplanation = async (topicId: number) => {
-
-  const { data } = await apiClient.get(
-    `/roadmap/topic/${topicId}/explanation/`
-  );
-
+export const getRoadmapTopicExplanation = async (topicId: number) => {
+  const { data } = await apiClient.get(`/roadmap/topic/${topicId}/explanation/`);
   return data;
 };
 
 export const getRoadmapProgress = async (roadmapId: number) => {
-
-const { data } = await apiClient.get(
-    `/roadmap/${roadmapId}/progress/`
-);
-
-return data;
+  const { data } = await apiClient.get(`/roadmap/${roadmapId}/progress/`);
+  return data;
 };

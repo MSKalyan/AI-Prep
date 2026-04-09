@@ -4,7 +4,7 @@ import { apiClient } from "@/lib/apiClient";
 import { useState } from "react";
 
 export default function DocumentUpload() {
-const [file, setFile] = useState<File | null>(null);
+  const [file, setFile] = useState<File | null>(null);
   const [subject, setSubject] = useState("");
   const [examType, setExamType] = useState("");
   const [loading, setLoading] = useState(false);
@@ -13,25 +13,19 @@ const [file, setFile] = useState<File | null>(null);
     if (!file) return;
 
     const formData = new FormData();
-  formData.append("file", file);
-formData.append("title", file.name);
-formData.append("subject", subject);
-formData.append("topic", "general"); // or input field
-formData.append("exam_type", examType);
-formData.append("document_type", "notes");
+    formData.append("file", file);
+    formData.append("title", file.name);
+    formData.append("subject", subject);
+    formData.append("topic", "general");
+    formData.append("exam_type", examType);
+    formData.append("document_type", "notes");
+
     try {
       setLoading(true);
-
-      const res = await apiClient("http://localhost:8000/api/documents/process/", {
-        method: "POST",
-        data: formData,
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      const res = await apiClient.post("/documents/process/", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
-
-      const data = await res.data;
-      console.log(data);
+      console.log(res.data);
       alert("Processed successfully");
     } catch (err) {
       console.error(err);
@@ -45,11 +39,11 @@ formData.append("document_type", "notes");
       <h2 className="font-semibold text-base sm:text-lg mb-4 sm:mb-6">Upload Document</h2>
 
       <div className="space-y-3 sm:space-y-4">
-        <input 
-          type="file" 
-          accept=".pdf,.doc,.docx,.txt,.md" 
+        <input
+          type="file"
+          accept=".pdf,.doc,.docx,.txt,.md"
           className="block w-full text-sm"
-          onChange={(e) => setFile(e.target.files?.[0] || null)} 
+          onChange={(e) => setFile(e.target.files?.[0] || null)}
         />
 
         <input

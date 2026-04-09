@@ -23,9 +23,9 @@ export default function DashboardLayout({
       {label}
     </Link>
   );
-
   return (
 <div className="min-h-screen flex flex-col md:flex-row bg-white text-black">
+
       {/* Sidebar */}
       <aside className="w-64 border-r border-gray-200 hidden md:flex flex-col">
 
@@ -55,47 +55,7 @@ export default function DashboardLayout({
 
       </aside>
 
-      {/* Mobile nav */}
-      <div className="md:hidden w-full border-b border-gray-200 bg-white">
-        <nav className="flex overflow-x-auto gap-2 px-4 py-3">
-          <Link
-            href="/dashboard"
-            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${pathname === "/dashboard" ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-          >
-            Overview
-          </Link>
-          <Link
-            href="/dashboard/ai_service"
-            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${pathname === "/dashboard/ai_service" ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-          >
-            AI Tutor
-          </Link>
-          <Link
-            href="/dashboard/analytics"
-            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${pathname === "/dashboard/analytics" ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-          >
-            Analytics
-          </Link>
-          <Link
-            href="/dashboard/mocktest/results"
-            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${pathname === "/dashboard/mocktest/results" ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-          >
-            Mock Tests
-          </Link>
-          <Link
-            href="/dashboard/roadmap"
-            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${pathname === "/dashboard/roadmap" ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-          >
-            Roadmap
-          </Link>
-          <Link
-            href="/dashboard/roadmaps"
-            className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition ${pathname === "/dashboard/roadmaps" ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}
-          >
-            My Roadmaps
-          </Link>
-        </nav>
-      </div>
+     
 
       {/* Content Area */}
       <div className="flex-1 flex flex-col">

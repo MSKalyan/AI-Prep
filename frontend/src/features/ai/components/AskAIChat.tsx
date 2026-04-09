@@ -27,31 +27,24 @@ export default function AskAIChat({ context = "" }: AskAIChatProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-
   useEffect(() => {
     const savedId = localStorage.getItem("conversation_id");
-    console.log("Loaded conversation_id:", savedId);
     if (savedId) {
       setConversationId(Number(savedId));
     }
   }, []);
-
 
   useEffect(() => {
     if (!conversationId) return;
 
     const loadMessages = async () => {
       try {
-        const res = await apiClient.get(
-          `/conversations/${conversationId}/messages/`
-        );
-console.log("Fetching messages for:", conversationId);
+        const res = await apiClient.get(`/conversations/${conversationId}/messages/`);
         const formatted: ChatMessage[] = res.data.map((m: any) => ({
           role: m.role,
           content: m.content,
           sources: m.retrieved_documents || [],
         }));
-
         setMessages(formatted.slice(-10));
       } catch {
         console.error("Failed to load messages");
@@ -81,9 +74,7 @@ console.log("Fetching messages for:", conversationId);
           <span key={i} className="text-blue-600 hover:underline">
             [{index}]
             {source && (
-              <span className="ml-1 text-xs text-gray-500">
-                ({source.title})
-              </span>
+              <span className="ml-1 text-xs text-gray-500">({source.title})</span>
             )}
           </span>
         );
@@ -101,30 +92,19 @@ console.log("Fetching messages for:", conversationId);
     setIsLoading(true);
 
     setMessages((prev) => {
-      const newMessage: ChatMessage = {
-        role: "user",
-        content: q,
-      };
-
-
-      const updated = [...prev, newMessage];
-      return updated.slice(-10);
+      const newMessage: ChatMessage = { role: "user", content: q };
+      return [...prev, newMessage].slice(-10);
     });
 
     setQuestion("");
 
     try {
-      const payload: any = {
-        question: q,
-        context: context || "",
-      };
-
+      const payload: any = { question: q, context: context || "" };
       if (conversationId) {
         payload.conversation_id = conversationId;
       }
 
       const response = await apiClient.post("/ask-ai/", payload);
-
       const answer = response.data.answer;
       const newId = response.data.conversation_id;
       const sources: Source[] = response.data.retrieved_documents || [];
@@ -135,23 +115,12 @@ console.log("Fetching messages for:", conversationId);
       }
 
       setMessages((prev) => {
-        const newMessage: ChatMessage = {
-          role: "assistant",
-          content: String(answer), // ensure string
-          sources: sources || [],
-        };
-
-        const updated = [...prev, newMessage];
-        return updated.slice(-10);
+        const newMessage: ChatMessage = { role: "assistant", content: String(answer), sources: sources || [] };
+        return [...prev, newMessage].slice(-10);
       });
-    } 
-    catch (err: any) {
-      console.error("Error asking AI:", err);
-      setError(
-        err.response?.data?.error || "Failed to get answer from AI. Please try again."
-      );
-    }
-    finally {
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to get answer from AI. Please try again.");
+    } finally {
       setIsLoading(false);
     }
   };
@@ -167,7 +136,6 @@ console.log("Fetching messages for:", conversationId);
               #{conversationId}
             </span>
           )}
-
           <button
             onClick={startNewChat}
             className="w-full sm:w-auto text-xs bg-gray-200 px-3 py-2 rounded hover:bg-gray-300 text-left sm:text-center"
@@ -179,27 +147,18 @@ console.log("Fetching messages for:", conversationId);
 
       <div className="space-y-2 mb-3 max-h-60 sm:max-h-72 overflow-auto">
         {messages.length === 0 ? (
-          <div className="text-xs sm:text-sm text-gray-500">
-            Ask a doubt and the AI will answer.
-          </div>
+          <div className="text-xs sm:text-sm text-gray-500">Ask a doubt and the AI will answer.</div>
         ) : (
           messages.map((message, i) => (
             <div
               key={`${message.role}-${i}`}
               className={`p-2 rounded-md text-xs sm:text-sm ${
-                message.role === "user"
-                  ? "bg-blue-50 border border-blue-200 text-blue-800"
-                  : "bg-gray-50 border border-gray-200 text-gray-800"
+                message.role === "user" ? "bg-blue-50 border border-blue-200 text-blue-800" : "bg-gray-50 border border-gray-200 text-gray-800"
               }`}
             >
-              <div className="font-semibold text-xs mb-1">
-                {message.role === "user" ? "You" : "AI"}
-              </div>
-
+              <div className="font-semibold text-xs mb-1">{message.role === "user" ? "You" : "AI"}</div>
               <div>
-                {message.role === "assistant"
-                  ? renderAnswer(message.content, message.sources || [])
-                  : message.content}
+                {message.role === "assistant" ? renderAnswer(message.content, message.sources || []) : message.content}
               </div>
             </div>
           ))

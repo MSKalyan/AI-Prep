@@ -1,9 +1,36 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { createMockTest } from "@/features/mocktest/services/mocktest.services";
+import { useAuth } from "@/features/auth";
+import { createMockTest } from "@/features/mocktest/services";
+
+/* -------------------- AUTH WRAPPER -------------------- */
+function MockTestPageContent() {
+  const router = useRouter();
+  const { user, isLoading: authLoading } = useAuth();
+
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.replace("/login");
+    }
+  }, [user, authLoading, router]);
+
+  if (authLoading) {
+    return <div className="p-10 text-center">Loading...</div>;
+  }
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <Suspense fallback={<div className="p-4 sm:p-6">Loading...</div>}>
+      <MockTestContent />
+    </Suspense>
+  );
+}
 
 /* -------------------- INNER CLIENT COMPONENT -------------------- */
 function MockTestContent() {
@@ -24,7 +51,7 @@ function MockTestContent() {
             roadmapIdRaw,
             dayRaw,
           });
-          router.replace("/dashboard/roadmap");
+          router.replace("/dashboard");
           return;
         }
 
@@ -38,7 +65,7 @@ function MockTestContent() {
             roadmapId,
             day,
           });
-          router.replace("/dashboard/roadmap");
+          router.replace("/dashboard");
           return;
         }
 
@@ -56,7 +83,7 @@ function MockTestContent() {
         router.replace(`/dashboard/mocktest/${data.mock_test.id}`);
       } catch (error) {
         console.error("Mock test creation failed:", error);
-        router.replace("/dashboard/roadmap");
+        router.replace("/dashboard");
       }
     };
 
@@ -71,9 +98,5 @@ function MockTestContent() {
 export const dynamic = "force-dynamic";
 
 export default function MockTestPage() {
-  return (
-    <Suspense fallback={<div className="p-4 sm:p-6">Loading...</div>}>
-      <MockTestContent />
-    </Suspense>
-  );
+  return <MockTestPageContent />;
 }

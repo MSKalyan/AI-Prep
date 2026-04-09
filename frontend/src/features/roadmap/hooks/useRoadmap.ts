@@ -1,17 +1,16 @@
+"use client";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import * as roadmap from "../services/roadmap.service";
+import { generateRoadmap, deleteRoadmap } from "../services/roadmap.service";
 
 export function useGenerateRoadmap() {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: roadmap.generateRoadmap,
-
-    onSuccess: (data) => {
-      // Invalidate roadmap list so new roadmap appears
+    mutationFn: generateRoadmap,
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["roadmaps"] });
     },
-
     onError: (error) => {
       console.error("Roadmap generation failed:", error);
     },
@@ -21,7 +20,7 @@ export function useGenerateRoadmap() {
     generateRoadmap: mutation.mutateAsync,
     isLoading: mutation.isPending,
     error: mutation.error,
-    data: mutation.data, // useful if needed
+    data: mutation.data,
   };
 }
 
@@ -29,7 +28,7 @@ export function useDeleteRoadmap() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: roadmap.deleteRoadmap,
+    mutationFn: deleteRoadmap,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["roadmaps"] });
     },

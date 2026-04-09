@@ -10,60 +10,36 @@ interface Props {
 }
 
 export default function AIExplanationPanel({ topicId, explanation }: Props) {
-  console.log("AI explanation value:", explanation);
-
   const queryClient = useQueryClient();
-
   const [error, setError] = useState<string | null>(null);
 
   const generateExplanation = useMutation({
     mutationFn: () => getTopicExplanation(topicId),
-
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["topic-study", topicId],
-      });
+      queryClient.invalidateQueries({ queryKey: ["topic-study", topicId] });
     },
-
     onError: () => {
       setError("Failed to generate AI explanation.");
-    }
+    },
   });
 
-  // Explanation exists
-  const hasExplanation =
-  explanation &&
-  explanation.trim() !== "" &&
-  explanation !== "Explanation unavailable.";
+  const hasExplanation = explanation && explanation.trim() !== "" && explanation !== "Explanation unavailable.";
 
-if (hasExplanation){
+  if (hasExplanation) {
     return (
       <div className="border rounded-lg p-4 bg-white space-y-3">
-
-        <h2 className="font-semibold text-lg">
-          AI Explanation
-        </h2>
-
-        <div className="text-base text-gray-700 whitespace-pre-wrap">
-          {explanation}
-        </div>
-
+        <h2 className="font-semibold text-lg">AI Explanation</h2>
+        <div className="text-base text-gray-700 whitespace-pre-wrap">{explanation}</div>
       </div>
     );
   }
 
-  // Explanation missing
   return (
     <div className="border rounded-lg p-4 bg-gray-50 space-y-3">
-
       {error ? (
-        <div className="text-red-600">
-          {error}
-        </div>
+        <div className="text-red-600">{error}</div>
       ) : (
-        <div className="text-gray-600">
-          AI explanation has not been generated yet.
-        </div>
+        <div className="text-gray-600">AI explanation has not been generated yet.</div>
       )}
 
       <button
@@ -74,13 +50,8 @@ if (hasExplanation){
         disabled={generateExplanation.isPending}
         className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded disabled:opacity-50"
       >
-        {generateExplanation.isPending
-          ? "Generating explanation..."
-          : error
-          ? "Retry"
-          : "Generate Explanation"}
+        {generateExplanation.isPending ? "Generating explanation..." : error ? "Retry" : "Generate Explanation"}
       </button>
-
     </div>
   );
 }

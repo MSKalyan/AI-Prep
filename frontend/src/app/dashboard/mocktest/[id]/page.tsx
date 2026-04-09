@@ -1,221 +1,176 @@
 "use client";
 
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useMockTestDetail, useSubmitAnswer } from "@/features/mocktest/hooks/useMockTest";
-import { apiClient } from "@/lib/apiClient";
-import {useRouter} from "next/navigation";
-import { finalizeTest } from "@/features/mocktest/services/mocktest.services";
+import { useParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import {
+  useMockTestDetail,
+  useSubmitAnswer,
+  useMockTestController,
+  useCountdown,
+  useSelectedAnswers,
+  useQuestionIndex,
+} from "@/features/mocktest";
+import { finalizeTest } from "@/features/mocktest/services";
 
 export default function MockTestAttemptPage() {
   const params = useParams();
   const testId = Number(params.id);
   const router = useRouter();
+
   const { data, isLoading } = useMockTestDetail(testId);
   const { mutate } = useSubmitAnswer();
 
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [selected, setSelected] = useState<Record<number, string>>({});
-  const [timeLeft, setTimeLeft] = useState<number | null>(null);
-  const [questionStartTime, setQuestionStartTime] = useState<number>(Date.now());
-  const STORAGE_KEY = `mocktest_index_${testId}`;
+  useMockTestController(testId);
+  const { currentIndex, setCurrentIndex } = useQuestionIndex(testId);
+  const { selected, setSelected } = useSelectedAnswers(data);
 
-  useEffect(() => {
-  const startTest = async () => {
-    try {
-      await apiClient.post(`/mocktest/start/${testId}/`);
-    } catch (err) {
-      console.error("Failed to start test", err);
-    }
+  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+
+  const handleSubmit = async () => {
+    if (!data?.attempt_id) return;
+    await finalizeTest({ attempt_id: data.attempt_id });
+    router.push(`/dashboard/mocktest/results/${data.attempt_id}`);
   };
 
-  if (testId) {
-    startTest();
-  }
-}, [testId]);
-  // ✅ Restore answers
-  useEffect(() => {
-    if (data?.answers) {
-      const restored: Record<number, string> = {};
-      data.answers.forEach((a: any) => {
-        restored[a.question] = a.user_answer;
-      });
-      setSelected(restored);
-    }
-  }, [data]);
+  const timeLeft = useCountdown(data?.remaining_seconds, handleSubmit);
 
-  // ✅ Restore current question index
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      setCurrentIndex(Number(saved));
-    }
-  }, [testId]);
-
-  // ✅ Persist index on change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, String(currentIndex));
-  }, [currentIndex]);
-
-  // ✅ Initialize timer from backend
-  useEffect(() => {
-    if (data?.remaining_seconds !== undefined) {
-      setTimeLeft(data.remaining_seconds);
-    }
-  }, [data]);
-
-  // ✅ Countdown timer (stable)
-  useEffect(() => {
-    if (timeLeft === null) return;
-
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev === null) return prev;
-
-        if (prev <= 1) {
-          clearInterval(interval);
-          handleSubmit();
-          return 0;
-        }
-
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [timeLeft]);
-
-  useEffect(() => {
-  setQuestionStartTime(Date.now());
-}, [currentIndex]);
-  // ✅ Prevent render before state is ready
   if (isLoading || !data || timeLeft === null) {
-    return <div className="p-4 sm:p-6">Loading...</div>;
+    return <div className="p-6">Loading...</div>;
   }
 
   const question = data.questions[currentIndex];
 
-const handleSelect = (value: string) => {
-  const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
+  const handleSelect = (value: string) => {
+    const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
 
-  setSelected((prev) => ({
-    ...prev,
-    [question.id]: value,
-  }));
+    setSelected((prev) => ({
+      ...prev,
+      [question.id]: value,
+    }));
 
-  mutate({
-    attempt_id: data.attempt_id,
-    question_id: question.id,
-    user_answer: value,
-    time_taken_seconds: timeTaken, // ✅ FIX
-  });
+    mutate({
+      attempt_id: data.attempt_id,
+      question_id: question.id,
+      user_answer: value,
+      time_taken_seconds: timeTaken,
+    });
 
-  // reset timer after answering
-  setQuestionStartTime(Date.now());
-};
-
-const handleSubmit = async () => {
-  if (!data?.attempt_id) {
-    alert("Test session expired. Please restart.");
-    return;
-  }
-
-  await finalizeTest({
-    attempt_id: data.attempt_id,
-  });
-  console.log(data.attempt_id)
-  router.push(`/dashboard/mocktest/results/${data.attempt_id}`);
-};
+    setQuestionStartTime(Date.now());
+  };
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
 
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen">
-      {/* Question Panel */}
-      <div className="flex-1 p-4 sm:p-6 space-y-6 overflow-y-auto">
-        {/* Timer */}
-        <div className="text-right font-medium text-sm sm:text-base">
-          Time Left: {minutes}:{seconds.toString().padStart(2, "0")}
+    <div className="flex h-screen bg-gray-100">
+      {/* LEFT: Question Panel */}
+      <div className="flex-1 p-6 flex flex-col">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-xl font-semibold">Mock Test</h1>
+          <div className="bg-black text-white px-4 py-2 rounded-lg font-mono">
+            {minutes}:{seconds.toString().padStart(2, "0")}
+          </div>
         </div>
-{/* Topics */}
-{data.topics && (
-  <div className="mb-4 text-xs sm:text-sm">
-    <span className="font-semibold">Topics: </span>
-    {data.topics.join(", ")}
-  </div>
-)}
-        <h2 className="font-semibold text-lg sm:text-xl">
-          Question {currentIndex + 1}
-        </h2>
 
-        <p className="text-sm sm:text-base leading-relaxed">{question.question_text}</p>
+        {/* Question Card */}
+        <div className="bg-white rounded-2xl shadow p-6 flex-1 flex flex-col">
+          <h2 className="text-lg font-medium mb-4">
+            Question {currentIndex + 1}
+          </h2>
 
-        {/* Options */}
-        <div className="space-y-2">
-          {question.options.map((opt: any) => (
-            <label
-              key={opt.key}
-              className="block border p-2 sm:p-3 rounded cursor-pointer hover:bg-gray-50 transition"
+          <p className="mb-6 text-gray-800 leading-relaxed">
+            {question.question_text}
+          </p>
+
+          <div className="space-y-3">
+            {question.options.map((opt: any) => (
+              <label
+                key={opt.key}
+                className={`border rounded-lg p-3 cursor-pointer flex items-center gap-3 transition ${
+                  selected[question.id] === opt.key
+                    ? "border-black bg-gray-50"
+                    : "hover:border-gray-400"
+                }`}
+              >
+                <input
+                  type="radio"
+                  className="accent-black"
+                  checked={selected[question.id] === opt.key}
+                  onChange={() => handleSelect(opt.key)}
+                />
+                <span>{opt.text}</span>
+              </label>
+            ))}
+          </div>
+
+          {/* Navigation */}
+          <div className="flex justify-between mt-6">
+            <button
+              disabled={currentIndex === 0}
+              onClick={() => setCurrentIndex((prev) => prev - 1)}
+              className="px-4 py-2 border rounded-lg disabled:opacity-40"
             >
-              <input
-                type="radio"
-                name={`q-${question.id}`}
-                checked={selected[question.id] === opt.key}
-                onChange={() => handleSelect(opt.key)}
-                className="mr-2"
-              />
-              <span className="text-sm sm:text-base">{opt.text}</span>
-            </label>
-          ))}
+              Previous
+            </button>
+
+            {currentIndex === data.questions.length - 1 ? (
+              <button
+                onClick={handleSubmit}
+                className="px-6 py-2 bg-black text-white rounded-lg"
+              >
+                Submit Test
+              </button>
+            ) : (
+              <button
+                onClick={() => setCurrentIndex((prev) => prev + 1)}
+                className="px-6 py-2 bg-black text-white rounded-lg"
+              >
+                Next
+              </button>
+            )}
+          </div>
         </div>
-
-        {/* Navigation */}
-        <div className="flex flex-col sm:flex-row gap-3 mt-6">
-          <button
-            disabled={currentIndex === 0}
-            onClick={() => setCurrentIndex((prev) => prev - 1)}
-            className="px-4 py-2 border rounded text-sm sm:text-base disabled:opacity-50 flex-1 sm:flex-none"
-          >
-            Previous
-          </button>
-
-          <button
-            disabled={currentIndex === data.questions.length - 1}
-            onClick={() => setCurrentIndex((prev) => prev + 1)}
-            className="px-4 py-2 border rounded text-sm sm:text-base disabled:opacity-50 flex-1 sm:flex-none"
-          >
-            Next
-          </button>
-        </div>
-
-        <button
-          onClick={handleSubmit}
-          className="mt-4 w-full sm:w-auto bg-red-600 text-white px-4 py-2 rounded text-sm sm:text-base"
-        >
-          Submit Test
-        </button>
       </div>
 
-      {/* Navigation Panel - Hidden on mobile, visible on lg+ */}
-      <div className="hidden lg:flex lg:w-64 border-l border-t lg:border-t-0 p-4 space-y-2 flex-col">
-        <h3 className="font-semibold text-sm">Questions</h3>
+      {/* RIGHT: Question Palette */}
+      <div className="w-80 bg-white border-l p-4 overflow-y-auto">
+        <h3 className="font-semibold mb-4">Questions</h3>
 
-        <div className="grid grid-cols-6 sm:grid-cols-8 lg:grid-cols-5 gap-2 overflow-y-auto">
-          {data.questions.map((q: any, index: number) => (
-            <button
-              key={q.id}
-              onClick={() => setCurrentIndex(index)}
-              className={`p-2 rounded text-xs
-                ${
-                  selected[q.id]
-                    ? "bg-green-500 text-white"
-                    : "bg-gray-200"
+        <div className="grid grid-cols-5 gap-2">
+          {data.questions.map((q: any, index: number) => {
+            const isAnswered = !!selected[q.id];
+            const isActive = index === currentIndex;
+
+            return (
+              <button
+                key={q.id}
+                onClick={() => setCurrentIndex(index)}
+                className={`h-10 rounded-lg text-sm font-medium ${
+                  isActive
+                    ? "bg-black text-white"
+                    : isAnswered
+                    ? "bg-green-100"
+                    : "bg-gray-100"
                 }`}
-            >
-              {index + 1}
-            </button>
-          ))}
+              >
+                {index + 1}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Legend */}
+        <div className="mt-6 space-y-2 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-black"></div> Current
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-200"></div> Answered
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-gray-200"></div> Not Answered
+          </div>
         </div>
       </div>
     </div>

@@ -21,7 +21,6 @@ def embed_document_chunks(document):
 
         new_chunks.append(chunk)
 
-    # ✅ Update FAISS
     if new_chunks:
         store = FAISSVectorStore()
         store.add_embeddings(new_chunks)

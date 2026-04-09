@@ -16,11 +16,12 @@ export interface SidebarTopic {
   week: number;
   completed: boolean;
 }
+
 export type StudyContent = {
   topic_id: number;
   topic_name: string;
   description: string;
-  youtube_links: string[]; 
+  youtube_links: string[];
 };
 
 export interface TopicExplanationResponse {
@@ -28,29 +29,17 @@ export interface TopicExplanationResponse {
 }
 
 export async function getTopicStudy(topicId: number) {
-  const studyRes = await apiClient.get(
-    `/roadmap/topics/${topicId}/study/`
-  );
+  const studyRes = await apiClient.get(`/roadmap/topics/${topicId}/study/`);
 
   const studyData = studyRes.data;
 
-  console.log("Study data:", studyData);
-
   const realTopicId = studyData.topic_id;
-console.log("REAL TOPIC ID:", realTopicId);
   try {
     const topicName = studyData.topic;
 
-   const contentRes = await apiClient.get(
-  `/analytics/study-content/`,
-  {
-    params: {
-      topic_name: topicName,
-    },
-  }
-);
-
-    console.log("YT RESPONSE:", contentRes.data);
+    const contentRes = await apiClient.get(`/analytics/study-content/`, {
+      params: { topic_name: topicName },
+    });
 
     const contentData = contentRes.data.data;
 
@@ -60,10 +49,7 @@ console.log("REAL TOPIC ID:", realTopicId);
       youtube_links: contentData.youtube_links,
       topic_name: contentData.topic_name,
     };
-
   } catch (err) {
-    console.error("YT API FAILED:", err);
-
     return {
       ...studyData,
       description: "",
@@ -73,20 +59,12 @@ console.log("REAL TOPIC ID:", realTopicId);
   }
 }
 
-export async function getTopicExplanation(
-  topicId: number
-): Promise<TopicExplanationResponse> {
-
-  const res = await apiClient.get(`/roadmap/topics/${topicId}/explanation/`, {
-  });
-
+export async function getTopicExplanation(topicId: number): Promise<TopicExplanationResponse> {
+  const res = await apiClient.get(`/roadmap/topics/${topicId}/explanation/`);
   return res.data;
 }
 
-export async function getRoadmapTopics(
-  roadmapId: number
-): Promise<SidebarTopic[]> {
-
+export async function getRoadmapTopics(roadmapId: number): Promise<SidebarTopic[]> {
   const res = await apiClient.get(`/roadmap/${roadmapId}/topics/`);
   return res.data;
 }

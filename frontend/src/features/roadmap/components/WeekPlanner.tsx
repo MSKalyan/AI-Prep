@@ -3,15 +3,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-
-import {
-  getWeekTopics,
-  toggleTopic,
-  getWeekProgress,
-  WeekTopic,
-  WeekPlanResponse
-} from "@/features/roadmap/services/roadmap.service";
-
+import { getWeekTopics, toggleTopic, getWeekProgress, WeekTopic, WeekPlanResponse } from "../services/roadmap.service";
 import { getTopicStudy } from "@/features/study/services/study.service";
 
 interface RevisionItem {
@@ -35,17 +27,16 @@ export default function WeekPlanner({
   week,
   studyMode = false,
   selectedTopic,
-  onSelectTopic
+  onSelectTopic,
 }: Props) {
   const queryClient = useQueryClient();
   const router = useRouter();
-
   const [open, setOpen] = useState(studyMode);
 
   const { data: response } = useQuery<WeekPlanResponse>({
     queryKey: ["week-topics", roadmapId, week],
     queryFn: () => getWeekTopics(roadmapId, week),
-    enabled: open
+    enabled: open,
   });
 
   const topics = response?.data || [];
@@ -68,21 +59,14 @@ export default function WeekPlanner({
   const currentDay = (() => {
     for (const day of days) {
       const dayItems = grouped[day];
-      const allCompleted = dayItems.every(
-        (t: any) => t.completed || t.is_completed
-      );
+      const allCompleted = dayItems.every((t: any) => t.completed || t.is_completed);
       if (!allCompleted) return day;
     }
     return days[days.length - 1];
   })();
 
   async function handleToggle(id: number) {
-    const response: any = queryClient.getQueryData([
-      "week-topics",
-      roadmapId,
-      week
-    ]);
-
+    const response: any = queryClient.getQueryData(["week-topics", roadmapId, week]);
     const topicsList = response?.data || [];
     const topic = topicsList.find((t: any) => t.id === id);
     const wasCompleted = topic?.completed ?? topic?.is_completed;
@@ -93,14 +77,11 @@ export default function WeekPlanner({
       ["week-topics", roadmapId, week],
       (old: any) => {
         if (!old) return old;
-
         return {
           ...old,
           data: old.data.map((t: any) =>
-            t.id === id
-              ? { ...t, completed: !wasCompleted, is_completed: !wasCompleted }
-              : t
-          )
+            t.id === id ? { ...t, completed: !wasCompleted, is_completed: !wasCompleted } : t
+          ),
         };
       }
     );
@@ -108,10 +89,8 @@ export default function WeekPlanner({
 
   return (
     <div className="border rounded-xl bg-white shadow-sm overflow-hidden mb-4">
-
-      {/* HEADER */}
       <div
-        className={`flex justify-between items-center p-5 cursor-pointer ${open ? 'bg-gray-50' : 'hover:bg-gray-50'}`}
+        className={`flex justify-between items-center p-5 cursor-pointer ${open ? "bg-gray-50" : "hover:bg-gray-50"}`}
         onClick={() => { if (!studyMode) setOpen(!open); }}
       >
         <div>
@@ -132,10 +111,8 @@ export default function WeekPlanner({
         </div>
       </div>
 
-      {/* BODY */}
       {open && (
         <div className="p-4 space-y-6 border-t bg-gray-50/30">
-
           {days.map((day) => {
             const dayTopics = grouped[day];
             const completedCount = dayTopics.filter((t: any) => t.completed || t.is_completed).length;
@@ -143,49 +120,25 @@ export default function WeekPlanner({
 
             return (
               <div key={day} className="space-y-3">
-
-                {/* DAY HEADER */}
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-gray-100 text-gray-600">
-                    Day {day}
-                  </span>
-
+                  <span className="text-xs font-bold px-2 py-0.5 rounded bg-gray-100 text-gray-600">Day {day}</span>
                   {day === currentDay && (
-                    <span className="text-[10px] text-blue-600 font-medium">
-                      Today
-                    </span>
+                    <span className="text-[10px] text-blue-600 font-medium">Today</span>
                   )}
-
                   <div className="flex-1 h-px bg-gray-200"></div>
-
-                  <span className="text-[10px] text-gray-400">
-                    {dayProgress}% Done
-                  </span>
+                  <span className="text-[10px] text-gray-400">{dayProgress}% Done</span>
                 </div>
 
-                {/* REVISION BLOCK */}
                 {day === currentDay && revision.length > 0 && (
                   <div
                     className="p-3 bg-red-50 border border-red-200 rounded-lg cursor-pointer hover:bg-red-100 transition"
                     onClick={() => {
-                      const selected = [...revision].sort(
-                        (a, b) => (b.priority ?? 0) - (a.priority ?? 0)
-                      )[0];
-
-                      if (!selected?.roadmap_topic_id) {
-                        console.error("Invalid revision item:", selected);
-                        return;
-                      }
-
-                      router.push(
-                        `/dashboard/revision/${selected.roadmap_topic_id}?day=${day}&roadmapId=${roadmapId}`
-                      );
+                      const selected = [...revision].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))[0];
+                      if (!selected?.roadmap_topic_id) return;
+                      router.push(`/dashboard/revision/${selected.roadmap_topic_id}?day=${day}&roadmapId=${roadmapId}`);
                     }}
                   >
-                    <p className="text-xs font-semibold text-red-600 mb-1">
-                      🔁 Revise (based on previous performance)
-                    </p>
-
+                    <p className="text-xs font-semibold text-red-600 mb-1">Revise (based on previous performance)</p>
                     <ul className="list-disc ml-4 text-xs text-gray-700">
                       {revision.map((r) => (
                         <li key={r.topic_id}>{r.topic_name}</li>
@@ -194,80 +147,64 @@ export default function WeekPlanner({
                   </div>
                 )}
 
-                {/* TOPICS */}
                 <div className="grid gap-2">
                   {dayTopics.map((t: any) => {
-const phase = t.phase?.toLowerCase();
-const isMock = phase === "practice" || day === 7;
-const buttonLabel = isMock ? "Take Test" : "Study";
+                    const phase = t.phase?.toLowerCase();
+                    const isMock = phase === "practice" || day === 7;
+                    const buttonLabel = isMock ? "Take Test" : "Study";
 
-return (
-  <div
-    key={t.id}
-    onClick={() => {
-      if (studyMode) {
-        queryClient.prefetchQuery({
-          queryKey: ["topic-study", t.id],
-          queryFn: () => getTopicStudy(t.id)
-        });
-
-        onSelectTopic?.(t.id, day);
-        router.push(`/dashboard/study/${t.id}?day=${day}`);
-      }
-    }}
-    className={`flex items-center gap-4 border rounded-lg p-3 cursor-pointer transition
-      ${t.completed || t.is_completed
-        ? "bg-green-50 border-green-300"
-        : "bg-white hover:border-gray-300 hover:bg-gray-50"}
-    `}
-  >
-    {/* Checkbox */}
-    <input
-      className="w-4 h-4 accent-green-600"
-      type="checkbox"
-      checked={!!(t.completed || t.is_completed)}
-      onChange={(e) => {
-        e.stopPropagation();
-        handleToggle(t.id);
-      }}
-    />
-
-    {/* Topic Info */}
-    <div className="flex-1">
-      <div className="font-semibold text-sm">{t.topic}</div>
-
-      <div className="flex gap-2 mt-1">
-        <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">
-          {t.subject}
-        </span>
-
-        <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
-          {t.hours} hrs
-        </span>
-      </div>
-    </div>
-
-    {/* Study / Test Button */}
-    {!studyMode && (
-      <button
-        className={`px-3 py-1 text-xs font-bold rounded ${
-          isMock
-            ? "bg-purple-50 text-purple-600"
-            : "bg-blue-50 text-blue-600"
-        }`}
-        onClick={(e) => {
-          e.stopPropagation();
-          router.push(`/dashboard/study/${t.id}`);
-        }}
-      >
-        {buttonLabel}
-      </button>
-    )}
-  </div>
-);
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => {
+                          if (studyMode) {
+                            queryClient.prefetchQuery({
+                              queryKey: ["topic-study", t.id],
+                              queryFn: () => getTopicStudy(t.id),
+                            });
+                            onSelectTopic?.(t.id, day);
+                            router.push(`/dashboard/study/${t.id}?day=${day}`);
+                          }
+                        }}
+                        className={`flex items-center gap-4 border rounded-lg p-3 cursor-pointer transition ${
+                          t.completed || t.is_completed
+                            ? "bg-green-50 border-green-300"
+                            : "bg-white hover:border-gray-300 hover:bg-gray-50"
+                        }`}
+                      >
+                        <input
+                          className="w-4 h-4 accent-green-600"
+                          type="checkbox"
+                          checked={!!(t.completed || t.is_completed)}
+                          onChange={(e) => {
+                            e.stopPropagation();
+                            handleToggle(t.id);
+                          }}
+                        />
+                        <div className="flex-1">
+                          <div className="font-semibold text-sm">{t.topic}</div>
+                          <div className="flex gap-2 mt-1">
+                            <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">{t.subject}</span>
+                            <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">{t.hours} hrs</span>
+                          </div>
+                        </div>
+                        {!studyMode && (
+                          <button
+                            className={`px-3 py-1 text-xs font-bold rounded ${
+                              isMock ? "bg-purple-50 text-purple-600" : "bg-blue-50 text-blue-600"
+                            }`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/dashboard/study/${t.id}`);
+                            }}
+                          >
+                            {buttonLabel}
+                          </button>
+                        )}
+                      </div>
+                    );
                   })}
                 </div>
-
               </div>
             );
           })}

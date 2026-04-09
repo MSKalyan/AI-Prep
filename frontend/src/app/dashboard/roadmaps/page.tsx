@@ -1,15 +1,19 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRoadmaps } from "@/features/roadmap/hooks/useRoadmapJob";
-import { useDeleteRoadmap } from "@/features/roadmap/hooks/useGenerateRoadmap";
+import { useQuery } from "@tanstack/react-query";
+import { getRoadmaps } from "@/features/roadmap/services";
+import { useDeleteRoadmap } from "@/features/roadmap";
 
 export default function RoadmapsPage() {
 
   const router = useRouter();
 const { mutate } = useDeleteRoadmap();
 
-  const { data, isLoading, error } = useRoadmaps();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["roadmaps"],
+    queryFn: getRoadmaps,
+  });
 
   if (isLoading) {
     return <div className="p-6">Loading roadmaps...</div>;

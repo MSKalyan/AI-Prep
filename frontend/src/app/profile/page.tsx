@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useAuth } from "@/features/auth/hooks/useAuth";
+import { useAuth } from "@/features/auth";
 
 export default function ProfilePage() {
   const { user, isLoading, updateProfile } = useAuth();
@@ -11,6 +11,9 @@ export default function ProfilePage() {
     username: "",
     password: "",
   });
+  const submit = async () => {
+    await updateProfile(form);
+  };
 
   useEffect(() => {
     if (user) {
@@ -25,9 +28,6 @@ export default function ProfilePage() {
   if (isLoading)
     return <p className="p-10 text-center text-gray-500">Loading...</p>;
 
-  const submit = async () => {
-    await updateProfile(form);
-  };
 
   return (
     <div className="min-h-screen bg-white text-black">

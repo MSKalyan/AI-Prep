@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/features/auth/hooks/useAuth";
-import { ApiError } from "@/features/auth/types/apiError";
+import { useAuth } from "@/features/auth";
+import { ApiError } from "../services/auth.service";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
+
+type FieldErrors = Record<string, string[]>;
 
 export default function RegisterForm() {
   const { register, registerLoading } = useAuth();
@@ -20,7 +22,8 @@ export default function RegisterForm() {
     full_name: "",
   });
 
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<FieldErrors>({});
+  const [generalError, setGeneralError] = useState<string | null>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm(prev => ({
@@ -29,38 +32,42 @@ export default function RegisterForm() {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError(null);
 
+    // reset errors
+    setErrors({});
+    setGeneralError(null);
+
+    // frontend validation
     if (form.password !== form.password_confirm) {
-      setError("Passwords do not match");
+      setErrors({
+        password_confirm: ["Passwords do not match"],
+      });
       return;
     }
 
     try {
       await register(form);
-
-      await queryClient.refetchQueries({
-        queryKey: ["profile"],
-      });
-
+      await queryClient.refetchQueries({ queryKey: ["profile"] });
       router.replace("/dashboard");
     } catch (err) {
       const apiError = err as ApiError;
-      setError(apiError.message);
+
+      if (apiError.errors && typeof apiError.errors === "object") {
+        setErrors(apiError.errors as FieldErrors);
+      } else {
+        setGeneralError(apiError.message);
+      }
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white text-black px-4 sm:px-6 py-8 sm:py-12">
-
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-md border border-gray-200 rounded-2xl p-4 sm:p-6 space-y-4 sm:space-y-5"
       >
-
-        {/* HEADER */}
         <div className="text-center mb-3 sm:mb-4">
           <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
             Create Account
@@ -70,20 +77,24 @@ export default function RegisterForm() {
           </p>
         </div>
 
-        {/* ERROR */}
-        {error && (
-          <div className="text-xs sm:text-sm border border-gray-300 bg-gray-50 rounded-lg p-3">
-            {error}
-          </div>
+        {/* General Error */}
+        {generalError && (
+          <div className="text-sm text-red-500">{generalError}</div>
         )}
 
-        {/* INPUTS */}
         <div className="space-y-3 sm:space-y-4">
 
+          {/* Full Name */}
           <div className="space-y-1">
-            <label htmlFor="full_name" className="text-xs sm:text-sm text-gray-600">Full Name</label>
+            <label className="text-xs sm:text-sm text-gray-600">
+              Full Name
+            </label>
+            {errors.full_name && (
+              <p className="text-red-500 text-xs">
+                {errors.full_name[0]}
+              </p>
+            )}
             <input
-              id="full_name"
               name="full_name"
               value={form.full_name}
               onChange={handleChange}
@@ -91,10 +102,17 @@ export default function RegisterForm() {
             />
           </div>
 
+          {/* Username */}
           <div className="space-y-1">
-            <label htmlFor="username" className="text-xs sm:text-sm text-gray-600">Username</label>
+            <label className="text-xs sm:text-sm text-gray-600">
+              Username
+            </label>
+            {errors.username && (
+              <p className="text-red-500 text-xs">
+                {errors.username[0]}
+              </p>
+            )}
             <input
-              id="username"
               name="username"
               value={form.username}
               onChange={handleChange}
@@ -103,10 +121,17 @@ export default function RegisterForm() {
             />
           </div>
 
+          {/* Email */}
           <div className="space-y-1">
-            <label htmlFor="email" className="text-xs sm:text-sm text-gray-600">Email</label>
+            <label className="text-xs sm:text-sm text-gray-600">
+              Email
+            </label>
+            {errors.email && (
+              <p className="text-red-500 text-xs">
+                {errors.email[0]}
+              </p>
+            )}
             <input
-              id="email"
               name="email"
               type="email"
               value={form.email}
@@ -116,10 +141,17 @@ export default function RegisterForm() {
             />
           </div>
 
+          {/* Password */}
           <div className="space-y-1">
-            <label htmlFor="password" className="text-xs sm:text-sm text-gray-600">Password</label>
+            <label className="text-xs sm:text-sm text-gray-600">
+              Password
+            </label>
+            {errors.password && (
+              <p className="text-red-500 text-xs">
+                {errors.password[0]}
+              </p>
+            )}
             <input
-              id="password"
               name="password"
               type="password"
               value={form.password}
@@ -129,10 +161,17 @@ export default function RegisterForm() {
             />
           </div>
 
+          {/* Confirm Password */}
           <div className="space-y-1">
-            <label htmlFor="password_confirm" className="text-xs sm:text-sm text-gray-600">Confirm Password</label>
+            <label className="text-xs sm:text-sm text-gray-600">
+              Confirm Password
+            </label>
+            {errors.password_confirm && (
+              <p className="text-red-500 text-xs">
+                {errors.password_confirm[0]}
+              </p>
+            )}
             <input
-              id="password_confirm"
               name="password_confirm"
               type="password"
               value={form.password_confirm}
@@ -144,7 +183,6 @@ export default function RegisterForm() {
 
         </div>
 
-        {/* BUTTON */}
         <button
           type="submit"
           disabled={registerLoading}
@@ -153,19 +191,13 @@ export default function RegisterForm() {
           {registerLoading ? "Registering..." : "Register"}
         </button>
 
-        {/* LOGIN LINK */}
         <p className="text-xs sm:text-sm text-center text-gray-600">
           Already have an account?{" "}
-          <Link
-            href="/login"
-            className="text-black font-medium hover:underline"
-          >
+          <Link href="/login" className="text-black font-medium hover:underline">
             Login
           </Link>
         </p>
-
       </form>
-
     </div>
   );
 }

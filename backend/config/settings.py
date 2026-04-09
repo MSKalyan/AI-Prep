@@ -15,7 +15,7 @@ from pathlib import Path
 from datetime import timedelta
 import dj_database_url
 from dotenv import load_dotenv
-load_dotenv()  # Load environment variables from .env file  
+load_dotenv(".env.local")  # Load environment variables from .env file  
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -91,36 +91,30 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": os.getenv("DB_NAME"),
-#         "USER": os.getenv("DB_USER"),
-#         "PASSWORD": os.getenv("DB_PASSWORD"),
-#         "HOST": os.getenv("DB_HOST"),
-#         "PORT": os.getenv("DB_PORT"),
-#     }
-# }
+USE_LOCAL_DB = os.getenv("USE_LOCAL_DB", "False") == "True"
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-
-import sys
-
-if 'test' in sys.argv or 'pytest' in sys.modules:
+if USE_LOCAL_DB:
     DATABASES = {
         "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": ":memory:",
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": os.getenv("DB_NAME"),
+            "USER": os.getenv("DB_USER"),
+            "PASSWORD": os.getenv("DB_PASSWORD"),
+            "HOST": os.getenv("DB_HOST"),
+            "PORT": os.getenv("DB_PORT"),
         }
     }
-else:
+elif DATABASE_URL:
     DATABASES = {
         "default": dj_database_url.parse(
-            os.environ.get("DATABASE_URL"),
+            DATABASE_URL,
             conn_max_age=600,
             ssl_require=True
         )
     }
-
+else:
+    raise Exception("DATABASE_URL is not set and USE_LOCAL_DB is False")
 # Password validation
 # https://docs.djangoproject.com/en/6.0/ref/settings/#auth-password-validators
 

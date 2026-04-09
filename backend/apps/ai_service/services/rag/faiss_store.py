@@ -22,9 +22,6 @@ class FAISSVectorStore:
             self.index = None  # ✅ delay creation
             self.id_map = []
 
-    # =====================================================
-    # ADD EMBEDDINGS (FIXED)
-    # =====================================================
     def add_embeddings(self, chunks):
 
         existing_ids = set(self.id_map)  # ✅ prevent duplicates
@@ -38,7 +35,7 @@ class FAISSVectorStore:
                 continue
 
             if chunk.id in existing_ids:
-                continue  # ❌ skip already indexed
+                continue 
 
             new_vectors.append(chunk.embedding)
             new_ids.append(chunk.id)
@@ -48,11 +45,9 @@ class FAISSVectorStore:
 
         vectors = np.array(new_vectors).astype("float32")
 
-        # 🔥 Initialize index dynamically
         if self.index is None:
             self.dim = vectors.shape[1]
             self.index = faiss.IndexFlatIP(self.dim)
-        # normalize for cosine similarity
         faiss.normalize_L2(vectors)
 
         self.index.add(vectors)
@@ -60,9 +55,7 @@ class FAISSVectorStore:
 
         self._save()
 
-    # =====================================================
-    # SEARCH (OPTIMIZED)
-    # =====================================================
+
     def search(self, query_embedding, top_k=5):
 
         if self.index is None or self.index.ntotal == 0:
@@ -75,7 +68,6 @@ class FAISSVectorStore:
 
         results = []
 
-        # ✅ batch fetch (avoid N queries)
         valid_ids = [
             self.id_map[idx]
             for idx in indices[0]
@@ -103,17 +95,11 @@ class FAISSVectorStore:
 
         return results
 
-    # =====================================================
-    # SAVE
-    # =====================================================
     def _save(self):
         faiss.write_index(self.index, INDEX_PATH)
         with open(MAPPING_PATH, "wb") as f:
             pickle.dump(self.id_map, f)
 
-    # =====================================================
-    # RESET INDEX (VERY IMPORTANT)
-    # =====================================================
     def reset(self):
         """Completely reset FAISS index"""
         self.index = None

@@ -4,13 +4,12 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
-import StudyHeader from "@/features/study/components/StudyHeader";
-import AIExplanationPanel from "@/features/study/components/AIExplanationPanel";
-import AskAIChat from "@/features/ai/components/AskAIChat";
-import WeekPlanner from "@/features/roadmap/components/WeekPlanner";
-import { getTopicStudy } from "@/features/study/services/study.service";
-import { createMockTest } from "@/features/mocktest/services/mocktest.services";
-import YouTubeResources from "@/features/study/components/YoutubeResources";
+import { StudyHeader, AIExplanationPanel } from "@/features/study/components";
+import { AskAIChat } from "@/features/ai/components";
+import { WeekPlanner } from "@/features/roadmap/components";
+import { YouTubeResources } from "@/features/study/components";
+import { getTopicStudy } from "@/features/study/services";
+import { createMockTest } from "@/features/mocktest/services";
 
 export default function StudyPage() {
   const params = useParams();
@@ -182,11 +181,4 @@ if (data?.error) {
       </div>
     </div>
   );
-}
-
-/* ================= HELPER ================= */
-
-function extractYouTubeId(url: string) {
-  const match = url.match(/v=([^&]+)/);
-  return match ? match[1] : "";
 }

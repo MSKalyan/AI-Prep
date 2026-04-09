@@ -1,110 +1,112 @@
+
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { getResults } from "@/features/mocktest/services/mocktest.services";
+import { useResults } from "@/features/mocktest";
 
-export default function ResultsPage() {
-
+export default function ResultsPageImproved() {
   const router = useRouter();
+  const { data, isLoading } = useResults();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["results"],
-    queryFn: getResults,
-  });
-
-  if (isLoading) return <div className="px-4 sm:px-6 py-6">Loading...</div>;
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="px-4 sm:px-6 py-6 space-y-4">
-
-        {/* ✅ Navigation */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={() => router.push("/dashboard/")}
-            className="px-3 py-1.5 border rounded text-sm sm:text-base"
-          >
-            ← Back
-          </button>
-
-          <button
-            onClick={() => router.push("/dashboard")}
-            className="px-3 py-1.5 bg-gray-200 rounded text-sm sm:text-base"
-          >
-            Dashboard
-          </button>
-
-          <button
-            onClick={() => router.push("/dashboard/roadmap")}
-            className="px-3 py-1.5 bg-blue-600 text-white rounded text-sm sm:text-base"
-          >
-            Back to Study
-          </button>
-        </div>
-
-        <div className="text-sm text-gray-600">No results found</div>
-      </div>
-    );
+  if (isLoading) {
+    return <div className="p-6">Loading...</div>;
   }
 
   return (
-    <div className="px-4 sm:px-6 py-6 space-y-4">
+    <div className="min-h-screen bg-gray-100 p-6">
+      {/* HEADER */}
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-semibold">Your Mock Tests</h1>
 
-      {/* ✅ Navigation */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <button
-          onClick={() => router.back()}
-          className="px-3 py-1.5 border rounded text-sm sm:text-base"
-        >
-          ← Back
-        </button>
-
-        <button
-          onClick={() => router.push("/dashboard")}
-          className="px-3 py-1.5 bg-gray-200 rounded text-sm sm:text-base"
-        >
-          Dashboard
-        </button>
-
-        
+        <div className="flex gap-3">
+          <button
+            onClick={() => router.back()}
+            className="px-4 py-2 border rounded-lg"
+          >
+            Back
+          </button>
+          <button
+            onClick={() => router.push("/dashboard")}
+            className="px-4 py-2 bg-black text-white rounded-lg"
+          >
+            Dashboard
+          </button>
+        </div>
       </div>
 
-      <h2 className="text-xl font-semibold">Your Mock Tests</h2>
+      {/* EMPTY STATE */}
+      {!data || data.length === 0 ? (
+        <div className="bg-white rounded-2xl shadow p-8 text-center">
+          <p className="text-gray-600 mb-4">No mock tests attempted yet</p>
+          <button
+            onClick={() => router.push("/dashboard/roadmap")}
+            className="px-6 py-2 bg-black text-white rounded-lg"
+          >
+            Start Practicing
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-4">
+          {data.map((result: any) => {
+            const isGood = result.percentage >= 60;
 
-      {data.map((result: any) => (
-        <div
-  key={result.attempt_id}
-  onClick={() =>
-    router.push(`/dashboard/mocktest/results/${result.attempt_id}`)
-  }
-  className="border p-4 rounded cursor-pointer hover:bg-gray-100"
->
-  {/* SUBJECT */}
-  {result.subject && (
-    <div className="text-xs text-gray-500">
-      {result.subject}
-    </div>
-  )}
+            return (
+              <div
+                key={result.attempt_id}
+                onClick={() =>
+                  router.push(`/dashboard/mocktest/results/${result.attempt_id}`)
+                }
+                className="bg-white rounded-2xl shadow p-5 cursor-pointer hover:shadow-md transition"
+              >
+                {/* TOP */}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-xs text-gray-500">
+                      {result.subject || "General"}
+                    </p>
+                    <h2 className="font-semibold text-gray-800">
+                      {result.topic || result.title || "Mock Test"}
+                    </h2>
+                  </div>
 
-  {/* TOPIC / TITLE */}
-  <div className="font-semibold text-gray-800">
-    {result.topic || result.title || "Mock Test"}
-  </div>
+                  <span
+                    className={`text-sm px-3 py-1 rounded ${
+                      isGood
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-700"
+                    }`}
+                  >
+                    {result.percentage}%
+                  </span>
+                </div>
 
-  {/* DATE */}
-  <div className="text-xs text-gray-400 mb-2">
-    {new Date(result.date).toLocaleDateString()}
-  </div>
+                {/* DATE */}
+                <p className="text-xs text-gray-400 mt-1">
+                  {new Date(result.date).toLocaleDateString()}
+                </p>
 
-  {/* STATS */}
-  <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs sm:text-sm">
-    <span className="flex-1"><b>Score:</b> {result.score}</span>
-    <span className="text-right"><b>{result.percentage}%</b></span>
-  </div>
-</div>
-      ))}
+                {/* PROGRESS BAR */}
+                <div className="mt-3">
+                  <div className="w-full bg-gray-200 h-2 rounded">
+                    <div
+                      className={`h-2 rounded ${
+                        isGood ? "bg-green-500" : "bg-red-500"
+                      }`}
+                      style={{ width: `${result.percentage}%` }}
+                    />
+                  </div>
+                </div>
 
+                {/* FOOTER STATS */}
+                <div className="flex justify-between mt-3 text-sm text-gray-600">
+                  <span>Score: {result.score}</span>
+                  <span>View Details →</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

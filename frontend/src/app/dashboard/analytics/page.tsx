@@ -1,136 +1,127 @@
+
 "use client";
 
-import { usePerformance, useAnalyticsSummary } from "@/features/analytics/hooks/hooks";
-import { TopicPerformance } from "@/features/analytics/services/analytics.services";
+import { useRequireAuth } from "@/features/auth";
+import { usePerformance, useAnalyticsSummary, useAnalyticsComputed } from "@/features/analytics";
+import { Section, StatCard } from "@/features/analytics/components";
 
-/* ================= PAGE ================= */
+export default function AnalyticsPageImproved() {
+  const { user, isLoading: authLoading } = useRequireAuth();
 
-export default function AnalyticsPage() {
   const { data, isLoading } = usePerformance();
-  const topics = data?.topics || [];
-
   const { data: summary } = useAnalyticsSummary();
 
-  if (isLoading) {
-    return <div className="p-10 text-center text-gray-500">Loading analytics...</div>;
+  const topics = data?.topics || [];
+  const { weak, moderate, strong, avgAccuracy, avgTime } =
+    useAnalyticsComputed(topics);
+
+  if (authLoading || isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-gray-500">
+        Loading analytics...
+      </div>
+    );
   }
 
-  // ---------------- SUMMARY DATA ----------------
+  if (!user) return null;
+
   const totalMocktests = summary?.total_mocktests || 0;
   const totalQuestions = summary?.total_questions_attempted || 0;
 
-  // ---------------- CLASSIFICATION ----------------
-  const weak = topics.filter((t) => t.strength === "weak");
-  const moderate = topics.filter((t) => t.strength === "moderate");
-  const strong = topics.filter((t) => t.strength === "strong");
-
-  // ---------------- BASIC METRICS ----------------
-  const totalTopics = topics.length;
-
-  const avgAccuracy =
-    totalTopics > 0
-      ? topics.reduce((s, t) => s + t.accuracy, 0) / totalTopics
-      : 0;
-
-  const avgTime =
-    totalTopics > 0
-      ? topics.reduce((s, t) => s + t.avg_time, 0) / totalTopics
-      : 0;
-
   return (
-    <div className="min-h-screen bg-white text-black">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8 sm:space-y-12">
+    <div className="min-h-screen bg-gray-100 text-black">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
 
         {/* HEADER */}
-        <div>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight">Analytics</h1>
-          <p className="text-xs sm:text-sm text-gray-500 mt-1">
-            Track your performance, accuracy, and weak areas
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-semibold tracking-tight">Analytics Dashboard</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              Performance insights, accuracy trends, and weak areas
+            </p>
+          </div>
         </div>
 
-        {/* ================= SUMMARY ================= */}
-        <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard title="Mock Tests Attempted" value={totalMocktests} />
-          <StatCard title="Questions Attempted" value={totalQuestions} />
-          <StatCard
-            title="Avg Accuracy"
-            value={`${(avgAccuracy * 100).toFixed(1)}%`}
-          />
-          <StatCard
-            title="Avg Time / Question"
-            value={`${avgTime.toFixed(1)} sec`}
+        {/* KPI CARDS */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="bg-white rounded-2xl shadow p-5">
+            <p className="text-sm text-gray-500">Mock Tests</p>
+            <p className="text-2xl font-semibold">{totalMocktests}</p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow p-5">
+            <p className="text-sm text-gray-500">Questions Attempted</p>
+            <p className="text-2xl font-semibold">{totalQuestions}</p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow p-5">
+            <p className="text-sm text-gray-500">Avg Accuracy</p>
+            <p className="text-2xl font-semibold text-green-600">
+              {(avgAccuracy * 100).toFixed(1)}%
+            </p>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow p-5">
+            <p className="text-sm text-gray-500">Avg Time / Question</p>
+            <p className="text-2xl font-semibold">{avgTime.toFixed(1)} sec</p>
+          </div>
+        </div>
+
+        {/* PERFORMANCE DISTRIBUTION */}
+        <div className="bg-white rounded-2xl shadow p-6">
+          <h2 className="text-lg font-semibold mb-4">Performance Distribution</h2>
+
+          <div className="flex h-4 rounded overflow-hidden">
+            <div
+              className="bg-red-500"
+              style={{ width: `${weak.length * 10}%` }}
+            />
+            <div
+              className="bg-yellow-400"
+              style={{ width: `${moderate.length * 10}%` }}
+            />
+            <div
+              className="bg-green-500"
+              style={{ width: `${strong.length * 10}%` }}
+            />
+          </div>
+
+          <div className="flex justify-between text-xs mt-2 text-gray-600">
+            <span>Weak ({weak.length})</span>
+            <span>Moderate ({moderate.length})</span>
+            <span>Strong ({strong.length})</span>
+          </div>
+        </div>
+
+        {/* WEAK TOPICS */}
+        <div className="bg-white rounded-2xl shadow p-6">
+          <Section
+            title="Weak Topics"
+            data={weak}
+            emptyText="No weak topics — good progress"
           />
         </div>
 
-        {/* ================= SECTIONS ================= */}
-        <Section
-          title="Weak Topics"
-          data={weak}
-          emptyText="No weak topics — good progress"
-        />
+        {/* MODERATE + STRONG (OPTIONAL BUT IMPORTANT) */}
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="bg-white rounded-2xl shadow p-6">
+            <Section
+              title="Moderate Topics"
+              data={moderate}
+              emptyText="No moderate topics"
+            />
+          </div>
 
-  
-
+          <div className="bg-white rounded-2xl shadow p-6">
+            <Section
+              title="Strong Topics"
+              data={strong}
+              emptyText="No strong topics yet"
+            />
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-/* ================= SECTION ================= */
-
-function Section({
-  title,
-  data,
-  emptyText,
-}: {
-  title: string;
-  data: TopicPerformance[];
-  emptyText: string;
-}) {
-  return (
-    <div>
-      <h2 className="text-base sm:text-lg md:text-xl font-semibold mb-4">{title}</h2>
-
-      {data.length === 0 ? (
-        <p className="text-xs sm:text-sm text-gray-500">{emptyText}</p>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {data.map((t) => (
-            <div
-              key={t.topic_id}
-              className="border border-gray-200 rounded-2xl p-4 sm:p-5 hover:shadow-md transition"
-            >
-              <p className="font-medium text-sm sm:text-base mb-2">
-                {t.topic_name || `Topic ${t.topic_id}`}
-              </p>
-
-              <div className="space-y-1 text-xs sm:text-sm text-gray-600">
-                <p>Accuracy: {(t.accuracy * 100).toFixed(1)}%</p>
-                <p>Avg Time: {t.avg_time}s</p>
-                <p>Attempts: {t.total_attempts}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ================= SUMMARY CARD ================= */
-
-function StatCard({
-  title,
-  value,
-}: {
-  title: string;
-  value: string | number;
-}) {
-  return (
-    <div className="border border-gray-200 rounded-2xl p-4 sm:p-5 hover:shadow-md transition">
-      <p className="text-xs text-gray-500 uppercase tracking-wide">{title}</p>
-      <h2 className="text-lg sm:text-2xl font-semibold mt-1">{value}</h2>
-    </div>
-  );
-}

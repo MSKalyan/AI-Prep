@@ -1,10 +1,8 @@
 import { apiClient } from "@/lib/apiClient";
 
-/* ================= TYPES ================= */
-
 export type TopicPerformance = {
   topic_id: number;
-  topic_name:string;
+  topic_name: string;
   accuracy: number;
   avg_time: number;
   total_attempts: number;
@@ -16,9 +14,10 @@ export type PerformanceResponse = {
   total_mocktests: number;
   total_questions_attempted: number;
 };
+
 export type StudyPlanItem = {
   topic_id: number;
-  topic_name:string;
+  topic_name: string;
   priority: number;
   suggested_time_minutes: number;
   strength: "weak" | "moderate" | "strong" | "insufficient";
@@ -39,8 +38,6 @@ export type DashboardStats = {
     is_active: boolean;
   }>;
 };
-
-/* ================= API CALLS ================= */
 
 export const fetchPerformance = async (): Promise<TopicPerformance[]> => {
   const res = await apiClient.get("/analytics/performance/");

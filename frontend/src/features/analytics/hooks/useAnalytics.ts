@@ -1,20 +1,21 @@
+"use client";
+
 import { useQuery } from "@tanstack/react-query";
 import {
   fetchPerformance,
   fetchStudyPlan,
   fetchDashboardStats,
-  PerformanceResponse
-} from "../services/analytics.services";
-
-import {apiClient }from "@/lib/apiClient";
-/* ================= HOOKS ================= */
+  PerformanceResponse,
+  TopicPerformance,
+} from "../services/analytics.service";
+import { apiClient } from "@/lib/apiClient";
 
 export const usePerformance = () => {
   return useQuery<PerformanceResponse>({
     queryKey: ["performance"],
-      queryFn: async () => {
+    queryFn: async () => {
       const res = await apiClient.get("/analytics/performance/");
-      return res.data.data; // ✅ must match PerformanceResponse
+      return res.data.data;
     },
   });
 };
@@ -26,7 +27,7 @@ export const useStudyPlan = () => {
   });
 };
 
-export const useDashboardStats = (enabled:boolean) => {
+export const useDashboardStats = (enabled: boolean) => {
   return useQuery({
     queryKey: ["dashboard"],
     queryFn: fetchDashboardStats,
@@ -43,7 +44,6 @@ export const useAnalyticsSummary = () => {
     },
   });
 };
-
 
 export const useAdaptiveStudyPlan = () => {
   return useQuery({
