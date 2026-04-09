@@ -94,10 +94,6 @@ ipython_config.py
 # PEP 582; used by e.g. github.com/David-OConnor/pyflow
 __pypackages__/
 
-# Celery stuff
-celerybeat-schedule
-celerybeat.pid
-
 # SageMath parsed files
 *.sage.py
 
@@ -295,11 +291,22 @@ faiss.index
 faiss_mapping.pkl
 *.dump
 dump.dump
+dump.rdb
 
-# Playwright
+# Mistaken files and temporary command artifacts
+"h github kalyanmain --force"
+h/
+
+# Test files that shouldn't be committed
+/tests/
 test-results/
-playwright-report/
-playwright/.cache/
+pytest.ini
+conftest.py
+
+# JSON files (config files should be tracked, but test/build outputs shouldn't)
+*.json.bak
+*.json.old
+pyqs.json
 
 # IDE / Editor files
 .vscode/
