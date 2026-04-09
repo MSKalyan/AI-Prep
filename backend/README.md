@@ -4,23 +4,20 @@ A full-stack AI-powered exam preparation platform with Django REST Framework bac
 
 ## 🚀 Features
 
-- **User Authentication**: Token-based authentication with custom user model
-- **AI-Powered Roadmap Generation**: Personalized study plans using LLM
-- **Mock Tests**: Create and take practice tests with auto-grading
-- **RAG-based AI Tutor**: Ask questions and get context-aware answers
-- **Analytics Dashboard**: Track performance, identify weak areas, study streaks
-- **Background Tasks**: Celery for async processing (roadmap generation, analytics)
-- **RESTful API**: Clean, well-documented API endpoints
+-  User Authentication : Token-based authentication with custom user model
+-  AI-Powered Roadmap Generation : Personalized study plans using LLM
+-  Mock Tests : Create and take practice tests with auto-grading
+-  RAG-based AI Tutor : Ask questions and get context-aware answers
+-  Analytics Dashboard : Track performance, identify weak areas, study streaks
+-  RESTful API : Clean, well-documented API endpoints
 
 ## 🏗️ Architecture
 
 ### Tech Stack
-- **Framework**: Django 6.0 + Django REST Framework
-- **Database**: PostgreSQL
-- **Cache & Queue**: Redis
-- **Task Queue**: Celery + Celery Beat
-- **AI/ML**: OpenAI GPT-4, RAG architecture
-- **Authentication**: Token-based (DRF Token Auth)
+-  Framework : Django 6.0 + Django REST Framework
+-  Database : PostgreSQL
+-  AI/ML : Groq API for LLM-powered features
+-  Authentication : JWT-based authentication
 
 ### Apps Structure
 
@@ -30,18 +27,17 @@ backend/
 │   ├── users/          # User management & authentication
 │   ├── roadmap/        # Study roadmap generation
 │   ├── mocktest/       # Question bank & mock tests
-│   ├── ai_service/     # AI/RAG implementation
+│   ├── ai_service/     # AI assistance implementation
 │   └── analytics/      # Performance tracking
 ├── config/             # Project settings & URLs
-└── worker/             # Celery tasks
+└── manage.py
 ```
 
 ## 📋 Prerequisites
 
 - Python 3.10+
 - PostgreSQL 13+
-- Redis 6+
-- OpenAI API key (for AI features)
+- Groq API key (for AI features)
 
 ## 🔧 Installation
 
@@ -100,28 +96,6 @@ python manage.py runserver
 
 API will be available at: `http://localhost:8000`
 
-### Celery Worker (Background Tasks)
-
-```bash
-# In a new terminal
-celery -A config worker -l info --pool=solo  # Windows
-# celery -A config worker -l info  # Linux/Mac
-```
-
-### Celery Beat (Periodic Tasks)
-
-```bash
-# In another terminal
-celery -A config beat -l info
-```
-
-### Redis (required for Celery)
-
-Make sure Redis is running:
-```bash
-redis-server
-```
-
 ## 📚 API Endpoints
 
 ### Authentication
@@ -160,9 +134,9 @@ redis-server
 
 The AI service implements Retrieval-Augmented Generation:
 
-1. **Retrieval**: Fetch relevant documents from knowledge base
-2. **Augmentation**: Build context from retrieved documents
-3. **Generation**: Use LLM with context to generate answers
+1.  Retrieval : Fetch relevant documents from knowledge base
+2.  Augmentation : Build context from retrieved documents
+3.  Generation : Use LLM with context to generate answers
 
 ```python
 # Example usage in services.py
@@ -180,16 +154,6 @@ All business logic is in service layers, not views:
 roadmap = RoadmapService.generate_roadmap(user, exam_name, ...)
 ```
 
-### Background Tasks
-
-Heavy operations run asynchronously:
-
-```python
-# Celery tasks in worker/tasks.py
-generate_roadmap_async.delay(user_id, params)
-process_test_completion.delay(attempt_id)
-```
-
 ## 🧪 Testing
 
 ```bash
@@ -203,11 +167,11 @@ pytest --cov=apps --cov-report=html
 ## 📦 Database Models
 
 ### Key Models:
-- **User**: Custom user with exam preparation fields
-- **Roadmap & RoadmapTopic**: Study plan structure
-- **Question, MockTest, TestAttempt, Answer**: Testing system
-- **Document, Conversation, Message**: AI/RAG system
-- **PerformanceMetrics, WeakArea, DailyProgress**: Analytics
+-  User : Custom user with exam preparation fields
+-  Roadmap & RoadmapTopic : Study plan structure
+-  Question, MockTest, TestAttempt, Answer : Testing system
+-  Document, Conversation, Message : AI/RAG system
+-  PerformanceMetrics, WeakArea, DailyProgress : Analytics
 
 ## 🔐 Security
 
@@ -224,12 +188,10 @@ pytest --cov=apps --cov-report=html
 2. Update `SECRET_KEY`
 3. Configure `ALLOWED_HOSTS`
 4. Set up proper database (PostgreSQL)
-5. Configure Redis for production
-6. Set up proper vector database (Pinecone/Weaviate)
-7. Use gunicorn/uwsgi for WSGI
-8. Set up reverse proxy (nginx)
-9. Configure HTTPS
-10. Set up monitoring (Sentry)
+5. Use gunicorn/uwsgi for WSGI
+6. Set up reverse proxy (nginx)
+7. Configure HTTPS
+8. Set up monitoring (Sentry)
 
 ### Environment Variables:
 All sensitive configuration is in environment variables - never commit `.env` file!
