@@ -70,13 +70,9 @@ backend/bandit-report.json
 
 # Backend generated data
 backend/chroma_db/
-backend/worker/
-backend/faiss.index
-backend/faiss_mapping.pkl
 backend/media/
 backend/pyqs.json
 backend/data/
-backend/apps/ai_service/rag/
 
 # Dumps / misc
 *.dump
