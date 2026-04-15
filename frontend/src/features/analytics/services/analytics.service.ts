@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/apiClient";
+import { apiClient } from '@/lib/apiClient';
 
 export type TopicPerformance = {
   topic_id: number;
@@ -6,7 +6,7 @@ export type TopicPerformance = {
   accuracy: number;
   avg_time: number;
   total_attempts: number;
-  strength: "weak" | "moderate" | "strong" | "insufficient";
+  strength: 'weak' | 'moderate' | 'strong' | 'insufficient';
 };
 
 export type PerformanceResponse = {
@@ -20,7 +20,7 @@ export type StudyPlanItem = {
   topic_name: string;
   priority: number;
   suggested_time_minutes: number;
-  strength: "weak" | "moderate" | "strong" | "insufficient";
+  strength: 'weak' | 'moderate' | 'strong' | 'insufficient';
 };
 
 export type DashboardStats = {
@@ -40,16 +40,16 @@ export type DashboardStats = {
 };
 
 export const fetchPerformance = async (): Promise<TopicPerformance[]> => {
-  const res = await apiClient.get("/analytics/performance/");
+  const res = await apiClient.get('/analytics/performance/');
   return res.data.data;
 };
 
 export const fetchStudyPlan = async (): Promise<StudyPlanItem[]> => {
-  const res = await apiClient.get("/analytics/adaptive-study-plan/");
+  const res = await apiClient.get('/analytics/adaptive-study-plan/');
   return res.data.data;
 };
 
 export const fetchDashboardStats = async (): Promise<DashboardStats> => {
-  const res = await apiClient.get("/analytics/dashboard/");
+  const res = await apiClient.get('/analytics/dashboard/');
   return res.data;
 };

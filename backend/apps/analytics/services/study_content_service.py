@@ -10,6 +10,7 @@ from groq import Groq
 
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+REQUEST_TIMEOUT_SECONDS = 10
 
 
 class StudyContentService:
@@ -115,7 +116,7 @@ class StudyContentService:
             }
 
             try:
-                res = requests.get(url, params=params)
+                res = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS)
                 data = res.json()
 
                 if res.status_code != 200:

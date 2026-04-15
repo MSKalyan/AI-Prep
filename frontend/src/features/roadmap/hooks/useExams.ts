@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { useQuery } from "@tanstack/react-query";
-import { getExams } from "../services/roadmap.service";
+import { useQuery } from '@tanstack/react-query';
+import { getExams } from '../services/roadmap.service';
 
 export function useExams() {
   return useQuery({
-    queryKey: ["exams"],
+    queryKey: ['exams'],
     queryFn: getExams,
   });
 }

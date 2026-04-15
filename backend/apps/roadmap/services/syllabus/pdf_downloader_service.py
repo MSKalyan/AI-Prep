@@ -1,21 +1,27 @@
 import os
 import requests
+from urllib.parse import urlparse
 
 DOWNLOAD_DIR = "data/gate_syllabus"
+REQUEST_TIMEOUT_SECONDS = 30
+CHUNK_SIZE_BYTES = 1024 * 1024
 
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 def download_pdf(url):
 
-    filename = url.split("/")[-1]
-    path = f"{DOWNLOAD_DIR}/{filename}"
+    filename = os.path.basename(urlparse(url).path) or "syllabus.pdf"
+    path = os.path.join(DOWNLOAD_DIR, filename)
 
     if os.path.exists(path):
         return path
 
-    r = requests.get(url)
+    r = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS, stream=True)
+    r.raise_for_status()
 
     with open(path, "wb") as f:
-        f.write(r.content)
+        for chunk in r.iter_content(chunk_size=CHUNK_SIZE_BYTES):
+            if chunk:
+                f.write(chunk)
 
     return path

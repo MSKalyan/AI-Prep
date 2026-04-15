@@ -1,15 +1,24 @@
-"use client";
+'use client';
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { login, register, getProfile, updateProfile, logout, ApiError } from "../services/auth.service";
-import { useRouter } from "next/navigation";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  login,
+  register,
+  getProfile,
+  updateProfile,
+  logout,
+  ApiError,
+  LoginPayload,
+  RegisterPayload,
+} from '../services/auth.service';
+import { useRouter } from 'next/navigation';
 
 export function useAuth() {
   const queryClient = useQueryClient();
   const router = useRouter();
 
   const profileQuery = useQuery({
-    queryKey: ["profile"],
+    queryKey: ['profile'],
     queryFn: getProfile,
     retry: false,
     staleTime: 0,
@@ -17,26 +26,20 @@ export function useAuth() {
     refetchOnWindowFocus: false,
   });
 
-  const loginMutation = useMutation<any, ApiError, { email: string; password: string }>({
+  const loginMutation = useMutation<unknown, ApiError, LoginPayload>({
     mutationFn: login,
     onError: (error) => {
-      console.error("Login failed:", error.message);
+      console.error('Login failed:', error.message);
     },
   });
 
-  const registerMutation = useMutation<any, ApiError, {
-    email: string;
-    username: string;
-    password: string;
-    password_confirm: string;
-    full_name?: string;
-  }>({
+  const registerMutation = useMutation<unknown, ApiError, RegisterPayload>({
     mutationFn: register,
     onSuccess: async () => {
-      await queryClient.refetchQueries({ queryKey: ["profile"] });
+      await queryClient.refetchQueries({ queryKey: ['profile'] });
     },
     onError: (error) => {
-      console.error("Registration failed:", error.message);
+      console.error('Registration failed:', error.message);
     },
   });
 
@@ -44,15 +47,15 @@ export function useAuth() {
     mutationFn: logout,
     onSuccess: () => {
       queryClient.clear();
-      router.replace("/login");
+      router.replace('/login');
     },
   });
 
   const updateProfileMutation = useMutation({
     mutationFn: updateProfile,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["profile"] });
-      router.push("/dashboard");
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      router.push('/dashboard');
     },
   });
 

@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/apiClient";
+import { apiClient } from '@/lib/apiClient';
 
 export interface DeterministicRoadmapPayload {
   exam_id: number;
@@ -15,10 +15,12 @@ export interface DeterministicRoadmapResponse {
 export interface WeekTopic {
   id: number;
   day: number;
+  day_number?: number;
   subject: string;
   topic: string;
   hours: number;
   completed: boolean;
+  is_completed?: boolean;
   phase: 'study' | 'revision' | 'practice';
 }
 
@@ -41,18 +43,26 @@ export interface WeekPlanResponse {
   today_revision: RevisionItem[];
 }
 
+export interface RoadmapListItem {
+  id: number;
+  exam?: { name: string };
+  target_date: string;
+}
+
 export const getExams = async () => {
-  const { data } = await apiClient.get("/exams/");
+  const { data } = await apiClient.get('/exams/');
   return data;
 };
 
-export const generateRoadmap = async (payload: DeterministicRoadmapPayload): Promise<DeterministicRoadmapResponse> => {
-  const { data } = await apiClient.post("/roadmap/generate/", payload);
+export const generateRoadmap = async (
+  payload: DeterministicRoadmapPayload
+): Promise<DeterministicRoadmapResponse> => {
+  const { data } = await apiClient.post('/roadmap/generate/', payload);
   return data;
 };
 
 export const getRoadmaps = async () => {
-  const { data } = await apiClient.get("/roadmaps/");
+  const { data } = await apiClient.get('/roadmaps/');
   return data;
 };
 

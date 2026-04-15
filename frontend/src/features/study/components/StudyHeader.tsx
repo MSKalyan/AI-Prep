@@ -1,15 +1,15 @@
-"use client";
+'use client';
 
-import { useQuery } from "@tanstack/react-query";
-import { getTopicStudy } from "../services/study.service";
+import { useQuery } from '@tanstack/react-query';
+import { getTopicStudy } from '../services/study.service';
 
 interface Props {
   topicId: number;
 }
 
-export default function StudyHeader({ topicId }: Props) {
+export default function StudyHeader({ topicId }: Readonly<Props>) {
   const { data } = useQuery({
-    queryKey: ["topic-study-header", topicId],
+    queryKey: ['topic-study-header', topicId],
     queryFn: () => getTopicStudy(topicId),
   });
 

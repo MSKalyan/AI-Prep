@@ -1,32 +1,47 @@
-"use client";
+'use client';
 
-import { apiClient } from "@/lib/apiClient";
-import { useState } from "react";
+import { apiClient } from '@/lib/apiClient';
+import { useState } from 'react';
 
-export default function DocumentUpload() {
+export default function DocumentUpload({ compact = false }: { compact?: boolean }) {
   const [file, setFile] = useState<File | null>(null);
-  const [subject, setSubject] = useState("");
-  const [examType, setExamType] = useState("");
+  const [subject, setSubject] = useState('');
+  const [examType, setExamType] = useState('');
   const [loading, setLoading] = useState(false);
-
   const handleUpload = async () => {
     if (!file) return;
 
     const formData = new FormData();
-    formData.append("file", file);
-    formData.append("title", file.name);
-    formData.append("subject", subject);
-    formData.append("topic", "general");
-    formData.append("exam_type", examType);
-    formData.append("document_type", "notes");
+    formData.append('file', file);
+    formData.append('title', file.name);
+    formData.append('subject', subject);
+    formData.append('topic', 'general');
+    formData.append('exam_type', examType);
+    formData.append('document_type', 'notes');
 
     try {
       setLoading(true);
-      const res = await apiClient.post("/documents/process/", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+
+      // STEP 1: Upload
+      const uploadRes = await apiClient.post('/documents/', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
-      console.log(res.data);
-      alert("Processed successfully");
+
+      const documentId = uploadRes.data.id;
+
+      // STEP 2: Process (RAG ingestion)
+      const processRes = await apiClient.post(
+        '/documents/process/',
+        {
+          document_id: documentId,
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+        }
+      );
+
+      console.log(processRes.data);
+      alert('Uploaded & processed successfully');
     } catch (err) {
       console.error(err);
     } finally {
@@ -35,8 +50,10 @@ export default function DocumentUpload() {
   };
 
   return (
-    <div className="p-4 sm:p-6 border rounded-xl">
-      <h2 className="font-semibold text-base sm:text-lg mb-4 sm:mb-6">Upload Document</h2>
+    <div className={compact ? '' : 'p-4 sm:p-6 border rounded-xl'}>
+      {!compact && (
+        <h2 className="font-semibold text-base sm:text-lg mb-4 sm:mb-6">Upload Document</h2>
+      )}
 
       <div className="space-y-3 sm:space-y-4">
         <input
@@ -65,7 +82,7 @@ export default function DocumentUpload() {
           className="w-full mt-4 px-4 py-2 bg-black text-white rounded text-sm sm:text-base hover:opacity-80 transition disabled:opacity-50"
           disabled={loading}
         >
-          {loading ? "Processing..." : "Upload & Process"}
+          {loading ? 'Processing...' : 'Upload & Process'}
         </button>
       </div>
     </div>

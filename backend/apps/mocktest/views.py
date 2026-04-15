@@ -12,7 +12,7 @@ from .serializers import (
     MockTestDetailSerializer,
     TestAttemptSerializer,
     SubmitAnswerSerializer,
-    GeneratePracticeSerializer
+    GeneratePracticeSerializer,
 )
 from .services import MockTestService
 from apps.analytics.services.services import AnalyticsService
@@ -22,7 +22,7 @@ from rest_framework.permissions import IsAuthenticated
 from groq import Groq
 from django.conf import settings
 from .models import Question
-
+import json
 
 
 class QuestionListView(APIView):
@@ -31,10 +31,10 @@ class QuestionListView(APIView):
     def get(self, request):
         questions = Question.objects.all()
 
-        exam_type = request.query_params.get('exam_type')
-        subject = request.query_params.get('subject')
-        difficulty = request.query_params.get('difficulty')
-        topic = request.query_params.get('topic')
+        exam_type = request.query_params.get("exam_type")
+        subject = request.query_params.get("subject")
+        difficulty = request.query_params.get("difficulty")
+        topic = request.query_params.get("topic")
 
         if exam_type:
             questions = questions.filter(exam_type=exam_type)
@@ -49,26 +49,52 @@ class QuestionListView(APIView):
         return Response(serializer.data)
 
 
-
-
 class MockTestDetailView(APIView):
     permission_classes = [IsAuthenticated]
+
+    @staticmethod
+    def _normalize_options(raw_options):
+        if raw_options is None:
+            return {}
+
+        if isinstance(raw_options, dict):
+            return raw_options
+
+        if isinstance(raw_options, str):
+            # Sometimes options may be stored as a JSON string.
+            try:
+                parsed = json.loads(raw_options)
+                if isinstance(parsed, dict):
+                    return parsed
+                if isinstance(parsed, list):
+                    raw_options = parsed
+            except Exception:
+                return {}
+
+        if isinstance(raw_options, list):
+            option_keys = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            normalized = {}
+            for idx, value in enumerate(raw_options):
+                if idx >= len(option_keys):
+                    break
+                normalized[option_keys[idx]] = str(value)
+            return normalized
+
+        return {}
 
     def get(self, request, pk):
         try:
             mock_test = MockTest.objects.get(pk=pk, user=request.user)
 
             attempt = TestAttempt.objects.filter(
-                mock_test=mock_test,
-                user=request.user,
-                submitted_at__isnull=True
+                mock_test=mock_test, user=request.user, submitted_at__isnull=True
             ).first()
             # 🔥 Ensure attempt ALWAYS exists
             if not attempt:
                 attempt = TestAttempt.objects.create(
                     user=request.user,
                     mock_test=mock_test,
-                    total_marks=mock_test.total_marks
+                    total_marks=mock_test.total_marks,
                 )
 
             # ✅ FIX 1: start timer once
@@ -89,10 +115,9 @@ class MockTestDetailView(APIView):
             questions_data = []
 
             for idx, q in enumerate(mock_test.questions.all(), start=1):
-
+                options_dict = MockTestDetailView._normalize_options(q.options)
                 options_list = [
-                    {"key": key, "text": value}
-                    for key, value in q.options.items()
+                    {"key": key, "text": value} for key, value in options_dict.items()
                 ]
 
                 selected_answer = None
@@ -102,42 +127,46 @@ class MockTestDetailView(APIView):
                     if ans:
                         selected_answer = ans.user_answer
 
-                questions_data.append({
-                    "id": q.id,
-                    "question_text": q.question_text,
-                    "options": options_list,
-                    "selected_option": selected_answer,
-                    "is_answered": selected_answer is not None,
-                    "question_number": idx,
-                    "topic": q.topic.name if q.topic else None
-                })
-
-            return Response({
-                "id": mock_test.id,
-                "topics": list(
-    mock_test.questions.values_list("topic__name", flat=True).distinct()
-),
-                "title": mock_test.title,
-                "description": mock_test.description,
-                "duration_minutes": mock_test.duration_minutes,
-                "remaining_seconds": remaining_seconds,
-                "total_marks": mock_test.total_marks,
-                "question_count": mock_test.questions.count(),
-                "attempt_id": attempt.id if attempt else None,
-                "questions": questions_data,
-                "answers": [
+                questions_data.append(
                     {
-                        "question": ans.question.id,
-                        "user_answer": ans.user_answer
+                        "id": q.id,
+                        "question_text": q.question_text,
+                        "options": options_list,
+                        "selected_option": selected_answer,
+                        "is_answered": selected_answer is not None,
+                        "question_number": idx,
+                        "topic": q.topic.name if q.topic else None,
                     }
-                    for ans in attempt.answers.all()
-                ] if attempt else []
-            })
+                )
+
+            return Response(
+                {
+                    "id": mock_test.id,
+                    "topics": list(
+                        mock_test.questions.values_list(
+                            "topic__name", flat=True
+                        ).distinct()
+                    ),
+                    "title": mock_test.title,
+                    "description": mock_test.description,
+                    "duration_minutes": mock_test.duration_minutes,
+                    "remaining_seconds": remaining_seconds,
+                    "total_marks": mock_test.total_marks,
+                    "question_count": mock_test.questions.count(),
+                    "attempt_id": attempt.id if attempt else None,
+                    "questions": questions_data,
+                    "answers": [
+                        {"question": ans.question.id, "user_answer": ans.user_answer}
+                        for ans in attempt.answers.all()
+                    ]
+                    if attempt
+                    else [],
+                }
+            )
 
         except MockTest.DoesNotExist:
             return Response(
-                {"error": "Mock test not found"},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Mock test not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
 
@@ -157,6 +186,8 @@ class StartTestView(APIView):
 
         except MockTest.DoesNotExist:
             return Response({"error": "Test not found"}, status=404)
+
+
 class SubmitAnswerView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -166,10 +197,10 @@ class SubmitAnswerView(APIView):
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        attempt_id = serializer.validated_data['attempt_id']
-        question_id = serializer.validated_data['question_id']
-        user_answer = serializer.validated_data['user_answer']
-        time_taken = serializer.validated_data.get('time_taken_seconds', 0)
+        attempt_id = serializer.validated_data["attempt_id"]
+        question_id = serializer.validated_data["question_id"]
+        user_answer = serializer.validated_data["user_answer"]
+        time_taken = serializer.validated_data.get("time_taken_seconds", 0)
 
         # ✅ FIX 4: pass user (CRITICAL)
         answer, attempt = MockTestService.submit_answer(
@@ -177,25 +208,21 @@ class SubmitAnswerView(APIView):
             attempt_id=attempt_id,
             question_id=question_id,
             user_answer=user_answer,
-            time_taken_seconds=time_taken
+            time_taken_seconds=time_taken,
         )
 
         if not answer or not attempt:
             return Response(
                 {"error": "Invalid attempt or question"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         if attempt.user != request.user:
-            return Response(
-                {"error": "Unauthorized"},
-                status=status.HTTP_403_FORBIDDEN
-            )
+            return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
 
         if attempt.submitted_at:
             return Response(
-                {"error": "Test already submitted"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Test already submitted"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         total_questions = attempt.mock_test.questions.count()
@@ -203,29 +230,31 @@ class SubmitAnswerView(APIView):
         # ✅ FIX 5: correct progress query
         answered = attempt.answers.exclude(user_answer__isnull=True).count()
 
-        return Response({
-            "question_id": question_id,
-            "selected_option": answer.user_answer,
-            "is_correct": answer.is_correct,
-            "marks_obtained": answer.marks_obtained,
-            "progress": {
-                "answered": answered,
-                "total": total_questions
+        return Response(
+            {
+                "question_id": question_id,
+                "selected_option": answer.user_answer,
+                "is_correct": answer.is_correct,
+                "marks_obtained": answer.marks_obtained,
+                "progress": {"answered": answered, "total": total_questions},
             }
-        })
+        )
 
 
 class TestResultView(APIView):
     permission_classes = [IsAuthenticated]
+
     def get(self, request):
         try:
-            attempts = TestAttempt.objects.filter(
-                user=request.user,
-                submitted_at__isnull=False
-            ).select_related(
-                "mock_test",
-              
-            ).order_by('-submitted_at')[:20]
+            attempts = (
+                TestAttempt.objects.filter(
+                    user=request.user, submitted_at__isnull=False
+                )
+                .select_related(
+                    "mock_test",
+                )
+                .order_by("-submitted_at")[:20]
+            )
 
             result_list = []
 
@@ -242,42 +271,42 @@ class TestResultView(APIView):
                     topic_name = topic.name
                     subject = topic.parent.name if topic.parent else None
 
-                result_list.append({
-                    "attempt_id": attempt.id,
-                    "mock_test_id": attempt.mock_test.id,
-                    "title": (
-                        f"{subject} - {topic_name}"
-                        if topic_name
-                        else attempt.mock_test.title
-                    ),
-                    "topic": topic_name,
-                    "subject": subject,
-                    "score": attempt.score,
-                    "percentage": attempt.percentage,
-                    "correct": attempt.correct_answers,
-                    "incorrect": attempt.incorrect_answers,
-                    "date": attempt.submitted_at
-                })
+                result_list.append(
+                    {
+                        "attempt_id": attempt.id,
+                        "mock_test_id": attempt.mock_test.id,
+                        "title": (
+                            f"{subject} - {topic_name}"
+                            if topic_name
+                            else attempt.mock_test.title
+                        ),
+                        "topic": topic_name,
+                        "subject": subject,
+                        "score": attempt.score,
+                        "percentage": attempt.percentage,
+                        "correct": attempt.correct_answers,
+                        "incorrect": attempt.incorrect_answers,
+                        "date": attempt.submitted_at,
+                    }
+                )
             return Response(result_list)
 
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 
     def post(self, request):
-        attempt_id = request.data.get('attempt_id')
+        attempt_id = request.data.get("attempt_id")
 
         if not attempt_id:
             return Response(
-                {'error': 'attempt_id is required'},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "attempt_id is required"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         attempt = MockTestService.finalize_test(attempt_id)
 
         if not attempt or attempt.user != request.user:
             return Response(
-                {'error': 'Test attempt not found'},
-                status=status.HTTP_404_NOT_FOUND
+                {"error": "Test attempt not found"}, status=status.HTTP_404_NOT_FOUND
             )
 
         # ✅ Analytics (keep)
@@ -285,46 +314,48 @@ class TestResultView(APIView):
 
         questions_result = []
 
-        answers = attempt.answers.select_related('question')
+        answers = attempt.answers.select_related("question")
 
         for ans in answers:
             q = ans.question
 
-            questions_result.append({
-                "question_id": q.id,
-                "question_text": q.question_text,
-                "your_answer": ans.user_answer,
-                "correct_answer": q.correct_answer,
-                "is_correct": ans.is_correct,
-                "marks_obtained": ans.marks_obtained,
-                "explanation": q.explanation
-            })
+            questions_result.append(
+                {
+                    "question_id": q.id,
+                    "question_text": q.question_text,
+                    "your_answer": ans.user_answer,
+                    "correct_answer": q.correct_answer,
+                    "is_correct": ans.is_correct,
+                    "marks_obtained": ans.marks_obtained,
+                    "explanation": q.explanation,
+                }
+            )
 
-        return Response({
-            "attempt_id": attempt.id,
-            "mock_test_id": attempt.mock_test.id,
-            "mock_test_title": attempt.mock_test.title,
-            "score": attempt.score,
-            "total_marks": attempt.total_marks,
-            "percentage": attempt.percentage,
-            "correct": attempt.correct_answers,
-            "incorrect": attempt.incorrect_answers,
-            "unanswered": attempt.unanswered,
-            "time_taken_minutes": attempt.time_taken_minutes,
-            "questions": questions_result
-        })
+        return Response(
+            {
+                "attempt_id": attempt.id,
+                "mock_test_id": attempt.mock_test.id,
+                "mock_test_title": attempt.mock_test.title,
+                "score": attempt.score,
+                "total_marks": attempt.total_marks,
+                "percentage": attempt.percentage,
+                "correct": attempt.correct_answers,
+                "incorrect": attempt.incorrect_answers,
+                "unanswered": attempt.unanswered,
+                "time_taken_minutes": attempt.time_taken_minutes,
+                "questions": questions_result,
+            }
+        )
+
 
 class TestResultDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, attempt_id):
         try:
-            attempt = TestAttempt.objects.get(
-                id=attempt_id,
-                user=request.user
-            )
+            attempt = TestAttempt.objects.get(id=attempt_id, user=request.user)
 
-            answers = attempt.answers.select_related('question')
+            answers = attempt.answers.select_related("question")
             topic = getattr(attempt.mock_test, "topic", None)
 
             topic_name = topic.name if topic else None
@@ -334,39 +365,44 @@ class TestResultDetailView(APIView):
             for ans in answers:
                 q = ans.question
 
-                questions.append({
-                    "question_id": q.id,
-                    "question_text": q.question_text,
-                    "options": q.options,
-                    "your_answer": ans.user_answer,
-                    "correct_answer": q.correct_answer,
-                    "is_correct": ans.is_correct,
-                    "marks_obtained": ans.marks_obtained,
-                    "explanation": q.explanation
-                })
+                questions.append(
+                    {
+                        "question_id": q.id,
+                        "question_text": q.question_text,
+                        "options": q.options,
+                        "your_answer": ans.user_answer,
+                        "correct_answer": q.correct_answer,
+                        "is_correct": ans.is_correct,
+                        "marks_obtained": ans.marks_obtained,
+                        "explanation": q.explanation,
+                    }
+                )
 
-            return Response({
-                "attempt_id": attempt.id,
-                "topic": topic_name,
-                "subject": subject,
-                "score": attempt.score,
-                "total_marks": attempt.total_marks,
-                "percentage": attempt.percentage,
-                "correct": attempt.correct_answers,
-                "incorrect": attempt.incorrect_answers,
-                "unanswered": attempt.unanswered,
-                "time_taken": attempt.time_taken_minutes,
-                "questions": questions
-            })
+            return Response(
+                {
+                    "attempt_id": attempt.id,
+                    "topic": topic_name,
+                    "subject": subject,
+                    "score": attempt.score,
+                    "total_marks": attempt.total_marks,
+                    "percentage": attempt.percentage,
+                    "correct": attempt.correct_answers,
+                    "incorrect": attempt.incorrect_answers,
+                    "unanswered": attempt.unanswered,
+                    "time_taken": attempt.time_taken_minutes,
+                    "questions": questions,
+                }
+            )
 
         except TestAttempt.DoesNotExist:
             return Response({"error": "Not found"}, status=404)
+
 
 class GenerateMockTestView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        topic_id = request.data.get("topic_id")  # optional now
+        request.data.get("topic_id")  # optional now
         roadmap_id = request.data.get("roadmap_id")
         day = request.data.get("day")
         num_questions = request.data.get("num_questions", 10)
@@ -374,21 +410,20 @@ class GenerateMockTestView(APIView):
         if not roadmap_id or day is None:
             return Response(
                 {"error": "roadmap_id and day are required"},
-                status=status.HTTP_400_BAD_REQUEST
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         try:
             roadmap = Roadmap.objects.get(id=roadmap_id)
 
             day_topics_qs = Topic.objects.filter(
-                roadmap_entries__roadmap=roadmap,
-                roadmap_entries__day_number=day
+                roadmap_entries__roadmap=roadmap, roadmap_entries__day_number=day
             ).distinct()
 
             if not day_topics_qs.exists():
                 return Response(
                     {"error": "No topics found for this day"},
-                    status=status.HTTP_400_BAD_REQUEST
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
             data = MockTestService.create_mock_test(
@@ -396,26 +431,28 @@ class GenerateMockTestView(APIView):
                 roadmap=roadmap,
                 day=day,
                 topics=list(day_topics_qs),
-                num_questions=num_questions
+                num_questions=num_questions,
             )
 
-            return Response({
-                "mock_test": MockTestDetailSerializer(data["mock_test"]).data,
-                "attempt": TestAttemptSerializer(data["attempt"]).data
-            })
+            return Response(
+                {
+                    "mock_test": MockTestDetailSerializer(data["mock_test"]).data,
+                    "attempt": TestAttemptSerializer(data["attempt"]).data,
+                }
+            )
 
         except Roadmap.DoesNotExist:
             return Response(
-                {"error": "Invalid roadmap_id"},
-                status=status.HTTP_400_BAD_REQUEST
+                {"error": "Invalid roadmap_id"}, status=status.HTTP_400_BAD_REQUEST
             )
 
         except Exception as e:
             print("MOCK TEST ERROR:", str(e))
             return Response(
                 {"error": f"Failed to generate test: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
+
 
 class ExplainQuestionView(APIView):
     permission_classes = [IsAuthenticated]
@@ -471,14 +508,14 @@ Key Concept:
                 model="llama-3.3-70b-versatile",
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.3,
-                max_tokens=200
+                max_tokens=200,
             )
 
             explanation = response.choices[0].message.content.strip()
-            explanation = "\n".join([line for line in explanation.split("\n") if line.strip()])
-            return Response({
-                "explanation": explanation
-            })
+            explanation = "\n".join(
+                [line for line in explanation.split("\n") if line.strip()]
+            )
+            return Response({"explanation": explanation})
 
         except Question.DoesNotExist:
             return Response({"error": "Invalid question"}, status=400)

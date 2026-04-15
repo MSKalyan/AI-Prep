@@ -1,8 +1,7 @@
-from backend.apps.ai_service.services.rag.llm_service import LLMService
+from apps.ai_service.services.llm_service import LLMService
 
 
 class ExplanationService:
-
     def generate_topic_explanation(self, topic, subject, week):
 
         prompt = f"""

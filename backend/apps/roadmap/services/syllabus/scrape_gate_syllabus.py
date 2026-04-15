@@ -3,13 +3,16 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
 BASE_URL = "https://gate2026.iitg.ac.in"
+REQUEST_TIMEOUT_SECONDS = 10
 
 
 def get_syllabus_links():
 
     url = f"{BASE_URL}/exam-papers-and-syllabus.html"
 
-    html = requests.get(url).text
+    res = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
+    res.raise_for_status()
+    html = res.text
 
     soup = BeautifulSoup(html, "html.parser")
 

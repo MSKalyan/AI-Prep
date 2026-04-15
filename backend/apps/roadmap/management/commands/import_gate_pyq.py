@@ -12,19 +12,36 @@ from apps.roadmap.services.pyq.topic_mapper_service import TopicMapperService
 
 ZIP_DIR = Path("data/gate_pyq_zip")
 
+
 def zip_files_exist():
     if not ZIP_DIR.exists():
         return False
     return any(ZIP_DIR.glob("*.zip"))
-class Command(BaseCommand):
 
+
+class Command(BaseCommand):
     help = "Import GATE PYQs from Google Drive dataset"
+
+    def add_arguments(self, parser):
+        parser.add_argument("--exam", type=str, default="GATE CS", help="Exam name")
+        parser.add_argument(
+            "--dry-run", action="store_true", help="Preview without saving"
+        )
 
     def handle(self, *args, **kwargs):
 
-        exam = Exam.objects.get(name="GATE CS")
+        exam_name = kwargs.get("exam", "GATE CS")
+        dry_run = kwargs.get("dry_run", False)
 
-        DRIVE_FOLDER_URL = "https://drive.google.com/drive/folders/1sV6FgtOUDl_PGjc36Zdc0eJwK1zZ_2OF"
+        try:
+            exam = Exam.objects.get(name=exam_name)
+        except Exam.DoesNotExist:
+            self.stdout.write(self.style.ERROR(f"Exam {exam_name} not found"))
+            return
+
+        DRIVE_FOLDER_URL = (
+            "https://drive.google.com/drive/folders/1sV6FgtOUDl_PGjc36Zdc0eJwK1zZ_2OF"
+        )
 
         if zip_files_exist():
             self.stdout.write("ZIP files already exist → skipping download")
@@ -39,8 +56,10 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Found {len(pdf_files)} papers")
 
-        for pdf in pdf_files:
+        created_count = 0
+        skipped_count = 0
 
+        for pdf in pdf_files:
             year = pdf["year"]
             path = pdf["path"]
 
@@ -53,21 +72,61 @@ class Command(BaseCommand):
                     self.style.WARNING(f"Skipping corrupted PDF → {path} ({str(e)})")
                 )
                 continue
-            questions = QuestionParserService.split_questions(text)
+
+            questions = QuestionParserService.parse_pdf_complete(text, year)
 
             self.stdout.write(f"Extracted {len(questions)} questions")
 
-            for q in questions:
+            for sq in questions:
+                question_text = sq.get("question_text", "")
+                options = sq.get("options", {})
+                correct_answer = sq.get("correct_answer")
+                marks = sq.get("marks", 1)
+                question_type = sq.get("question_type", "mcq")
 
-                topic = TopicMapperService.map_topic(q, exam=exam)
+                if not question_text or len(question_text) < 30:
+                    skipped_count += 1
+                    continue
 
-                PYQImportService.save_question(
+                if not options or len(options) < 2:
+                    skipped_count += 1
+                    continue
+
+                if not correct_answer:
+                    skipped_count += 1
+                    continue
+
+                topic = TopicMapperService.map_topic(question_text, exam=exam)
+
+                if not topic:
+                    skipped_count += 1
+                    continue
+
+                if dry_run:
+                    self.stdout.write(
+                        f"[DRY] Would create: {question_text[:50]}... -> {topic.name}"
+                    )
+                    continue
+
+                pyq_obj = PYQImportService.save_question_with_options(
                     exam=exam,
                     topic=topic,
-                    question_text=q,
+                    question_text=question_text,
                     year=year,
-                    marks=1,
-                    source_url=path
+                    marks=marks,
+                    question_type=question_type,
+                    options=options,
+                    correct_answer=correct_answer,
+                    source_url=path,
                 )
 
-        self.stdout.write(self.style.SUCCESS("PYQ ingestion completed"))
+                if pyq_obj:
+                    created_count += 1
+                else:
+                    skipped_count += 1
+
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"PYQ ingestion completed: Created {created_count}, Skipped {skipped_count}"
+            )
+        )

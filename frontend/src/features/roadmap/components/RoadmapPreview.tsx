@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useQuery } from "@tanstack/react-query";
-import { getRoadmapProgress } from "../services/roadmap.service";
+import { useQuery } from '@tanstack/react-query';
+import { getRoadmapProgress } from '../services/roadmap.service';
 
 interface Roadmap {
   id: number;
@@ -16,27 +16,31 @@ interface Props {
   roadmap: Roadmap;
 }
 
-export default function RoadmapPreview({ roadmap }: Props) {
+export default function RoadmapPreview({ roadmap }: Readonly<Props>) {
   const { data: progress } = useQuery({
-    queryKey: ["roadmap-progress", roadmap.id],
+    queryKey: ['roadmap-progress', roadmap.id],
     queryFn: () => getRoadmapProgress(roadmap.id),
   });
 
   return (
     <div className="rounded-lg border bg-white p-6 shadow-sm">
       <h2 className="text-2xl font-semibold text-gray-800">
-        {roadmap.exam?.name ?? "Study Roadmap"}
+        {roadmap.exam?.name ?? 'Study Roadmap'}
       </h2>
 
       <div className="mt-2 text-sm text-gray-600 space-y-1">
-        <p><strong>Target Date:</strong> {roadmap.target_date}</p>
-        <p><strong>Total Weeks:</strong> {roadmap.total_weeks}</p>
-        <p><strong>Difficulty:</strong> {roadmap.difficulty_level}</p>
+        <p>
+          <strong>Target Date:</strong> {roadmap.target_date}
+        </p>
+        <p>
+          <strong>Total Weeks:</strong> {roadmap.total_weeks}
+        </p>
+        <p>
+          <strong>Difficulty:</strong> {roadmap.difficulty_level}
+        </p>
       </div>
 
-      {roadmap.description && (
-        <p className="mt-4 text-sm text-gray-700">{roadmap.description}</p>
-      )}
+      {roadmap.description && <p className="mt-4 text-sm text-gray-700">{roadmap.description}</p>}
 
       {progress && (
         <div className="mt-4 space-y-1">

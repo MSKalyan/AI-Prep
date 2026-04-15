@@ -1,3 +1,4 @@
+import os
 from datetime import date, timedelta
 
 from django.test import TestCase
@@ -7,6 +8,10 @@ from apps.users.models import User
 from apps.roadmap.models import Exam, Subject, Topic, Roadmap, RoadmapTopic
 from apps.mocktest.models import Question, MockTest, TestAttempt, Answer
 from apps.mocktest.serializers import QuestionSerializer, MockTestSerializer, SubmitAnswerSerializer
+
+TEST_PASSWORD = os.environ.get('TEST_PASSWORD')
+if not TEST_PASSWORD:
+    raise ValueError('TEST_PASSWORD environment variable must be set')
 
 
 class TestQuestionModel(TestCase):
@@ -85,7 +90,7 @@ class TestQuestionModel(TestCase):
 class TestMockTestModel(TestCase):
 
     def test_create_mock_test(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -113,7 +118,7 @@ class TestMockTestModel(TestCase):
         self.assertEqual(mock_test.status, "active")
 
     def test_mock_test_string_representation(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         mock_test = MockTest.objects.create(
             user=user,
             title="Test Title"
@@ -121,7 +126,7 @@ class TestMockTestModel(TestCase):
         self.assertEqual(str(mock_test), f"Test Title - {user}")
 
     def test_mock_test_default_values(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         mock_test = MockTest.objects.create(
             user=user,
             title="Default Test"
@@ -137,7 +142,7 @@ class TestMockTestModel(TestCase):
 class TestTestAttemptModel(TestCase):
 
     def test_create_test_attempt(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -165,7 +170,7 @@ class TestTestAttemptModel(TestCase):
         self.assertEqual(attempt.percentage, 80.0)
 
     def test_test_attempt_string_representation(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -185,7 +190,7 @@ class TestTestAttemptModel(TestCase):
         self.assertEqual(str(attempt), f"{mock_test.title} - {user} - 75.5%")
 
     def test_test_attempt_default_values(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -214,7 +219,7 @@ class TestTestAttemptModel(TestCase):
 class TestAnswerModel(TestCase):
 
     def test_create_answer(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -253,7 +258,7 @@ class TestAnswerModel(TestCase):
         self.assertEqual(answer.marks_obtained, 1.0)
 
     def test_answer_string_representation(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -286,7 +291,7 @@ class TestAnswerModel(TestCase):
         self.assertEqual(str(answer), f"Q{question.id} - Incorrect")
 
     def test_answer_unique_together(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -324,7 +329,7 @@ class TestAnswerModel(TestCase):
             )
 
     def test_answer_default_values(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -387,7 +392,7 @@ class TestQuestionSerializer(TestCase):
 class TestMockTestSerializer(TestCase):
 
     def test_serialize_mock_test(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -429,7 +434,7 @@ class TestSubmitAnswerSerializer(TestCase):
 class TestQuestionListView(TestCase):
 
     def test_list_questions(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -461,7 +466,7 @@ class TestQuestionListView(TestCase):
         self.assertEqual(len(response.data), 2)
 
     def test_filter_by_difficulty(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -502,7 +507,7 @@ class TestQuestionListView(TestCase):
 class TestMockTestDetailView(TestCase):
 
     def test_get_mock_test_detail(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -537,15 +542,15 @@ class TestMockTestDetailView(TestCase):
         self.assertIn('remaining_seconds', response.data)
 
     def test_get_mock_test_not_found(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         client = APIClient()
         client.force_authenticate(user=user)
         response = client.get('/api/mocktest/9999/')
         self.assertEqual(response.status_code, 404)
 
     def test_get_mock_test_unauthorized(self):
-        user1 = User.objects.create_user(email='user1@example.com', password='pass')
-        user2 = User.objects.create_user(email='user2@example.com', password='pass')
+        user1 = User.objects.create_user(email='user1@example.com', password=TEST_PASSWORD)
+        user2 = User.objects.create_user(email='user2@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -566,7 +571,7 @@ class TestMockTestDetailView(TestCase):
 class TestStartTestView(TestCase):
 
     def test_start_test(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -587,7 +592,7 @@ class TestStartTestView(TestCase):
         self.assertIsNotNone(mock_test.started_at)
 
     def test_start_test_not_found(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         client = APIClient()
         client.force_authenticate(user=user)
         response = client.post('/api/mocktest/start/9999/')
@@ -597,7 +602,7 @@ class TestStartTestView(TestCase):
 class TestSubmitAnswerView(TestCase):
 
     def test_submit_answer(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -639,10 +644,34 @@ class TestSubmitAnswerView(TestCase):
         self.assertEqual(response.data['selected_option'], 'A')
 
     def test_submit_answer_invalid_attempt(self):
-        pass
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180)
+        )
+        subject = Subject.objects.create(exam=exam, name="Data Structures")
+        topic = Topic.objects.create(name="Arrays", subject=subject)
+        question = Question.objects.create(
+            topic=topic,
+            exam=exam,
+            question_text="What is an array?",
+            correct_answer="A",
+            source="llm"
+        )
+        client = APIClient()
+        client.force_authenticate(user=user)
+        response = client.post('/api/mocktest/submit-answer/', {
+            'attempt_id': 9999,
+            'question_id': question.id,
+            'user_answer': 'A',
+            'time_taken_seconds': 30
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
 
     def test_submit_answer_missing_fields(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         client = APIClient()
         client.force_authenticate(user=user)
         response = client.post('/api/mocktest/submit-answer/', {
@@ -654,7 +683,7 @@ class TestSubmitAnswerView(TestCase):
 class TestTestResultView(TestCase):
 
     def test_get_test_results(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -686,7 +715,7 @@ class TestTestResultView(TestCase):
         self.assertEqual(response.data['percentage'], 80.0)
 
     def test_get_test_results_list(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -712,7 +741,7 @@ class TestTestResultView(TestCase):
         self.assertEqual(len(response.data), 1)
 
     def test_get_test_results_missing_attempt_id(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         client = APIClient()
         client.force_authenticate(user=user)
         response = client.post('/api/mocktest/results/', {}, format='json')
@@ -722,7 +751,7 @@ class TestTestResultView(TestCase):
 class TestTestResultDetailView(TestCase):
 
     def test_get_test_result_detail(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -768,7 +797,7 @@ class TestTestResultDetailView(TestCase):
         self.assertEqual(len(response.data['questions']), 1)
 
     def test_get_test_result_detail_not_found(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         client = APIClient()
         client.force_authenticate(user=user)
         response = client.get('/api/mocktest/results/9999/')
@@ -778,7 +807,7 @@ class TestTestResultDetailView(TestCase):
 class TestGenerateMockTestView(TestCase):
 
     def test_generate_mock_test(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         exam = Exam.objects.create(
             name="GATE CS",
             category="Engineering",
@@ -818,14 +847,14 @@ class TestGenerateMockTestView(TestCase):
         self.assertIn('attempt', response.data)
 
     def test_generate_mock_test_missing_params(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         client = APIClient()
         client.force_authenticate(user=user)
         response = client.post('/api/mocktest/generate/', {}, format='json')
         self.assertEqual(response.status_code, 400)
 
     def test_generate_mock_test_invalid_roadmap(self):
-        user = User.objects.create_user(email='test@example.com', password='pass')
+        user = User.objects.create_user(email='test@example.com', password=TEST_PASSWORD)
         client = APIClient()
         client.force_authenticate(user=user)
         response = client.post('/api/mocktest/generate/', {

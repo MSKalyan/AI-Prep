@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 from apps.roadmap.models import Exam, Topic, PYQ
-import random
+import secrets
 from backend.apps.roadmap.services.pyq.weightage_service import WeightageService
 
 
@@ -54,7 +54,7 @@ class Command(BaseCommand):
 
                 while remaining > 0:
 
-                    mark = random.choice([1, 2])
+                    mark = secrets.choice((1, 2))
                     if mark > remaining:
                         mark = remaining
 

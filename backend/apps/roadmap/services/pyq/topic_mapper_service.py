@@ -5,103 +5,135 @@ from apps.roadmap.models import Topic
 
 
 class TopicMapperService:
+    # Constants to avoid duplicate string literals
+    PROB_STATS = "Probability and Statistics"
+    DISCRETE_MATH = "Discrete Mathematics"
+    ENG_MATH = "Engineering Mathematics"
+    CALCULUS = "Calculus"
+    PROG_DS = "Programming and Data Structures"
+    OS = "Operating System"
+    MEM_MGMT = "Memory management and virtual memory"
+    COA = "Computer Organization and Architecture"
+    CN = "Computer Networks"
+    DB = "Databases"
+    REG_AUTOMATA = "Regular expressions and finite automata"
+    INTER_CODE = "Intermediate code"
+    COMB_SEQ = "Combinational and sequential circuits"
+    LATTICES = "lattices. Monoids, Groups. Graphs"
+    INST_PIPE = "Instruction pipelining"
+    APP_PROTO = "Application layer protocols"
+    CIDR = "CIDR notation"
+    ER_MODEL = "ER‐model. Relational model"
+    PUMP_LEMMA = "pumping lemma"
 
     # keyword → SUBJECT name (must match DB exactly)
     MAP = {
-
         # Engineering Mathematics
-        "probability": "Engineering Mathematics",
-        "statistics": "Engineering Mathematics",
-        "expectation": "Engineering Mathematics",
-        "combinatorics": "Engineering Mathematics",
-        "linear algebra": "Engineering Mathematics",
-        "eigen": "Engineering Mathematics",
-        "calculus": "Engineering Mathematics",
-        "set theory": "Engineering Mathematics",
-        "logic": "Engineering Mathematics",
-        "numerical": "Engineering Mathematics",
-
+        "probability": PROB_STATS,
+        "statistics": PROB_STATS,
+        "expectation": PROB_STATS,
+        "random": PROB_STATS,
+        "bayes": PROB_STATS,
+        "combinatorics": DISCRETE_MATH,
+        "permutation": DISCRETE_MATH,
+        "combination": DISCRETE_MATH,
+        "graphs": LATTICES,
+        "graph theory": LATTICES,
+        "vertex": LATTICES,
+        "edge": LATTICES,
+        "linear algebra": ENG_MATH,
+        "eigen": ENG_MATH,
+        "matrix": ENG_MATH,
+        "determinant": ENG_MATH,
+        "calculus": CALCULUS,
+        "derivative": CALCULUS,
+        "integral": CALCULUS,
+        "set theory": DISCRETE_MATH,
+        "logic gates": DISCRETE_MATH,
+        "proposition": DISCRETE_MATH,
+        "boolean algebra": DISCRETE_MATH,
+        "numerical methods": ENG_MATH,
         # Programming and Data Structures
-        "data structure": "Programming and Data Structures",
-        "linked list": "Programming and Data Structures",
-        "stack": "Programming and Data Structures",
-        "queue": "Programming and Data Structures",
-        "tree": "Programming and Data Structures",
-        "heap": "Programming and Data Structures",
-        "array": "Programming and Data Structures",
-        "pointer": "Programming and Data Structures",
-        "recursion": "Programming and Data Structures",
-
+        "data structure": PROG_DS,
+        "linked list": PROG_DS,
+        "stack": "stacks",
+        "queue": "queues",
+        "tree": PROG_DS,
+        "heap": PROG_DS,
+        "array": "Arrays",
+        "pointer": PROG_DS,
+        "recursion": "Recursion",
         # Algorithms
-        "graph": "Algorithms",
+        "algorithm": "Algorithms",
+        "graph": "graphs",
         "shortest path": "Algorithms",
         "dynamic programming": "Algorithms",
         "sorting": "Algorithms",
-        "search": "Algorithms",
+        "search": "Searching",
         "greedy": "Algorithms",
         "complexity": "Algorithms",
-
+        "time complexity": "Algorithms",
+        "space complexity": "Algorithms",
         # Operating System
-        "process": "Operating System",
-        "thread": "Operating System",
-        "deadlock": "Operating System",
-        "banker": "Operating System",
-        "scheduling": "Operating System",
-        "memory management": "Operating System",
-        "virtual memory": "Operating System",
-        "file system": "Operating System",
-        "paging": "Operating System",
-
+        "process": "processes",
+        "thread": "threads",
+        "deadlock": OS,
+        "banker": OS,
+        "scheduling": OS,
+        "memory management": MEM_MGMT,
+        "virtual memory": MEM_MGMT,
+        "file system": "File organization",
+        "paging": MEM_MGMT,
+        "system call": "System calls",
         # Computer Organization and Architecture
-        "pipeline": "Computer Organization and Architecture",
-        "pipelining": "Computer Organization and Architecture",
-        "hazard": "Computer Organization and Architecture",
-        "cache": "Computer Organization and Architecture",
-        "instruction": "Computer Organization and Architecture",
-        "floating point": "Computer Organization and Architecture",
-        "microprogramming": "Computer Organization and Architecture",
-        "alu": "Computer Organization and Architecture",
-        "memory hierarchy": "Computer Organization and Architecture",
-
+        "pipeline": INST_PIPE,
+        "pipelining": INST_PIPE,
+        "hazard": INST_PIPE,
+        "cache": COA,
+        "instruction": "Machine instructions and addressing modes",
+        "floating point": COA,
+        "microprogramming": COA,
+        "alu": "data‐path and control unit",
+        "memory hierarchy": COA,
         # Computer Networks
-        "tcp": "Computer Networks",
-        "udp": "Computer Networks",
-        "routing": "Computer Networks",
-        "arp": "Computer Networks",
-        "dhcp": "Computer Networks",
-        "icmp": "Computer Networks",
-        "ethernet": "Computer Networks",
-        "network": "Computer Networks",
-
+        "tcp": APP_PROTO,
+        "udp": APP_PROTO,
+        "routing": "Routing protocols",
+        "arp": "Basics of IP support protocols (ARP",
+        "dhcp": "DHCP",
+        "icmp": APP_PROTO,
+        "ethernet": CN,
+        "network": CN,
+        "ip address": CIDR,
+        "subnet": CIDR,
+        "cidr": CIDR,
         # Databases
-        "sql": "Databases",
-        "normalization": "Databases",
-        "er model": "Databases",
-        "transaction": "Databases",
-        "relational": "Databases",
-        "database": "Databases",
-
+        "sql": DB,
+        "normalization": DB,
+        "er model": ER_MODEL,
+        "relational": ER_MODEL,
+        "database": DB,
+        "transaction": DB,
         # Theory of Computation
-        "regular language": "Theory of Computation",
-        "finite automata": "Theory of Computation",
-        "turing": "Theory of Computation",
-        "grammar": "Theory of Computation",
-        "pumping lemma": "Theory of Computation",
-        "automata": "Theory of Computation",
-
+        "regular language": REG_AUTOMATA,
+        "finite automata": REG_AUTOMATA,
+        "turing": "Turing machines and undecidability",
+        "grammar": PUMP_LEMMA,
+        "pumping lemma": PUMP_LEMMA,
+        "automata": REG_AUTOMATA,
         # Compiler Design
-        "compiler": "Compiler Design",
-        "lexical": "Compiler Design",
-        "parsing": "Compiler Design",
-        "code generation": "Compiler Design",
-        "syntax": "Compiler Design",
-
+        "compiler": INTER_CODE,
+        "lexical": INTER_CODE,
+        "parsing": INTER_CODE,
+        "code generation": INTER_CODE,
+        "syntax": INTER_CODE,
+        "runtime": "Runtime environments",
         # Digital Logic
         "boolean": "Digital Logic",
-        "combinational": "Digital Logic",
-        "sequential": "Digital Logic",
+        "combinational": COMB_SEQ,
+        "sequential": COMB_SEQ,
         "logic gate": "Digital Logic",
-        "flip flop": "Digital Logic",
+        "flip flop": COMB_SEQ,
     }
 
     topic_cache = {}
@@ -148,27 +180,47 @@ class TopicMapperService:
 
         # keyword matching
         for keyword, subject_name in TopicMapperService.MAP.items():
-
             if keyword in text:
                 scores[subject_name] += len(keyword)
 
-        # topic name matching
+        # topic name matching - more specific
         topic_map = TopicMapperService.load_topics_for_exam(exam)
 
+        topic_scores = {}
         for normalized_topic, topic_obj in topic_map.items():
-
             if normalized_topic in text:
-                scores[topic_obj.subject.name] += 3
+                # Score by topic name length (longer = more specific)
+                topic_scores[topic_obj.id] = len(normalized_topic)
+
+        if topic_scores:
+            # Return the most specific topic match
+            best_topic_id = max(topic_scores, key=topic_scores.get)
+            best_topic = Topic.objects.get(id=best_topic_id)
+            return best_topic
 
         if not scores:
             return None
 
-        best_subject = max(scores, key=scores.get)
+        best_topic_name = max(scores, key=scores.get)
 
-        # return a topic from that subject (first topic)
+        # Try to find the topic with this name
+        matching_topic = Topic.objects.filter(
+            name=best_topic_name, subject__exam=exam
+        ).first()
+
+        if matching_topic:
+            return matching_topic
+
+        # Try partial match
+        matching_topic = Topic.objects.filter(
+            subject__exam=exam, name__icontains=best_topic_name.split()[0]
+        ).first()
+
+        if matching_topic:
+            return matching_topic
+
         topic = Topic.objects.filter(
-            subject__name=best_subject,
-            subject__exam=exam
+            subject__exam=exam, subject__name="Engineering Mathematics"
         ).first()
 
         return topic

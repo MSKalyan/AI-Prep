@@ -5,7 +5,6 @@ from datetime import date, timedelta
 def user(django_user_model):
     return django_user_model.objects.create_user(
         email='test@example.com',
-        password='testpass123',
         full_name='Test User'
     )
 
@@ -13,7 +12,6 @@ def user(django_user_model):
 def user2(django_user_model):
     return django_user_model.objects.create_user(
         email='test2@example.com',
-        password='testpass123',
         full_name='Test User 2'
     )
 

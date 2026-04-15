@@ -1,4 +1,4 @@
-import { apiClient } from "@/lib/apiClient";
+import { apiClient } from '@/lib/apiClient';
 
 export interface StudyTopicResponse {
   roadmap_id: number;
@@ -33,7 +33,6 @@ export async function getTopicStudy(topicId: number) {
 
   const studyData = studyRes.data;
 
-  const realTopicId = studyData.topic_id;
   try {
     const topicName = studyData.topic;
 
@@ -49,10 +48,10 @@ export async function getTopicStudy(topicId: number) {
       youtube_links: contentData.youtube_links,
       topic_name: contentData.topic_name,
     };
-  } catch (err) {
+  } catch {
     return {
       ...studyData,
-      description: "",
+      description: '',
       youtube_links: [],
       topic_name: studyData.topic,
     };

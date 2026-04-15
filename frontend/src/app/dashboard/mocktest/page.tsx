@@ -1,10 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import { useAuth } from "@/features/auth";
-import { createMockTest } from "@/features/mocktest/services";
+import { useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from '@/features/auth';
+import { createMockTest } from '@/features/mocktest/services';
 
 /* -------------------- AUTH WRAPPER -------------------- */
 function MockTestPageContent() {
@@ -13,7 +12,7 @@ function MockTestPageContent() {
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.replace("/login");
+      router.replace('/login');
     }
   }, [user, authLoading, router]);
 
@@ -40,18 +39,18 @@ function MockTestContent() {
   useEffect(() => {
     const init = async () => {
       try {
-        const topicIdRaw = params.get("topicId");
-        const roadmapIdRaw = params.get("roadmapId");
-        const dayRaw = params.get("day");
+        const topicIdRaw = params.get('topicId');
+        const roadmapIdRaw = params.get('roadmapId');
+        const dayRaw = params.get('day');
 
         // Validate params
         if (!topicIdRaw || !roadmapIdRaw || !dayRaw) {
-          console.error("Missing params", {
+          console.error('Missing params', {
             topicIdRaw,
             roadmapIdRaw,
             dayRaw,
           });
-          router.replace("/dashboard");
+          router.replace('/dashboard');
           return;
         }
 
@@ -60,12 +59,12 @@ function MockTestContent() {
         const day = Number(dayRaw);
 
         if (!topicId || !roadmapId || !day) {
-          console.error("Invalid numeric params", {
+          console.error('Invalid numeric params', {
             topicId,
             roadmapId,
             day,
           });
-          router.replace("/dashboard");
+          router.replace('/dashboard');
           return;
         }
 
@@ -77,13 +76,13 @@ function MockTestContent() {
         });
 
         if (!data?.mock_test?.id) {
-          throw new Error("Invalid response");
+          throw new Error('Invalid response');
         }
 
         router.replace(`/dashboard/mocktest/${data.mock_test.id}`);
       } catch (error) {
-        console.error("Mock test creation failed:", error);
-        router.replace("/dashboard");
+        console.error('Mock test creation failed:', error);
+        router.replace('/dashboard');
       }
     };
 
@@ -95,7 +94,7 @@ function MockTestContent() {
 
 /* -------------------- PAGE (WRAPPER) -------------------- */
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 
 export default function MockTestPage() {
   return <MockTestPageContent />;

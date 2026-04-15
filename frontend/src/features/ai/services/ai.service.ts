@@ -1,16 +1,16 @@
-import { apiClient } from "@/lib/apiClient";
+import { apiClient } from '@/lib/apiClient';
 
 export const uploadDocument = async (file: File) => {
   const formData = new FormData();
-  formData.append("file", file);
-  const { data } = await apiClient.post("/documents/upload/", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
+  formData.append('file', file);
+  const { data } = await apiClient.post('/documents/upload/', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
   });
   return data;
 };
 
 export const getDocuments = async () => {
-  const { data } = await apiClient.get("/documents/");
+  const { data } = await apiClient.get('/documents/');
   return data;
 };
 
@@ -19,12 +19,16 @@ export const deleteDocument = async (id: number) => {
 };
 
 export const processDocuments = async () => {
-  const { data } = await apiClient.post("/documents/process/");
+  const { data } = await apiClient.post('/documents/process/');
   return data;
 };
 
-export const askAI = async (payload: { question: string; context?: string; conversation_id?: number }) => {
-  const { data } = await apiClient.post("/ask-ai/", payload);
+export const askAI = async (payload: {
+  question: string;
+  context?: string;
+  conversation_id?: number;
+}) => {
+  const { data } = await apiClient.post('/ask-ai/', payload);
   return data;
 };
 

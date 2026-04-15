@@ -1,11 +1,2 @@
-worker/
-data/
-
-
-venv/
-__pycache__/
-*.pyc
-.env
-.env.*
-faiss.index
-faiss_mapping.pkl
+# Use root .gitignore
+# Backend-only specifics if cloned alone

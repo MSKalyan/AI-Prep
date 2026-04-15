@@ -1,29 +1,42 @@
-"use client";
+'use client';
 
-import { useDashboardStats, useStudyPlan, usePerformance } from "@/features/analytics";
-import { useAuth } from "@/features/auth";
-import { apiClient } from "@/lib/apiClient";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { useEffect } from "react";
-import { StatCard } from "@/features/analytics/components";
+import { useDashboardStats, usePerformance } from '@/features/analytics';
+import { useAuth } from '@/features/auth';
+import { apiClient } from '@/lib/apiClient';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { useEffect } from 'react';
+import { StatCard } from '@/features/analytics/components';
+
+interface TopicPerformance {
+  topic_id: number;
+  topic_name: string;
+  strength: string;
+  accuracy: number;
+}
+
+interface Roadmap {
+  id: number;
+  exam_name: string;
+  is_active: boolean;
+}
 
 const services = [
   {
-    name: "AI Service",
-    description: "Ask AI questions powered by RAG",
-    href: "/dashboard/ai_service",
+    name: 'AI Service',
+    description: 'Ask AI questions powered by RAG',
+    href: '/dashboard/ai_service',
   },
   {
-    name: "Analytics",
-    description: "View performance insights",
-    href: "/dashboard/analytics",
+    name: 'Analytics',
+    description: 'View performance insights',
+    href: '/dashboard/analytics',
   },
   {
-    name: "Mock Tests",
-    description: "Attempt and evaluate tests",
-    href: "/dashboard/mocktest",
+    name: 'Mock Tests',
+    description: 'Attempt and evaluate tests',
+    href: '/dashboard/mocktest',
   },
 ];
 
@@ -36,24 +49,27 @@ export default function DashboardPage() {
 
   const activateMutation = useMutation({
     mutationFn: (id: number) => apiClient.post(`/roadmap/activate/${id}/`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["dashboard"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
   });
 
   useEffect(() => {
-    if (!isLoading && !user) router.replace("/login");
+    if (!isLoading && !user) router.replace('/login');
   }, [user, isLoading, router]);
 
-  if (isLoading) return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  if (isLoading)
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
   if (!user) return null;
-  if (statsLoading || !data) return <div className="min-h-screen flex items-center justify-center">Loading dashboard...</div>;
+  if (statsLoading || !data)
+    return (
+      <div className="min-h-screen flex items-center justify-center">Loading dashboard...</div>
+    );
 
   const performance = Array.isArray(performanceData?.topics) ? performanceData.topics : [];
-  const weakTopics = performance.filter((t: any) => t.strength === "weak");
+  const weakTopics = performance.filter((t: TopicPerformance) => t.strength === 'weak');
 
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-
         {/* HEADER */}
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <div>
@@ -62,7 +78,7 @@ export default function DashboardPage() {
           </div>
 
           <button
-            onClick={() => router.push("/dashboard/roadmap")}
+            onClick={() => router.push('/dashboard/roadmap')}
             className="px-5 py-2 bg-black text-white rounded-lg hover:opacity-90 transition"
           >
             Generate Roadmap
@@ -79,18 +95,14 @@ export default function DashboardPage() {
 
         {/* MAIN GRID */}
         <div className="grid lg:grid-cols-3 gap-6">
-
           {/* LEFT SIDE */}
           <div className="lg:col-span-2 space-y-6">
-
             {/* CONTINUE */}
             {data.continue_studying && (
               <div className="bg-white rounded-2xl shadow p-6 flex justify-between items-center">
                 <div>
                   <h2 className="font-semibold">Continue Studying</h2>
-                  <p className="text-sm text-gray-500">
-                    {data.continue_studying.topic_name}
-                  </p>
+                  <p className="text-sm text-gray-500">{data.continue_studying.topic_name}</p>
                 </div>
 
                 <Link
@@ -109,13 +121,11 @@ export default function DashboardPage() {
               </div>
 
               <div className="divide-y">
-                {data.roadmaps.map((roadmap: any) => (
+                {data.roadmaps.map((roadmap: Roadmap) => (
                   <div key={roadmap.id} className="flex justify-between items-center p-4">
                     <div>
                       <p className="font-medium">{roadmap.exam_name}</p>
-                      {roadmap.is_active && (
-                        <span className="text-xs text-green-600">Active</span>
-                      )}
+                      {roadmap.is_active && <span className="text-xs text-green-600">Active</span>}
                     </div>
 
                     {!roadmap.is_active && (
@@ -130,12 +140,10 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
-
           </div>
 
           {/* RIGHT SIDE */}
           <div className="space-y-6">
-
             {/* WEAK TOPICS */}
             <div className="bg-white rounded-2xl shadow p-6">
               <h2 className="font-semibold mb-4">Weak Topics</h2>
@@ -144,7 +152,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-500">No weak topics</p>
               ) : (
                 <div className="space-y-2">
-                  {weakTopics.slice(0, 5).map((t: any) => (
+                  {weakTopics.slice(0, 5).map((t: TopicPerformance) => (
                     <div
                       key={t.topic_id}
                       className="flex justify-between text-sm bg-gray-50 p-2 rounded"
@@ -174,11 +182,8 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
-
           </div>
-
         </div>
-
       </div>
     </div>
   );

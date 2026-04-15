@@ -1,15 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 export function useCountdown(initialTime: number | undefined, onExpire: () => void) {
-  const [timeLeft, setTimeLeft] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (initialTime !== undefined) {
-      setTimeLeft(initialTime);
-    }
-  }, [initialTime]);
+  const [timeLeft, setTimeLeft] = useState<number | null>(initialTime ?? null);
 
   useEffect(() => {
     if (timeLeft === null) return;

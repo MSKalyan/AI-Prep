@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useParams, useRouter } from 'next/navigation';
+import { useState } from 'react';
 import {
   useMockTestDetail,
   useSubmitAnswer,
@@ -9,22 +9,39 @@ import {
   useCountdown,
   useSelectedAnswers,
   useQuestionIndex,
-} from "@/features/mocktest";
-import { finalizeTest } from "@/features/mocktest/services";
+} from '@/features/mocktest';
+import { finalizeTest } from '@/features/mocktest/services';
 
-export default function MockTestAttemptPage() {
-  const params = useParams();
-  const testId = Number(params.id);
+interface Option {
+  key: string;
+  text: string;
+}
+
+interface Question {
+  id: number;
+  question_text: string;
+  options: Option[];
+}
+
+function MockTestAttemptContent({
+  testId,
+  data,
+}: {
+  testId: number;
+  data: {
+    attempt_id: number;
+    remaining_seconds: number;
+    questions: Question[];
+  };
+}) {
   const router = useRouter();
-
-  const { data, isLoading } = useMockTestDetail(testId);
   const { mutate } = useSubmitAnswer();
 
   useMockTestController(testId);
   const { currentIndex, setCurrentIndex } = useQuestionIndex(testId);
   const { selected, setSelected } = useSelectedAnswers(data);
 
-  const [questionStartTime, setQuestionStartTime] = useState(Date.now());
+  const [questionStartTime, setQuestionStartTime] = useState(() => Date.now());
 
   const handleSubmit = async () => {
     if (!data?.attempt_id) return;
@@ -34,13 +51,14 @@ export default function MockTestAttemptPage() {
 
   const timeLeft = useCountdown(data?.remaining_seconds, handleSubmit);
 
-  if (isLoading || !data || timeLeft === null) {
+  if (timeLeft === null) {
     return <div className="p-6">Loading...</div>;
   }
 
   const question = data.questions[currentIndex];
 
   const handleSelect = (value: string) => {
+    // eslint-disable-next-line react-hooks/purity
     const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
 
     setSelected((prev) => ({
@@ -55,6 +73,7 @@ export default function MockTestAttemptPage() {
       time_taken_seconds: timeTaken,
     });
 
+    // eslint-disable-next-line react-hooks/purity
     setQuestionStartTime(Date.now());
   };
 
@@ -69,28 +88,24 @@ export default function MockTestAttemptPage() {
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-xl font-semibold">Mock Test</h1>
           <div className="bg-black text-white px-4 py-2 rounded-lg font-mono">
-            {minutes}:{seconds.toString().padStart(2, "0")}
+            {minutes}:{seconds.toString().padStart(2, '0')}
           </div>
         </div>
 
         {/* Question Card */}
         <div className="bg-white rounded-2xl shadow p-6 flex-1 flex flex-col">
-          <h2 className="text-lg font-medium mb-4">
-            Question {currentIndex + 1}
-          </h2>
+          <h2 className="text-lg font-medium mb-4">Question {currentIndex + 1}</h2>
 
-          <p className="mb-6 text-gray-800 leading-relaxed">
-            {question.question_text}
-          </p>
+          <p className="mb-6 text-gray-800 leading-relaxed">{question.question_text}</p>
 
           <div className="space-y-3">
-            {question.options.map((opt: any) => (
+            {question.options.map((opt: Option) => (
               <label
                 key={opt.key}
                 className={`border rounded-lg p-3 cursor-pointer flex items-center gap-3 transition ${
                   selected[question.id] === opt.key
-                    ? "border-black bg-gray-50"
-                    : "hover:border-gray-400"
+                    ? 'border-black bg-gray-50'
+                    : 'hover:border-gray-400'
                 }`}
               >
                 <input
@@ -115,10 +130,7 @@ export default function MockTestAttemptPage() {
             </button>
 
             {currentIndex === data.questions.length - 1 ? (
-              <button
-                onClick={handleSubmit}
-                className="px-6 py-2 bg-black text-white rounded-lg"
-              >
+              <button onClick={handleSubmit} className="px-6 py-2 bg-black text-white rounded-lg">
                 Submit Test
               </button>
             ) : (
@@ -138,22 +150,19 @@ export default function MockTestAttemptPage() {
         <h3 className="font-semibold mb-4">Questions</h3>
 
         <div className="grid grid-cols-5 gap-2">
-          {data.questions.map((q: any, index: number) => {
+          {data.questions.map((q: Question, index: number) => {
             const isAnswered = !!selected[q.id];
             const isActive = index === currentIndex;
 
+            let buttonClass = 'h-10 rounded-lg text-sm font-medium bg-gray-100';
+            if (isActive) {
+              buttonClass = 'h-10 rounded-lg text-sm font-medium bg-black text-white';
+            } else if (isAnswered) {
+              buttonClass = 'h-10 rounded-lg text-sm font-medium bg-green-100';
+            }
+
             return (
-              <button
-                key={q.id}
-                onClick={() => setCurrentIndex(index)}
-                className={`h-10 rounded-lg text-sm font-medium ${
-                  isActive
-                    ? "bg-black text-white"
-                    : isAnswered
-                    ? "bg-green-100"
-                    : "bg-gray-100"
-                }`}
-              >
+              <button key={q.id} onClick={() => setCurrentIndex(index)} className={buttonClass}>
                 {index + 1}
               </button>
             );
@@ -175,4 +184,36 @@ export default function MockTestAttemptPage() {
       </div>
     </div>
   );
+}
+
+export default function MockTestAttemptPage() {
+  const params = useParams();
+  const testId = Number(params.id);
+  const router = useRouter();
+
+  const { data, isLoading, isError, error } = useMockTestDetail(testId);
+
+  if (isError) {
+    console.error('Failed to load mock test detail', error);
+    return (
+      <div className="p-6 space-y-3">
+        <div className="text-lg font-semibold">Unable to load mock test</div>
+        <div className="text-sm text-gray-600">
+          Please go back and try again. If this keeps happening, the test may have invalid questions.
+        </div>
+        <button
+          onClick={() => router.replace('/dashboard')}
+          className="px-4 py-2 bg-black text-white rounded-lg"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  if (isLoading || !data) {
+    return <div className="p-6">Loading...</div>;
+  }
+
+  return <MockTestAttemptContent testId={testId} data={data} />;
 }

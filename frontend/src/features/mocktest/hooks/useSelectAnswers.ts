@@ -1,20 +1,32 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from 'react';
 
-export function useSelectedAnswers(data: any) {
+interface Answer {
+  question: number;
+  user_answer: string;
+}
+
+interface MockTestData {
+  answers?: Answer[];
+}
+
+export function useSelectedAnswers(data: MockTestData | undefined) {
+  const restored = useMemo(() => {
+    if (!data?.answers) return {};
+
+    const result: Record<number, string> = {};
+    data.answers.forEach((a: Answer) => {
+      result[a.question] = a.user_answer;
+    });
+    return result;
+  }, [data]);
+
   const [selected, setSelected] = useState<Record<number, string>>({});
 
   useEffect(() => {
-    if (!data?.answers) return;
-
-    const restored: Record<number, string> = {};
-    data.answers.forEach((a: any) => {
-      restored[a.question] = a.user_answer;
-    });
-
     setSelected(restored);
-  }, [data]);
+  }, [restored]);
 
   return { selected, setSelected };
 }

@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useAuth } from "@/features/auth";
-import { useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
+import { useState } from 'react';
+import { useAuth } from '@/features/auth';
+import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
+import Link from 'next/link';
 
 export default function LoginForm() {
   const { login, loginError, loginLoading } = useAuth();
@@ -12,29 +12,29 @@ export default function LoginForm() {
   const queryClient = useQueryClient();
 
   const [form, setForm] = useState({
-    email: "",
-    password: "",
+    email: '',
+    password: '',
   });
 
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
   const handleLogin = async () => {
-    setError("");
+    setError('');
 
     if (!form.email) {
-      setError("Email is required");
+      setError('Email is required');
       return;
     }
 
     if (!form.password) {
-      setError("Password is required");
+      setError('Password is required');
       return;
     }
 
     try {
       await login(form);
-      await queryClient.refetchQueries({ queryKey: ["profile"] });
-      router.replace("/dashboard");
+      await queryClient.refetchQueries({ queryKey: ['profile'] });
+      router.replace('/dashboard');
     } catch {}
   };
 
@@ -54,7 +54,9 @@ export default function LoginForm() {
           )}
 
           <div className="space-y-1">
-            <label htmlFor="email" className="text-sm text-gray-600">Email</label>
+            <label htmlFor="email" className="text-sm text-gray-600">
+              Email
+            </label>
             <input
               id="email"
               type="email"
@@ -66,7 +68,9 @@ export default function LoginForm() {
           </div>
 
           <div className="space-y-1">
-            <label htmlFor="password" className="text-sm text-gray-600">Password</label>
+            <label htmlFor="password" className="text-sm text-gray-600">
+              Password
+            </label>
             <input
               id="password"
               type="password"
@@ -83,11 +87,11 @@ export default function LoginForm() {
             disabled={loginLoading}
             className="w-full rounded-lg bg-black text-white py-2 text-sm font-medium hover:opacity-80 transition disabled:opacity-50"
           >
-            {loginLoading ? "Logging in..." : "Login"}
+            {loginLoading ? 'Logging in...' : 'Login'}
           </button>
 
           <p className="text-sm text-center text-gray-600">
-            Don't have an account?{" "}
+            Don&apos;t have an account?{' '}
             <Link href="/register" className="text-black font-medium hover:underline">
               Create account
             </Link>

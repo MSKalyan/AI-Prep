@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { useGenerateRoadmap } from "../hooks/useRoadmap";
-import { useExams } from "../hooks/useExams";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useGenerateRoadmap } from '../hooks/useRoadmap';
+import { useExams } from '../hooks/useExams';
 
 interface Exam {
   id: number;
@@ -18,25 +18,25 @@ export default function CreateRoadmapForm() {
   const exams = examsQuery.data;
 
   const [form, setForm] = useState({
-    exam_id: "",
-    target_date: "",
+    exam_id: '',
+    target_date: '',
     study_hours_per_day: 4,
   });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setError("");
+    setError('');
 
     if (!form.exam_id) {
-      setError("Please select an exam.");
+      setError('Please select an exam.');
       return;
     }
 
     if (!form.target_date) {
-      setError("Please select a target date.");
+      setError('Please select a target date.');
       return;
     }
 
@@ -44,12 +44,10 @@ export default function CreateRoadmapForm() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const selectedExam = exams?.find(
-      (exam: Exam) => exam.id === Number(form.exam_id)
-    );
+    const selectedExam = exams?.find((exam: Exam) => exam.id === Number(form.exam_id));
 
     if (selectedDate <= today) {
-      setError("Target date must be in the future.");
+      setError('Target date must be in the future.');
       return;
     }
 
@@ -66,8 +64,8 @@ export default function CreateRoadmapForm() {
         study_hours_per_day: form.study_hours_per_day,
       });
       router.push(`/dashboard/roadmap/${response.roadmap_id}`);
-    } catch (err: any) {
-      setError("Failed to generate roadmap.");
+    } catch {
+      setError('Failed to generate roadmap.');
     } finally {
       setLoading(false);
     }
@@ -82,8 +80,9 @@ export default function CreateRoadmapForm() {
         <h2 className="text-xl font-semibold text-gray-800">Create Study Roadmap</h2>
 
         <div>
-          <label className="mb-1 block text-sm text-gray-600">Select Exam</label>
+          <label htmlFor="exam_id" className="mb-1 block text-sm text-gray-600">Select Exam</label>
           <select
+            id="exam_id"
             className="w-full rounded-md border p-2 focus:border-blue-500 focus:outline-none"
             value={form.exam_id}
             onChange={(e) => setForm({ ...form, exam_id: e.target.value })}
@@ -100,8 +99,9 @@ export default function CreateRoadmapForm() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm text-gray-600">Target Date</label>
+          <label htmlFor="target_date" className="mb-1 block text-sm text-gray-600">Target Date</label>
           <input
+            id="target_date"
             type="date"
             required
             className="w-full rounded-md border p-2"
@@ -112,8 +112,9 @@ export default function CreateRoadmapForm() {
         </div>
 
         <div>
-          <label className="mb-1 block text-sm text-gray-600">Study Hours Per Day</label>
+          <label htmlFor="study_hours_per_day" className="mb-1 block text-sm text-gray-600">Study Hours Per Day</label>
           <input
+            id="study_hours_per_day"
             type="number"
             min={1}
             max={24}
@@ -129,7 +130,7 @@ export default function CreateRoadmapForm() {
           className="w-full rounded-md bg-black px-4 py-2 text-white"
           disabled={loading}
         >
-          {loading ? "Generating..." : "Generate Roadmap"}
+          {loading ? 'Generating...' : 'Generate Roadmap'}
         </button>
       </form>
     </div>

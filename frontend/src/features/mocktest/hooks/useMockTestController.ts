@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { apiClient } from "@/lib/apiClient";
+import { useEffect } from 'react';
+import { apiClient } from '@/lib/apiClient';
 
 export function useMockTestController(testId: number) {
   useEffect(() => {
@@ -11,7 +11,7 @@ export function useMockTestController(testId: number) {
       try {
         await apiClient.post(`/mocktest/start/${testId}/`);
       } catch (err) {
-        console.error("Failed to start test", err);
+        console.error('Failed to start test', err);
       }
     };
 

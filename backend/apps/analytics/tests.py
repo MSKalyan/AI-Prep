@@ -2,6 +2,8 @@ from django.test import TestCase
 from datetime import date, timedelta
 from django.utils import timezone
 from rest_framework.test import APIClient
+from django.contrib.auth.hashers import make_password
+import os
 
 from apps.users.models import User
 from apps.roadmap.models import Exam, Subject, Topic
@@ -15,7 +17,10 @@ from apps.analytics.services.study_content_service import StudyContentService
 
 class BaseTestCase(TestCase):
     def create_user(self):
-        return User.objects.create_user(email='test@example.com', password='pass')
+        test_password = os.environ.get('TEST_PASSWORD')
+        if not test_password:
+            raise ValueError('TEST_PASSWORD environment variable must be set')
+        return User.objects.create_user(email='test@example.com', password=test_password)
 
     def create_topic(self):
         exam = Exam.objects.create(

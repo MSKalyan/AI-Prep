@@ -1,18 +1,17 @@
-"use client";
+'use client';
 
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { useAuth } from "@/features/auth";
-import { useGenerateRoadmap, CreateRoadmapForm } from "@/features/roadmap";
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { useAuth } from '@/features/auth';
+import { CreateRoadmapForm } from '@/features/roadmap';
 
 export default function RoadmapPage() {
   const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
-  const { generateRoadmap } = useGenerateRoadmap();
 
   useEffect(() => {
     if (!authLoading && !user) {
-      router.replace("/login");
+      router.replace('/login');
     }
   }, [user, authLoading, router]);
 
@@ -23,13 +22,6 @@ export default function RoadmapPage() {
   if (!user) {
     return null;
   }
-
-  const handleCreate = async (payload: any) => {
-    const res = await generateRoadmap(payload);
-
-    // Deterministic flow → direct redirect
-    router.push(`/dashboard/roadmap/${res.roadmap_id}`);
-  };
 
   return (
     <div className="px-4 sm:px-6 py-6">

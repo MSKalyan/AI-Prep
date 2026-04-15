@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "./useAuth";
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from './useAuth';
 
 export function useRequireAuth() {
   const { user, isLoading } = useAuth();
@@ -10,7 +10,7 @@ export function useRequireAuth() {
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.replace("/login");
+      router.replace('/login');
     }
   }, [user, isLoading, router]);
 

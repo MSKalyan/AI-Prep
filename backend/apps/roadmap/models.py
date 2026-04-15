@@ -2,9 +2,9 @@ from django.db import models
 from django.conf import settings
 from django.db.models import Q
 
-class Exam(models.Model):
 
-    name = models.CharField(max_length=200,unique=True)
+class Exam(models.Model):
+    name = models.CharField(max_length=200, unique=True)
     category = models.CharField(max_length=100, blank=True)
     total_marks = models.IntegerField(default=100)
     exam_date = models.DateField()  # NEW FIELD
@@ -16,13 +16,9 @@ class Exam(models.Model):
     def __str__(self):
         return self.name
 
-class Subject(models.Model):
 
-    exam = models.ForeignKey(
-        Exam,
-        on_delete=models.CASCADE,
-        related_name="subjects"
-    )
+class Subject(models.Model):
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name="subjects")
 
     name = models.CharField(max_length=200)
 
@@ -35,24 +31,21 @@ class Subject(models.Model):
 
     def __str__(self):
         return f"{self.exam.name} - {self.name}"
-class Topic(models.Model):
 
+
+class Topic(models.Model):
     name = models.CharField(max_length=200)
 
     subject = models.ForeignKey(
-    Subject,
-    on_delete=models.CASCADE,
-    related_name="topics",
-    null=True,
-    blank=True
-)
+        Subject, on_delete=models.CASCADE, related_name="topics", null=True, blank=True
+    )
 
     parent = models.ForeignKey(
         "self",
         null=True,
         blank=True,
         on_delete=models.CASCADE,
-        related_name="child_topics"
+        related_name="child_topics",
     )
 
     order = models.PositiveIntegerField(default=0)
@@ -61,23 +54,20 @@ class Topic(models.Model):
     pyq_total_marks = models.FloatField(default=0.0)  # sum of PYQ marks
     pyq_count = models.PositiveIntegerField(default=0)
     is_core = models.BooleanField(default=True)
+
     class Meta:
         db_table = "topics"
         ordering = ["order", "name"]
-        unique_together = ("subject","parent","name")
+        unique_together = ("subject", "parent", "name")
 
     def __str__(self):
         if self.subject:
             return f"{self.subject.exam.name} - {self.name}"
         return self.name
 
-class Subtopic(models.Model):
 
-    topic = models.ForeignKey(
-        Topic,
-        on_delete=models.CASCADE,
-        related_name="subtopics"
-    )
+class Subtopic(models.Model):
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="subtopics")
 
     name = models.CharField(max_length=300)
 
@@ -96,6 +86,7 @@ class Roadmap(models.Model):
     """
     Study roadmap generated for user's exam preparation
     """
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -106,14 +97,11 @@ class Roadmap(models.Model):
         Exam,
         on_delete=models.CASCADE,
         related_name="roadmaps",
-        null=True,     # TEMP FIX
-        blank=True
-        
+        null=True,  # TEMP FIX
+        blank=True,
     )
 
     target_date = models.DateField(db_index=True)
-
-   
 
     total_weeks = models.PositiveIntegerField(default=1)
 
@@ -123,7 +111,7 @@ class Roadmap(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     version = models.PositiveIntegerField(default=1)
-    is_active = models.BooleanField(default=False,db_index=True)
+    is_active = models.BooleanField(default=False, db_index=True)
 
     class Meta:
         db_table = "roadmaps"
@@ -132,13 +120,14 @@ class Roadmap(models.Model):
             models.UniqueConstraint(
                 fields=["user"],
                 condition=Q(is_active=True),
-                name="unique_active_roadmap_per_user"
+                name="unique_active_roadmap_per_user",
             )
         ]
 
     def __str__(self):
         exam_name = self.exam.name if self.exam else "No Exam"
         return f"{exam_name} - {self.user}"
+
 
 class RoadmapTopic(models.Model):
     """
@@ -152,15 +141,13 @@ class RoadmapTopic(models.Model):
     )
 
     topic = models.ForeignKey(
-            Topic,
-            on_delete=models.CASCADE,
-            related_name="roadmap_entries"
-        )
+        Topic, on_delete=models.CASCADE, related_name="roadmap_entries"
+    )
 
     week_number = models.IntegerField()
 
-    day_number = models.IntegerField(default=1) #1-7
-  
+    day_number = models.IntegerField(default=1)  # 1-7
+
     estimated_hours = models.PositiveIntegerField(default=10)
 
     resources = models.JSONField(default=list, blank=True)
@@ -170,26 +157,25 @@ class RoadmapTopic(models.Model):
     is_completed = models.BooleanField(default=False)
     completed_at = models.DateTimeField(null=True, blank=True)
 
-    ai_explanation = models.TextField(null=True,blank=True)
+    ai_explanation = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     phase = models.CharField(
-    max_length=20,
-    choices=[
-        ("coverage", "Coverage"),
-        ("practice", "Practice"),
-        ("revision", "Revision"),
-    ],
-)
+        max_length=20,
+        choices=[
+            ("coverage", "Coverage"),
+            ("practice", "Practice"),
+            ("revision", "Revision"),
+        ],
+    )
+
     class Meta:
         db_table = "roadmap_topics"
         ordering = ["week_number", "priority"]
-        unique_together = ("roadmap", "week_number","day_number", "topic")
-
+        unique_together = ("roadmap", "week_number", "day_number", "topic")
 
     def __str__(self):
         return f"Week {self.week_number}: {self.topic.name}"
-
 
 
 class RoadmapGenerationJob(models.Model):
@@ -237,8 +223,8 @@ class RoadmapGenerationJob(models.Model):
     def __str__(self):
         return f"Job {self.id} - {self.status}"
 
-class PYQ(models.Model):
 
+class PYQ(models.Model):
     QUESTION_TYPES = [
         ("mcq", "Single Correct MCQ"),
         ("msq", "Multiple Select"),
@@ -247,36 +233,23 @@ class PYQ(models.Model):
         ("desc", "Descriptive"),
     ]
 
-    exam = models.ForeignKey(Exam, on_delete=models.CASCADE,related_name="pyqs")
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name="pyqs")
 
-    topic = models.ForeignKey(
-        Topic,
-        on_delete=models.CASCADE,
-        related_name="pyqs"
-    )
+    topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="pyqs")
 
     year = models.IntegerField()
 
     marks = models.FloatField()
 
-    question_type = models.CharField(
-        max_length=10,
-        choices=QUESTION_TYPES
-    )
+    question_type = models.CharField(max_length=10, choices=QUESTION_TYPES)
 
     question_text = models.TextField()
 
-    options = models.JSONField(
-        null=True,
-        blank=True
-    )
+    options = models.JSONField(null=True, blank=True)
 
-    correct_answer = models.JSONField(
-        null=True,
-        blank=True
-    )
+    correct_answer = models.JSONField(null=True, blank=True)
 
-    explanation = models.TextField(null=True, blank=True)
+    explanation = models.TextField(blank=True)
 
     source_url = models.URLField()
 
@@ -284,24 +257,17 @@ class PYQ(models.Model):
         db_table = "pyqs"
 
         indexes = [
-                models.Index(fields=["exam", "year"]),
-                models.Index(fields=["topic"]),
-            ]    
-        
-        
+            models.Index(fields=["exam", "year"]),
+            models.Index(fields=["topic"]),
+        ]
+
+
 class UserPYQAttempt(models.Model):
-
     user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="pyq_attempts"
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="pyq_attempts"
     )
 
-    pyq = models.ForeignKey(
-        PYQ,
-        on_delete=models.CASCADE,
-        related_name="attempts"
-    )
+    pyq = models.ForeignKey(PYQ, on_delete=models.CASCADE, related_name="attempts")
 
     answer = models.JSONField()
 

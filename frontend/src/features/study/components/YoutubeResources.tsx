@@ -1,11 +1,13 @@
-"use client";
+'use client';
+
+import Image from 'next/image';
 
 type Props = {
   topicName: string;
   youtubeLinks: string[];
 };
 
-export default function YouTubeResources({ topicName, youtubeLinks }: Props) {
+export default function YouTubeResources({ topicName, youtubeLinks }: Readonly<Props>) {
   if (!youtubeLinks || youtubeLinks.length === 0) return null;
 
   return (
@@ -13,18 +15,20 @@ export default function YouTubeResources({ topicName, youtubeLinks }: Props) {
       <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">Recommended Videos</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
-        {youtubeLinks.map((link, index) => {
+        {youtubeLinks.map((link) => {
           const videoId = extractYouTubeId(link);
 
           return (
             <div
-              key={index}
+              key={link}
               className="bg-white rounded-xl shadow-sm overflow-hidden hover:shadow-md transition"
             >
               <a href={link} target="_blank" rel="noopener noreferrer">
-                <img
+                <Image
                   src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`}
                   alt="video thumbnail"
+                  width={320}
+                  height={180}
                   className="w-full h-40 sm:h-48 object-cover"
                 />
               </a>
@@ -50,6 +54,7 @@ export default function YouTubeResources({ topicName, youtubeLinks }: Props) {
 }
 
 function extractYouTubeId(url: string) {
-  const match = url.match(/v=([^&]+)/);
-  return match ? match[1] : "";
+  const regex = /v=([^&]+)/;
+  const match = regex.exec(url);
+  return match ? match[1] : '';
 }

@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { explainQuestion } from "../services/mocktest.service";
+import { useState } from 'react';
+import { explainQuestion } from '../services/mocktest.service';
 
 export function useAIExplanation() {
   const [aiExplanations, setAiExplanations] = useState<Record<number, string>>({});
@@ -18,7 +18,7 @@ export function useAIExplanation() {
         [questionId]: res.explanation,
       }));
     } catch {
-      alert("Failed to generate explanation");
+      alert('Failed to generate explanation');
     } finally {
       setLoadingExplain(null);
     }

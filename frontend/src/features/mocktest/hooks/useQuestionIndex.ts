@@ -1,15 +1,16 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 
 export function useQuestionIndex(testId: number) {
   const STORAGE_KEY = `mocktest_index_${testId}`;
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) setCurrentIndex(Number(saved));
-  }, [testId, STORAGE_KEY]);
+  const [currentIndex, setCurrentIndex] = useState(() => {
+    if (globalThis.window !== undefined) {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      return saved ? Number(saved) : 0;
+    }
+    return 0;
+  });
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, String(currentIndex));

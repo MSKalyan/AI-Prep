@@ -1,19 +1,13 @@
-import { TopicPerformance } from "../services/analytics.service";
+import { TopicPerformance } from '../services/analytics.service';
 
 export default function Section({
   title,
   data,
   emptyText,
-}: {
-  title: string;
-  data: TopicPerformance[];
-  emptyText: string;
-}) {
+}: Readonly<{ title: string; data: TopicPerformance[]; emptyText: string }>) {
   return (
     <div>
-      <h2 className="text-base sm:text-lg md:text-xl font-semibold mb-4">
-        {title}
-      </h2>
+      <h2 className="text-base sm:text-lg md:text-xl font-semibold mb-4">{title}</h2>
 
       {data.length === 0 ? (
         <p className="text-xs sm:text-sm text-gray-500">{emptyText}</p>

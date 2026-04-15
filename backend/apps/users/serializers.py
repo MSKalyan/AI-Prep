@@ -28,7 +28,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         if attrs.get('password') != attrs.get('password_confirm'):
             raise serializers.ValidationError({
-                "password": "Passwords do not match"
+                "password": "Passwords do not match"  # nosec B105
             })
             
         return attrs
@@ -80,6 +80,12 @@ class UserLoginSerializer(serializers.Serializer):
 # =====================================
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_blank=True,
+        min_length=8,
+    )
 
     class Meta:
         model = User
@@ -87,6 +93,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'id',
             'email',
             'username',
+            'password',
             'full_name',
             'phone',
             'target_exam',
@@ -105,3 +112,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'is_premium',
             'subscription_end_date'
         )
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop("password", None)
+        user = super().update(instance, validated_data)
+
+        if password and str(password).strip():
+            user.set_password(password)
+            user.save(update_fields=["password"])
+
+        return user

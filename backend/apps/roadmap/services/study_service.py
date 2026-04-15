@@ -1,21 +1,24 @@
 import re
 
 from apps.roadmap.models import RoadmapTopic, PYQ
-from apps.ai_service.services.rag.llm_service import LLMService
+from apps.ai_service.services.llm_service import LLMService
 from apps.analytics.services.study_content_service import StudyContentService
+
+
 class StudyService:
     @staticmethod
     def clean_ai_output(text: str) -> str:
         # Remove markdown bullets (*, -, etc.)
-        text = re.sub(r'^\s*[\*\-]\s+', '', text, flags=re.MULTILINE)
+        text = re.sub(r"^\s*[\*\-]\s+", "", text, flags=re.MULTILINE)
 
         # Remove bold/italic markers (*, **)
-        text = re.sub(r'\*{1,2}', '', text)
+        text = re.sub(r"\*{1,2}", "", text)
 
         # Normalize spacing
-        text = re.sub(r'\n{2,}', '\n\n', text)
+        text = re.sub(r"\n{2,}", "\n\n", text)
 
         return text.strip()
+
     @staticmethod
     def generate_explanation(topic_name):
 
@@ -54,34 +57,23 @@ class StudyService:
     • Tip:
     Practice PYQs
     """.strip()
+
     @staticmethod
     def get_topic_study_data(topic_id):
 
         topic = RoadmapTopic.objects.select_related(
-            "topic",
-            "topic__parent",
-            "roadmap"
+            "topic", "topic__parent", "roadmap"
         ).get(id=topic_id)
 
-        subject = (
-            topic.topic.parent.name
-            if topic.topic.parent
-            else topic.topic.name
-        )
+        subject = topic.topic.parent.name if topic.topic.parent else topic.topic.name
         if not topic.ai_explanation:
-                    topic.ai_explanation = StudyService.generate_explanation(
-                        topic.topic.name
-                    )
-                    topic.save(update_fields=["ai_explanation"])
-        pyqs = PYQ.objects.filter(
-            topic=topic.topic
-        ).values("year", "marks")
-        youtube_data = StudyContentService.get_study_content(
-            topic.topic.name
-        )
+            topic.ai_explanation = StudyService.generate_explanation(topic.topic.name)
+            topic.save(update_fields=["ai_explanation"])
+        pyqs = PYQ.objects.filter(topic=topic.topic).values("year", "marks")
+        youtube_data = StudyContentService.get_study_content(topic.topic.name)
         return {
             "roadmap_id": topic.roadmap.id,
-            "topic_id":topic.id,
+            "topic_id": topic.id,
             "topic": topic.topic.name,
             "subject": subject,
             "week": topic.week_number,
@@ -89,23 +81,19 @@ class StudyService:
             "estimated_hours": topic.estimated_hours,
             "ai_explanation": topic.ai_explanation,
             "pyqs": list(pyqs),
-    "youtube_resources": youtube_data.get("youtube_links", []) if youtube_data else [],            "mock_tests": []
+            "youtube_resources": youtube_data.get("youtube_links", [])
+            if youtube_data
+            else [],
+            "mock_tests": [],
         }
-
 
     @staticmethod
     def get_roadmap_topics(roadmap_id):
 
         topics = (
-            RoadmapTopic.objects
-            .filter(roadmap_id=roadmap_id)
+            RoadmapTopic.objects.filter(roadmap_id=roadmap_id)
             .select_related("topic")
-            .values(
-                "id",
-                "topic__name",
-                "week_number",
-                "is_completed"
-            )
+            .values("id", "topic__name", "week_number", "is_completed")
             .order_by("week_number")
         )
 
@@ -114,7 +102,7 @@ class StudyService:
                 "id": t["id"],
                 "topic": t["topic__name"],
                 "week": t["week_number"],
-                "completed": t["is_completed"]
+                "completed": t["is_completed"],
             }
             for t in topics
         ]

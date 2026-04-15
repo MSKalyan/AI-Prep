@@ -1,18 +1,18 @@
-"use client";
+'use client';
 
-import { useParams } from "next/navigation";
+import { useParams } from 'next/navigation';
 
 export function useAttemptId() {
   const params = useParams();
 
   const rawId = params?.id;
 
-  const attemptId =
-    typeof rawId === "string"
-      ? Number(rawId)
-      : Array.isArray(rawId)
-      ? Number(rawId[0])
-      : null;
+  let attemptId: number | null = null;
+  if (typeof rawId === 'string') {
+    attemptId = Number(rawId);
+  } else if (Array.isArray(rawId)) {
+    attemptId = Number(rawId[0]);
+  }
 
   return attemptId;
 }

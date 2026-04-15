@@ -1,29 +1,37 @@
-"use client";
+'use client';
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { getTopicExplanation } from "../services/study.service";
-import { useState } from "react";
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { getTopicExplanation } from '../services/study.service';
+import { useState } from 'react';
 
 interface Props {
   topicId: number;
   explanation: string | null;
 }
 
-export default function AIExplanationPanel({ topicId, explanation }: Props) {
+export default function AIExplanationPanel({ topicId, explanation }: Readonly<Props>) {
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
 
   const generateExplanation = useMutation({
     mutationFn: () => getTopicExplanation(topicId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["topic-study", topicId] });
+      queryClient.invalidateQueries({ queryKey: ['topic-study', topicId] });
     },
     onError: () => {
-      setError("Failed to generate AI explanation.");
+      setError('Failed to generate AI explanation.');
     },
   });
 
-  const hasExplanation = explanation && explanation.trim() !== "" && explanation !== "Explanation unavailable.";
+  const hasExplanation =
+    explanation && explanation.trim() !== '' && explanation !== 'Explanation unavailable.';
+
+  let buttonText = 'Generate Explanation';
+  if (generateExplanation.isPending) {
+    buttonText = 'Generating explanation...';
+  } else if (error) {
+    buttonText = 'Retry';
+  }
 
   if (hasExplanation) {
     return (
@@ -50,7 +58,7 @@ export default function AIExplanationPanel({ topicId, explanation }: Props) {
         disabled={generateExplanation.isPending}
         className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded disabled:opacity-50"
       >
-        {generateExplanation.isPending ? "Generating explanation..." : error ? "Retry" : "Generate Explanation"}
+        {buttonText}
       </button>
     </div>
   );

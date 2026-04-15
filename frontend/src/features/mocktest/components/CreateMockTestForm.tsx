@@ -1,24 +1,33 @@
-"use client";
+'use client';
 
-import { useState } from "react";
+import { useState } from 'react';
 
-interface Props {
-  createTest: (payload: any) => Promise<any>;
+interface CreateMockTestPayload {
+  title?: string;
+  exam_type: string;
+  subject: string;
+  difficulty: string;
+  num_questions: number;
+  duration_minutes: number;
 }
 
-export default function CreateMockTestForm({ createTest }: Props) {
+interface Props {
+  createTest: (payload: CreateMockTestPayload) => Promise<unknown>;
+}
+
+export default function CreateMockTestForm({ createTest }: Readonly<Props>) {
   const [form, setForm] = useState({
-    title: "",
-    exam_type: "",
-    subject: "",
-    difficulty: "medium",
+    title: '',
+    exam_type: '',
+    subject: '',
+    difficulty: 'medium',
     num_questions: 10,
     duration_minutes: 60,
   });
 
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!form.exam_type || !form.subject) return;
 
@@ -31,10 +40,7 @@ export default function CreateMockTestForm({ createTest }: Props) {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="space-y-4 max-w-md bg-white border p-6 rounded shadow"
-    >
+    <form onSubmit={handleSubmit} className="space-y-4 max-w-md bg-white border p-6 rounded shadow">
       <h2 className="text-lg font-semibold">Create Mock Test</h2>
 
       <input
@@ -92,7 +98,7 @@ export default function CreateMockTestForm({ createTest }: Props) {
         disabled={loading}
         className="bg-blue-600 text-white w-full py-2 rounded"
       >
-        {loading ? "Creating..." : "Start Mock Test"}
+        {loading ? 'Creating...' : 'Start Mock Test'}
       </button>
     </form>
   );

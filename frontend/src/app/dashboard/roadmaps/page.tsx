@@ -1,17 +1,16 @@
-"use client";
+'use client';
 
-import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { getRoadmaps } from "@/features/roadmap/services";
-import { useDeleteRoadmap } from "@/features/roadmap";
+import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { getRoadmaps, RoadmapListItem } from '@/features/roadmap/services';
+import { useDeleteRoadmap } from '@/features/roadmap';
 
 export default function RoadmapsPage() {
-
   const router = useRouter();
-const { mutate } = useDeleteRoadmap();
+  const { mutate } = useDeleteRoadmap();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["roadmaps"],
+    queryKey: ['roadmaps'],
     queryFn: getRoadmaps,
   });
 
@@ -28,31 +27,20 @@ const { mutate } = useDeleteRoadmap();
   }
   return (
     <div className="px-4 sm:px-6 py-6 max-w-4xl mx-auto space-y-6">
+      <h2 className="text-2xl sm:text-3xl font-semibold">Your Roadmaps</h2>
 
-      <h2 className="text-2xl sm:text-3xl font-semibold">
-        Your Roadmaps
-      </h2>
-
-      {data.map((roadmap: any) => (
-
+      {data.map((roadmap: RoadmapListItem) => (
         <div
           key={roadmap.id}
           className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-center rounded-md border bg-white p-4 sm:p-5 shadow-sm"
         >
-
           <div>
-            <p className="font-medium">
-              {roadmap.exam?.name}
-            </p>
-            <p className="text-sm text-gray-500">
-              Target Date: {roadmap.target_date}
-            </p>
+            <p className="font-medium">{roadmap.exam?.name}</p>
+            <p className="text-sm text-gray-500">Target Date: {roadmap.target_date}</p>
           </div>
 
           <button
-            onClick={() =>
-              router.push(`/dashboard/roadmap/${roadmap.id}`)
-            }
+            onClick={() => router.push(`/dashboard/roadmap/${roadmap.id}`)}
             className="rounded-md bg-black px-4 py-2 text-white hover:bg-black/80"
           >
             View
@@ -64,9 +52,7 @@ const { mutate } = useDeleteRoadmap();
             Delete
           </button>
         </div>
-
       ))}
-
     </div>
   );
 }

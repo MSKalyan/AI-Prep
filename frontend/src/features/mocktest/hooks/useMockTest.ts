@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   createMockTest,
   getMockTestDetail,
   submitAnswer,
   getResults,
   generatePractice,
-} from "../services/mocktest.service";
+} from '../services/mocktest.service';
 
 export function useCreateMockTest() {
   return useMutation({
@@ -17,7 +17,7 @@ export function useCreateMockTest() {
 
 export function useMockTestDetail(id?: number) {
   return useQuery({
-    queryKey: ["mocktest", id],
+    queryKey: ['mocktest', id],
     queryFn: () => getMockTestDetail(id!),
     enabled: !!id,
   });
@@ -31,7 +31,7 @@ export function useSubmitAnswer() {
 
 export function useResults() {
   return useQuery({
-    queryKey: ["results"],
+    queryKey: ['results'],
     queryFn: getResults,
   });
 }

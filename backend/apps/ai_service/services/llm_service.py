@@ -9,11 +9,6 @@ from apps.ai_service.models import AIUsageLog
 
 
 class LLMService:
-    """
-    Service responsible for communicating with the LLM provider
-    and logging AI usage with structured error handling.
-    """
-
     def __init__(self):
         api_key = settings.GROQ_API_KEY
 
@@ -29,7 +24,7 @@ class LLMService:
         prompt: str,
         user=None,
         endpoint: str = "topic-explanation",
-        expect_json: bool = False
+        expect_json: bool = False,
     ):
         start_time = time.time()
         if not self.client:
@@ -59,7 +54,6 @@ class LLMService:
 
             response_time = int((time.time() - start_time) * 1000)
 
-            # Log successful usage
             self._log_usage(
                 user=user,
                 endpoint=endpoint,
@@ -70,7 +64,6 @@ class LLMService:
                 total_tokens=total_tokens,
             )
 
-            # Validate response
             if not content or len(content) < 10:
                 return None
 
@@ -83,10 +76,8 @@ class LLMService:
             return content
 
         except Exception as e:
-
             response_time = int((time.time() - start_time) * 1000)
 
-            # Log failure
             self._log_usage(
                 user=user,
                 endpoint=endpoint,
@@ -110,11 +101,6 @@ class LLMService:
         total_tokens=0,
         error_message=None,
     ):
-        """
-        Internal helper for logging AI usage safely.
-        Logging failure should never break the application.
-        """
-
         try:
             AIUsageLog.objects.create(
                 user=user,

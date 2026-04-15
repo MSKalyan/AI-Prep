@@ -1,27 +1,21 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { useAuth } from "@/features/auth";
+import Link from 'next/link';
+import { useAuth } from '@/features/auth';
 
-export default function Navbar({ openDrawer }: { openDrawer: () => void }) {
+export default function Navbar({ openDrawer }: { readonly openDrawer: () => void }) {
   const { user, logout } = useAuth();
 
   return (
     <nav className="sticky top-0 z-50 bg-white border-b border-gray-200">
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-4">
-
         {/* LEFT SIDE */}
-      {user && (
-  <button
-    className="md:hidden"
-    onClick={openDrawer}
-  >
-    ☰
-  </button>
-)}
+        {user && (
+          <button className="md:hidden" onClick={openDrawer}>
+            ☰
+          </button>
+        )}
         <div className="flex items-center gap-8">
-
           {/* Logo */}
           <Link
             href="/"
@@ -33,27 +27,19 @@ export default function Navbar({ openDrawer }: { openDrawer: () => void }) {
           {/* Navigation Links */}
           {user && (
             <div className="hidden md:flex flex items-center gap-6 text-sm">
-              <Link
-                href="/dashboard"
-                className="text-gray-600 hover:text-black transition"
-              >
+              <Link href="/dashboard" className="text-gray-600 hover:text-black transition">
                 Dashboard
               </Link>
 
-              <Link
-                href="/profile"
-                className="text-gray-600 hover:text-black transition"
-              >
+              <Link href="/profile" className="text-gray-600 hover:text-black transition">
                 Profile
               </Link>
             </div>
           )}
-
         </div>
 
         {/* RIGHT SIDE */}
         <div className="flex items-center gap-4 text-sm">
-
           {user ? (
             <button
               onClick={() => logout()}
@@ -63,10 +49,7 @@ export default function Navbar({ openDrawer }: { openDrawer: () => void }) {
             </button>
           ) : (
             <>
-              <Link
-                href="/login"
-                className="text-gray-600 hover:text-black transition"
-              >
+              <Link href="/login" className="text-gray-600 hover:text-black transition">
                 Login
               </Link>
 
@@ -78,11 +61,8 @@ export default function Navbar({ openDrawer }: { openDrawer: () => void }) {
               </Link>
             </>
           )}
-
         </div>
-
       </div>
-
     </nav>
   );
 }

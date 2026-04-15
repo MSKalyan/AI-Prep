@@ -8,8 +8,8 @@ from .models import Roadmap, RoadmapTopic, Exam
 # EXAM SERIALIZER (Dropdown API)
 # =====================================================
 
-class ExamSerializer(serializers.ModelSerializer):
 
+class ExamSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exam
         fields = (
@@ -25,13 +25,16 @@ class ExamSerializer(serializers.ModelSerializer):
 # ROADMAP TOPIC SERIALIZER
 # =====================================================
 
+
 class RoadmapTopicSerializer(serializers.ModelSerializer):
     topic_name = serializers.CharField(source="topic.name", read_only=True)
     subject_name = serializers.SerializerMethodField()
+
     def get_subject_name(self, obj):
-            if obj.topic.parent:
-                return obj.topic.parent.name
-            return obj.topic.name
+        if obj.topic.parent:
+            return obj.topic.parent.name
+        return obj.topic.name
+
     class Meta:
         model = RoadmapTopic
         fields = (
@@ -48,7 +51,6 @@ class RoadmapTopicSerializer(serializers.ModelSerializer):
             "phase",
         )
 
-        
         read_only_fields = (
             "id",
             "created_at",
@@ -59,9 +61,9 @@ class RoadmapTopicSerializer(serializers.ModelSerializer):
 # ROADMAP SERIALIZER (MAIN RESPONSE)
 # =====================================================
 
-class RoadmapSerializer(serializers.ModelSerializer):
 
-    topics = RoadmapTopicSerializer(many=True, read_only=True) 
+class RoadmapSerializer(serializers.ModelSerializer):
+    topics = RoadmapTopicSerializer(many=True, read_only=True)
 
     # Show exam details instead of raw FK
     exam = ExamSerializer(read_only=True)
@@ -86,49 +88,20 @@ class RoadmapSerializer(serializers.ModelSerializer):
         )
 
 
-# # =====================================================
-# # ROADMAP GENERATE SERIALIZER (INPUT ONLY)
-# # =====================================================
-
-# class RoadmapGenerateSerializer(serializers.Serializer):
-
-#     exam_id = serializers.IntegerField()
-
-#     target_date = serializers.DateField()
-
-#     target_marks = serializers.IntegerField(min_value=1)
-
-
-
-#     study_hours_per_day = serializers.IntegerField(
-#         min_value=1,
-#         max_value=24
-#     )
-
-#     current_knowledge = serializers.CharField(
-#         required=False,
-#         allow_blank=True
-#     )
-
 # =====================================================
 # DETERMINISTIC ROADMAP GENERATE SERIALIZER (SPRINT 3)
 # =====================================================
- 
-class DeterministicRoadmapGenerateSerializer(serializers.Serializer):
 
+
+class DeterministicRoadmapGenerateSerializer(serializers.Serializer):
     exam_id = serializers.IntegerField()
     target_date = serializers.DateField()
-    study_hours_per_day = serializers.IntegerField(
-        min_value=1,
-        max_value=24
-    )
+    study_hours_per_day = serializers.IntegerField(min_value=1, max_value=24)
 
     # Field-level validation
     def validate_target_date(self, value):
         if value <= date.today():
-            raise serializers.ValidationError(
-                "Target date must be a future date."
-            )
+            raise serializers.ValidationError("Target date must be a future date.")
         return value
 
     # Object-level validation
@@ -138,26 +111,19 @@ class DeterministicRoadmapGenerateSerializer(serializers.Serializer):
         try:
             exam = Exam.objects.get(id=exam_id)
         except Exam.DoesNotExist:
-            raise serializers.ValidationError(
-                {"exam_id": "Invalid exam selected."}
-            )
+            raise serializers.ValidationError({"exam_id": "Invalid exam selected."})
 
         if exam.exam_date and target_date > exam.exam_date:
             raise serializers.ValidationError(
-                {
-                    "target_date":
-                        "Target date cannot exceed the official exam date."
-                }
+                {"target_date": "Target date cannot exceed the official exam date."}
             )
 
         # Store exam instance for later use
         data["exam"] = exam
 
         return data
-    
 
     class StudyTopicSerializer(serializers.Serializer):
-
         topic = serializers.CharField()
         subject = serializers.CharField()
         week = serializers.IntegerField()

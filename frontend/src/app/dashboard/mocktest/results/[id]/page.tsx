@@ -1,9 +1,29 @@
-"use client";
+'use client';
 
-import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { getResultDetail } from "@/features/mocktest/services";
-import { useAttemptId, useAIExplanation } from "@/features/mocktest";
+import { useRouter } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
+import { getResultDetail } from '@/features/mocktest/services';
+import { useAttemptId, useAIExplanation } from '@/features/mocktest';
+
+interface QuestionResult {
+  question_id: number;
+  question_text: string;
+  your_answer: string | null;
+  correct_answer: string;
+  options: Record<string, string>;
+  marks_obtained: number;
+}
+
+interface ResultData {
+  score: number;
+  total_marks: number;
+  percentage: number;
+  correct: number;
+  incorrect: number;
+  unanswered: number;
+  time_taken: number;
+  questions: QuestionResult[];
+}
 
 export default function ResultDetailPageImproved() {
   const attemptId = useAttemptId();
@@ -11,12 +31,18 @@ export default function ResultDetailPageImproved() {
 
   const { aiExplanations, loadingExplain, handleExplain } = useAIExplanation();
 
+  const { data, isLoading } = useQuery<ResultData>({
+    queryKey: ['result-detail', attemptId],
+    queryFn: () => getResultDetail(attemptId ?? 0),
+    enabled: !!attemptId,
+  });
+
   if (!attemptId) {
     return (
       <div className="p-6">
         <p className="text-red-600 mb-4">Invalid result page</p>
         <button
-          onClick={() => router.replace("/dashboard/mocktest/results")}
+          onClick={() => router.replace('/dashboard/mocktest/results')}
           className="px-4 py-2 bg-black text-white rounded-lg"
         >
           Go to Results
@@ -24,12 +50,6 @@ export default function ResultDetailPageImproved() {
       </div>
     );
   }
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["result-detail", attemptId],
-    queryFn: () => getResultDetail(attemptId),
-    enabled: !!attemptId,
-  });
 
   if (isLoading || !data) {
     return <div className="p-6">Loading...</div>;
@@ -42,9 +62,8 @@ export default function ResultDetailPageImproved() {
         <h1 className="text-2xl font-semibold">Test Result</h1>
 
         <div className="flex gap-3">
-        
           <button
-            onClick={() => router.push("/dashboard/mocktest/results")}
+            onClick={() => router.push('/dashboard/mocktest/results')}
             className="px-4 py-2 bg-black text-white rounded-lg"
           >
             All Results
@@ -56,7 +75,9 @@ export default function ResultDetailPageImproved() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-2xl shadow">
           <p className="text-sm text-gray-500">Score</p>
-          <p className="text-xl font-semibold">{data.score}/{data.total_marks}</p>
+          <p className="text-xl font-semibold">
+            {data.score}/{data.total_marks}
+          </p>
         </div>
         <div className="bg-white p-4 rounded-2xl shadow">
           <p className="text-sm text-gray-500">Percentage</p>
@@ -100,14 +121,14 @@ export default function ResultDetailPageImproved() {
 
       {/* QUESTIONS */}
       <div className="space-y-4">
-        {data.questions.map((q: any, index: number) => {
+        {data.questions.map((q: QuestionResult, index: number) => {
           const isCorrect = q.your_answer === q.correct_answer;
 
           return (
             <div
               key={q.question_id}
               className={`bg-white p-5 rounded-2xl shadow border-l-4 ${
-                isCorrect ? "border-green-500" : "border-red-500"
+                isCorrect ? 'border-green-500' : 'border-red-500'
               }`}
             >
               <div className="flex justify-between items-start">
@@ -116,29 +137,27 @@ export default function ResultDetailPageImproved() {
                 </p>
                 <span
                   className={`text-sm px-2 py-1 rounded ${
-                    isCorrect ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                    isCorrect ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                   }`}
                 >
-                  {isCorrect ? "Correct" : "Incorrect"}
+                  {isCorrect ? 'Correct' : 'Incorrect'}
                 </span>
               </div>
 
               <div className="mt-4 space-y-2">
-                {Object.entries(q.options).map(([key, text]: any) => {
+                {Object.entries(q.options).map(([key, text]: [string, string]) => {
                   const isUser = q.your_answer === key;
                   const isRight = q.correct_answer === key;
 
+                  let optionClass = "p-3 rounded-lg border";
+                  if (isRight) {
+                    optionClass = "p-3 rounded-lg border bg-green-50 border-green-400";
+                  } else if (isUser) {
+                    optionClass = "p-3 rounded-lg border bg-red-50 border-red-400";
+                  }
+
                   return (
-                    <div
-                      key={key}
-                      className={`p-3 rounded-lg border ${
-                        isRight
-                          ? "bg-green-50 border-green-400"
-                          : isUser
-                          ? "bg-red-50 border-red-400"
-                          : ""
-                      }`}
-                    >
+                    <div key={key} className={optionClass}>
                       {key}. {text}
                     </div>
                   );
@@ -146,7 +165,7 @@ export default function ResultDetailPageImproved() {
               </div>
 
               <div className="mt-3 text-sm text-gray-600">
-                <p>Your Answer: {q.your_answer || "Not answered"}</p>
+                <p>Your Answer: {q.your_answer || 'Not answered'}</p>
                 <p>Correct Answer: {q.correct_answer}</p>
                 <p>Marks: {q.marks_obtained}</p>
               </div>
@@ -155,9 +174,7 @@ export default function ResultDetailPageImproved() {
                 onClick={() => handleExplain(q.question_id)}
                 className="mt-3 text-blue-600 text-sm underline"
               >
-                {loadingExplain === q.question_id
-                  ? "Generating explanation..."
-                  : "Explain with AI"}
+                {loadingExplain === q.question_id ? 'Generating explanation...' : 'Explain with AI'}
               </button>
 
               {aiExplanations[q.question_id] && (

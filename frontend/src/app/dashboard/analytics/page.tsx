@@ -1,9 +1,8 @@
+'use client';
 
-"use client";
-
-import { useRequireAuth } from "@/features/auth";
-import { usePerformance, useAnalyticsSummary, useAnalyticsComputed } from "@/features/analytics";
-import { Section, StatCard } from "@/features/analytics/components";
+import { useRequireAuth } from '@/features/auth';
+import { usePerformance, useAnalyticsSummary, useAnalyticsComputed } from '@/features/analytics';
+import { Section } from '@/features/analytics/components';
 
 export default function AnalyticsPageImproved() {
   const { user, isLoading: authLoading } = useRequireAuth();
@@ -12,8 +11,7 @@ export default function AnalyticsPageImproved() {
   const { data: summary } = useAnalyticsSummary();
 
   const topics = data?.topics || [];
-  const { weak, moderate, strong, avgAccuracy, avgTime } =
-    useAnalyticsComputed(topics);
+  const { weak, moderate, strong, avgAccuracy, avgTime } = useAnalyticsComputed(topics);
 
   if (authLoading || isLoading) {
     return (
@@ -31,7 +29,6 @@ export default function AnalyticsPageImproved() {
   return (
     <div className="min-h-screen bg-gray-100 text-black">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
-
         {/* HEADER */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -72,18 +69,9 @@ export default function AnalyticsPageImproved() {
           <h2 className="text-lg font-semibold mb-4">Performance Distribution</h2>
 
           <div className="flex h-4 rounded overflow-hidden">
-            <div
-              className="bg-red-500"
-              style={{ width: `${weak.length * 10}%` }}
-            />
-            <div
-              className="bg-yellow-400"
-              style={{ width: `${moderate.length * 10}%` }}
-            />
-            <div
-              className="bg-green-500"
-              style={{ width: `${strong.length * 10}%` }}
-            />
+            <div className="bg-red-500" style={{ width: `${weak.length * 10}%` }} />
+            <div className="bg-yellow-400" style={{ width: `${moderate.length * 10}%` }} />
+            <div className="bg-green-500" style={{ width: `${strong.length * 10}%` }} />
           </div>
 
           <div className="flex justify-between text-xs mt-2 text-gray-600">
@@ -95,33 +83,20 @@ export default function AnalyticsPageImproved() {
 
         {/* WEAK TOPICS */}
         <div className="bg-white rounded-2xl shadow p-6">
-          <Section
-            title="Weak Topics"
-            data={weak}
-            emptyText="No weak topics — good progress"
-          />
+          <Section title="Weak Topics" data={weak} emptyText="No weak topics — good progress" />
         </div>
 
         {/* MODERATE + STRONG (OPTIONAL BUT IMPORTANT) */}
         <div className="grid md:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl shadow p-6">
-            <Section
-              title="Moderate Topics"
-              data={moderate}
-              emptyText="No moderate topics"
-            />
+            <Section title="Moderate Topics" data={moderate} emptyText="No moderate topics" />
           </div>
 
           <div className="bg-white rounded-2xl shadow p-6">
-            <Section
-              title="Strong Topics"
-              data={strong}
-              emptyText="No strong topics yet"
-            />
+            <Section title="Strong Topics" data={strong} emptyText="No strong topics yet" />
           </div>
         </div>
       </div>
     </div>
   );
 }
-
