@@ -75,8 +75,7 @@ backend/faiss.index
 backend/faiss_mapping.pkl
 backend/media/
 backend/pyqs.json
-backend/data/gate_pyq_pdf/
-backend/data/gate_pyq_zip/
+backend/data/
 backend/apps/ai_service/rag/
 
 # Dumps / misc

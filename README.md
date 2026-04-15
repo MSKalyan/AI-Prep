@@ -1,115 +1,90 @@
-# AI-Based Exam Preparation Platform
+# AI Exam Preparation Platform
 
-A full-stack AI-powered exam preparation platform for competitive exams like GATE. Features adaptive mock tests, study roadmaps, performance analytics, and AI-assisted learning.
-
-## Tech Stack
-
-- **Backend**: Django + Django REST Framework
-- **Frontend**: Next.js 16 (App Router) + TypeScript + React 19
-- **Database**: PostgreSQL
-- **AI**: Groq API for LLM-powered features
+An AI-powered exam preparation platform for GATE and other competitive exams. Features smart roadmaps, adaptive mock tests, performance analytics, and AI-assisted learning.
 
 ## Features
 
-- User Authentication (JWT)
-- Study Roadmap Generation
-- Adaptive Mock Test System
-- Performance Analytics & Weak Area Detection
-- AI-Powered Doubt Resolution
-- Topic-wise Progress Tracking
+- **Smart Roadmaps**: Generate personalized study plans based on exam syllabus
+- **Mock Tests**: Create adaptive tests from PYQ database with AI fallback
+- **Analytics**: Track performance, identify weak areas, get revision recommendations
+- **AI Assistant**: Ask doubts and get explanations powered by Groq LLM
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Backend | Django + DRF |
+| Frontend | Next.js 16 + React 19 + TypeScript |
+| Database | PostgreSQL |
+| AI | Groq API |
 
 ## Project Structure
 
 ```
-├── backend/              # Django REST API
-│   ├── apps/
-│   │   ├── users/       # Authentication
-│   │   ├── roadmap/    # Study plans
-│   │   ├── mocktest/    # Test system
-│   │   ├── analytics/   # Performance tracking
-│   │   └── ai_service/ # AI assistant
-│   └── config/
-│
-└── frontend/            # Next.js application
-    ├── src/
-    │   ├── app/        # Pages (dashboard, auth, etc.)
-    │   ├── features/   # Feature modules
-    │   │   ├── auth/
-    │   │   ├── analytics/
-    │   │   ├── roadmap/
-    │   │   ├── mocktest/
-    │   │   ├── ai/
-    │   │   └── study/
-    │   └── components/
-    └── package.json
+backend/
+├── apps/
+│   ├── users/          # Auth & profile
+│   ├── roadmap/       # Study plans & PYQs
+│   ├── mocktest/      # Test generation
+│   ├── analytics/     # Performance tracking
+│   └── ai_service/    # AI chat
+└── config/
+
+frontend/
+├── src/
+│   ├── app/           # Pages
+│   ├── features/      # Feature modules
+│   └── components/   # UI components
+└── package.json
 ```
 
-## Quick Start
+## Setup
 
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL 13+
-
-### Backend Setup
+### Backend
 
 ```bash
 cd backend
-
-# Create virtual environment
 python -m venv venv
-venv\Scripts\activate  # Windows
-
-# Install dependencies
+venv\Scripts\activate
 pip install -r requirements.txt
-
-# Run migrations
 python manage.py migrate
-
-# Start server
 python manage.py runserver
 ```
 
-### Frontend Setup
+### Frontend
 
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
-
-# Start development server
 npm run dev
 ```
 
-## Environment Variables
+## Environment
 
 ### Backend (.env)
 
-```env
+```
 DEBUG=True
-SECRET_KEY=your_secret_key
-DATABASE_URL=postgresql://user:password@localhost:5432/dbname
-GROQ_API_KEY=your_groq_api_key
+SECRET_KEY=<secret>
+DATABASE_URL=postgresql://user:pass@localhost:5432/db
+GROQ_API_KEY=<key>
 ```
 
 ### Frontend (.env.local)
 
-```env
+```
 NEXT_PUBLIC_API_URL=http://localhost:8000/api
 ```
 
 ## API Endpoints
 
-| Endpoint | Description |
-|----------|-------------|
-| `/api/auth/` | Authentication |
-| `/api/roadmap/` | Study roadmaps |
-| `/api/mocktest/` | Mock tests |
-| `/api/analytics/` | Performance data |
-| `/api/ai_service/` | AI chat |
+- `POST /api/auth/register/` - Register
+- `POST /api/auth/login/` - Login
+- `POST /api/roadmap/generate/` - Generate roadmap
+- `POST /api/mocktest/generate/` - Generate test
+- `GET /api/analytics/` - Get analytics
+- `POST /api/ai_service/chat/` - AI chat
 
 ## License
 
-Educational use only. All rights reserved.
+Educational use only.

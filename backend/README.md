@@ -154,15 +154,6 @@ All business logic is in service layers, not views:
 roadmap = RoadmapService.generate_roadmap(user, exam_name, ...)
 ```
 
-## 🧪 Testing
-
-```bash
-# Run tests
-pytest
-
-# With coverage
-pytest --cov=apps --cov-report=html
-```
 
 ## 📦 Database Models
 
@@ -195,27 +186,3 @@ pytest --cov=apps --cov-report=html
 
 ### Environment Variables:
 All sensitive configuration is in environment variables - never commit `.env` file!
-
-## 📖 API Documentation
-
-Visit `/api/docs/` when server is running for interactive API documentation (if drf-spectacular is configured).
-
-## 🤝 Contributing
-
-1. Follow Python PEP 8 style guide
-2. Write tests for new features
-3. Use service layer for business logic
-4. Keep views thin (only handle HTTP)
-5. Document complex functions
-
-## 📝 License
-
-[Your License Here]
-
-## 🆘 Support
-
-For issues and questions, please open an issue on GitHub.
-
----
-
-Built with ❤️ using Django REST Framework
