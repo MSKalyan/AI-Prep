@@ -147,9 +147,11 @@ class StudyContentService:
     # ================= MAIN =================
     @staticmethod
     def get_study_content(topic_name):
-        try:
-            topic = Topic.objects.filter(name__iexact=topic_name).first()
-        except Topic.DoesNotExist:
+        if not topic_name:
+            return None
+
+        topic = Topic.objects.filter(name__iexact=str(topic_name).strip()).first()
+        if not topic:
             return None
 
         cached = StudyContentCache.objects.filter(topic=topic).first()

@@ -93,14 +93,5 @@ frontend/test-results/
 # Accidental files
 "h github kalyan?main --force"
 
-# ---------- Tests (ignored by request) ----------
-**/tests/
-**/tests.py
-**/test_*.py
-**/*_test.py
-**/conftest.py
-pytest.ini
-**/*.spec.ts
-**/*.spec.tsx
-**/*.test.ts
-**/*.test.tsx
+# ---------- Tests ----------
+# Keep tests tracked in git so CI/SonarQube can compute real coverage.

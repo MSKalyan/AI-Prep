@@ -1,0 +1,53 @@
+name: SonarCloud Analysis
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  sonarcloud:
+    name: SonarCloud
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install coverage
+
+      - name: Run tests with coverage
+        env:
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+          DJANGO_SETTINGS_MODULE: config.test_settings
+          USE_LOCAL_DB: "False"
+          DATABASE_URL: "sqlite:///test_db.sqlite3"
+          GROQ_API_KEY: ""
+          YOUTUBE_API_KEY: ""
+          GEMINI_API_KEY: ""
+        run: |
+          cd backend
+          coverage run --source=apps --omit=*/migrations,*/tests.py,*/__pycache__,*conftest.py manage.py test apps.roadmap.tests apps.users.tests apps.mocktest.tests apps.analytics.tests apps.ai_service.tests --keepdb -v 1
+          coverage xml -o coverage.xml
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_ORGANIZATION: ${{ vars.SONAR_ORGANIZATION }}
+          SONAR_PROJECT_KEY: ${{ vars.SONAR_PROJECT_KEY }}
+        with:
+          projectBaseDir: backend
+          args: >
+            -Dsonar.python.coverage.reportPaths=coverage.xml
+            -Dsonar.sources=apps
