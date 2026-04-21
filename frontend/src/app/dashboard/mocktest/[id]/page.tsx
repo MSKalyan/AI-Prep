@@ -23,17 +23,16 @@ interface Question {
   options: Option[];
 }
 
-function MockTestAttemptContent({
-  testId,
-  data,
-}: {
+type MockTestAttemptContentProps = Readonly<{
   testId: number;
   data: {
     attempt_id: number;
     remaining_seconds: number;
     questions: Question[];
   };
-}) {
+}>;
+
+function MockTestAttemptContent({ testId, data }: MockTestAttemptContentProps) {
   const router = useRouter();
   const { mutate } = useSubmitAnswer();
 

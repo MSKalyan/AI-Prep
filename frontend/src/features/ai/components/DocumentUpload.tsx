@@ -3,7 +3,7 @@
 import { apiClient } from '@/lib/apiClient';
 import { useState } from 'react';
 
-export default function DocumentUpload({ compact = false }: { compact?: boolean }) {
+export default function DocumentUpload({ compact = false }: Readonly<{ compact?: boolean }>) {
   const [file, setFile] = useState<File | null>(null);
   const [subject, setSubject] = useState('');
   const [examType, setExamType] = useState('');

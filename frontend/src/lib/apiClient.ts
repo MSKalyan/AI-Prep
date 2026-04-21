@@ -9,14 +9,15 @@ apiClient.interceptors.response.use(
   (res) => res,
   async (error) => {
     const originalRequest = error.config;
+    const globalWindow = (globalThis as typeof globalThis & { window?: Window }).window;
 
     if (originalRequest?.url?.includes('/auth/refresh/')) {
-      return Promise.reject(error);
+      throw error;
     }
 
     if (error.response?.status === 401 && !originalRequest?._retry) {
-      if (typeof window !== 'undefined' && window.location.pathname === '/login') {
-        return Promise.reject(error);
+      if (globalWindow?.location?.pathname === '/login') {
+        throw error;
       }
 
       originalRequest._retry = true;
@@ -25,10 +26,10 @@ apiClient.interceptors.response.use(
         await apiClient.post('/auth/refresh/');
         return apiClient(originalRequest);
       } catch (refreshError) {
-        return Promise.reject(refreshError);
+        throw refreshError;
       }
     }
 
-    return Promise.reject(error);
+    throw error;
   }
 );

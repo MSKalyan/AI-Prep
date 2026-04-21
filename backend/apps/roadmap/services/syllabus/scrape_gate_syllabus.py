@@ -28,4 +28,4 @@ def get_syllabus_links():
 
             links.add(full_url)
 
-    return sorted(list(links))
+    return sorted(links)

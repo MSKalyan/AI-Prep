@@ -13,14 +13,13 @@ export default function Drawer({ isOpen, close }: { readonly isOpen: boolean; re
     <>
       {/* Overlay */}
       {isOpen && (
-        <div
+        <button
+          type="button"
           className="fixed inset-0 bg-black/40 z-40"
           onClick={close}
           onKeyDown={(e) => {
             if (e.key === 'Escape') close();
           }}
-          role="button"
-          tabIndex={0}
           aria-label="Close menu"
         />
       )}

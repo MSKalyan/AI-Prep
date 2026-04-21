@@ -1,90 +1,83 @@
-from django.db.models import Sum, Count
-from apps.roadmap.models import Topic, PYQ
+from django.db.models import Count, Sum
+
+from apps.roadmap.models import PYQ, Topic
 
 
 class WeightageService:
+    @staticmethod
+    def _get_parent_topics(exam):
+        return Topic.objects.filter(subject__exam=exam, parent__isnull=True)
+
+    @staticmethod
+    def _get_total_exam_marks(exam):
+        return (
+            PYQ.objects.filter(exam=exam).aggregate(total=Sum("marks")).get("total") or 0
+        )
+
+    @staticmethod
+    def _get_agg_map(exam):
+        aggregates = (
+            PYQ.objects.filter(exam=exam)
+            .values("topic")
+            .annotate(total_marks=Sum("marks"), total_pyqs=Count("id"))
+        )
+        return {a["topic"]: a for a in aggregates}
+
+    @staticmethod
+    def _get_subtopics_map(exam):
+        subtopics = Topic.objects.filter(subject__exam=exam, parent__isnull=False)
+        subtopics_map = {}
+        for sub in subtopics:
+            subtopics_map.setdefault(sub.parent_id, []).append(sub)
+        return subtopics_map
+
+    @staticmethod
+    def _update_parent_topic(topic, *, total_marks, total_pyqs, total_exam_marks):
+        topic.pyq_total_marks = total_marks
+        topic.pyq_count = total_pyqs
+        topic.weightage = (total_marks / total_exam_marks * 100) if total_exam_marks else 0
+        topic.save(update_fields=["pyq_total_marks", "pyq_count", "weightage"])
+
+    @staticmethod
+    def _project_children_weightage(parent_topic, children):
+        if not children:
+            return
+
+        child_weight = parent_topic.weightage / len(children)
+        for child in children:
+            child.weightage = child_weight
+
+        Topic.objects.bulk_update(children, ["weightage"])
 
     @staticmethod
     def compute_weightage(exam):
-
-        # Parent topics only
-        parent_topics = Topic.objects.filter(
-            subject__exam=exam,
-            parent__isnull=True
-        )
-
-        # Total marks across exam
-        total_exam_marks = (
-            PYQ.objects.filter(exam=exam)
-            .aggregate(total=Sum("marks"))
-            .get("total") or 0
-        )
+        parent_topics = WeightageService._get_parent_topics(exam)
+        total_exam_marks = WeightageService._get_total_exam_marks(exam)
 
         if total_exam_marks == 0:
             print("No PYQs found for weightage computation")
             return
 
-        # Aggregate PYQs by topic
-        aggregates = (
-            PYQ.objects.filter(exam=exam)
-            .values("topic")
-            .annotate(
-                total_marks=Sum("marks"),
-                total_pyqs=Count("id")
-            )
-        )
+        agg_map = WeightageService._get_agg_map(exam)
+        subtopics_map = WeightageService._get_subtopics_map(exam)
 
-        # Map: topic_id → aggregate data
-        agg_map = {
-            a["topic"]: a
-            for a in aggregates
-        }
-
-        # Preload subtopics (avoids N+1 queries)
-        subtopics = Topic.objects.filter(
-            subject__exam=exam,
-            parent__isnull=False
-        )
-
-        subtopics_map = {}
-        for sub in subtopics:
-            subtopics_map.setdefault(sub.parent_id, []).append(sub)
-
-        # ---- Main Loop ----
         for topic in parent_topics:
+            data = agg_map.get(topic.id) or {}
+            total_marks = data.get("total_marks") or 0
+            total_pyqs = data.get("total_pyqs") or 0
 
-            data = agg_map.get(topic.id)
-
-            total_marks = data["total_marks"] if data and data.get("total_marks") else 0
-            total_pyqs = data["total_pyqs"] if data and data.get("total_pyqs") else 0
-
-            # Assign parent topic stats
-            topic.pyq_total_marks = total_marks
-            topic.pyq_count = total_pyqs
-
-            topic.weightage = (
-                total_marks / total_exam_marks * 100
-            ) if total_exam_marks else 0
-
-            topic.save(update_fields=[
-                "pyq_total_marks",
-                "pyq_count",
-                "weightage"
-            ])
+            WeightageService._update_parent_topic(
+                topic,
+                total_marks=total_marks,
+                total_pyqs=total_pyqs,
+                total_exam_marks=total_exam_marks,
+            )
 
             print(
-                f"{topic.name} → "
-                f"{topic.pyq_count} PYQs → "
+                f"{topic.name} -> "
+                f"{topic.pyq_count} PYQs -> "
                 f"{round(topic.weightage, 2)}%"
             )
 
-            # ---- Subtopic Projection ----
             children = subtopics_map.get(topic.id, [])
-
-            if children:
-                child_weight = topic.weightage / len(children)
-
-                for child in children:
-                    child.weightage = child_weight
-
-                Topic.objects.bulk_update(children, ["weightage"])
+            WeightageService._project_children_weightage(topic, children)
