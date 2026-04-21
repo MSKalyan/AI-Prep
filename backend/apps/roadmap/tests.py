@@ -860,3 +860,120 @@ class TestActivateRoadmapView(TestCase):
         client.force_authenticate(user=user)
         response = client.post("/api/roadmap/activate/9999/")
         self.assertEqual(response.status_code, 404)
+
+
+# ---------------- Roadmap Service Tests ----------------
+class TestRoadmapService(TestCase):
+    def test_generate_roadmap_creates_roadmap(self):
+        from apps.roadmap.services.roadmap_service import RoadmapService
+
+        user = User.objects.create_user(
+            email="test@example.com", password=TEST_PASSWORD
+        )
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        RoadmapService.generate_deterministic_roadmap(
+            user, exam.id, date.today() + timedelta(days=90), 2
+        )
+        roadmap = Roadmap.objects.filter(user=user).first()
+        self.assertIsNotNone(roadmap)
+        self.assertTrue(roadmap.is_active)
+
+
+class TestWeightageService(TestCase):
+    def test_compute_weightage(self):
+        from apps.roadmap.services.pyq.weightage_service import WeightageService
+
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        subject = Subject.objects.create(exam=exam, name="DSA", order=1)
+        Topic.objects.create(name="Arrays", subject=subject, weightage=10)
+        WeightageService.compute_weightage(exam)
+        topic = Topic.objects.get(name="Arrays", subject=subject)
+        self.assertGreaterEqual(topic.weightage, 0)
+
+
+class TestTimeDistributionService(TestCase):
+    def test_generate_plan(self):
+        from apps.roadmap.services.pyq.time_distribution_service import (
+            TimeDistributionService,
+        )
+
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        plan = TimeDistributionService.generate_plan(
+            exam, date.today() + timedelta(days=90), 2
+        )
+        self.assertIn("total_weeks", plan)
+        self.assertIn("plan", plan)
+        self.assertGreater(plan["total_weeks"], 0)
+
+
+class TestStudyService(TestCase):
+    def test_clean_ai_output(self):
+        from apps.roadmap.services.study_service import StudyService
+
+        text = "* Bold\n- Item\n**italic**"
+        result = StudyService.clean_ai_output(text)
+        self.assertNotIn("*", result)
+        self.assertNotIn("**", result)
+
+    def test_get_topic_study_data(self):
+        from apps.roadmap.services.study_service import StudyService
+
+        user = User.objects.create_user(
+            email="test@example.com", password=TEST_PASSWORD
+        )
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        roadmap = Roadmap.objects.create(
+            user=user, exam=exam, target_date=date.today() + timedelta(days=90)
+        )
+        subject = Subject.objects.create(exam=exam, name="DSA", order=1)
+        topic = Topic.objects.create(name="Arrays", subject=subject)
+        roadmap_topic = RoadmapTopic.objects.create(
+            roadmap=roadmap, topic=topic, week_number=1, day_number=1
+        )
+        result = StudyService.get_topic_study_data(roadmap_topic.id)
+        self.assertEqual(result["topic"], "Arrays")
+        self.assertIn("ai_explanation", result)
+
+    def test_get_roadmap_topics(self):
+        from apps.roadmap.services.study_service import StudyService
+
+        user = User.objects.create_user(
+            email="test@example.com", password=TEST_PASSWORD
+        )
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        roadmap = Roadmap.objects.create(
+            user=user, exam=exam, target_date=date.today() + timedelta(days=90)
+        )
+        subject = Subject.objects.create(exam=exam, name="DSA", order=1)
+        topic = Topic.objects.create(name="Arrays", subject=subject)
+        RoadmapTopic.objects.create(
+            roadmap=roadmap, topic=topic, week_number=1, day_number=1
+        )
+        result = StudyService.get_roadmap_topics(roadmap.id)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["topic"], "Arrays")

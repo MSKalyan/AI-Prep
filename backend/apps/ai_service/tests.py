@@ -4,8 +4,20 @@ from django.conf import settings
 from rest_framework.test import APIClient
 
 from apps.ai_service.models import Document, Conversation, Message, AIUsageLog
-from apps.users.models import User
 from apps.ai_service.services.llm_service import LLMService
+from apps.ai_service.serializers import (
+    AskAISerializer,
+    GenerateQuestionsAISerializer,
+    DocumentUploadSerializer,
+    ConversationSerializer,
+)
+from apps.users.models import User
+from apps.ai_service.serializers import (
+    AskAISerializer,
+    GenerateQuestionsAISerializer,
+    DocumentUploadSerializer,
+    ConversationSerializer,
+)
 
 TEST_PASSWORD = getattr(settings, "TEST_PASSWORD", "testpass123!@#")
 TEST_EMAIL = "test@example.com"
@@ -153,12 +165,134 @@ class TestAIUsageLogModel(TestCase):
         self.assertEqual(log.total_tokens, 0)
         self.assertTrue(log.success)
 
+    def test_usage_log_with_error(self):
+        log = AIUsageLog.objects.create(
+            user=self.user,
+            endpoint="test",
+            model_used="test-model",
+            success=False,
+            error_message="Something went wrong",
+            response_time_ms=1500,
+        )
+        self.assertFalse(log.success)
+        self.assertEqual(log.error_message, "Something went wrong")
+        self.assertEqual(log.response_time_ms, 1500)
+
 
 class TestLLMService(TestCase):
     def test_generate_response_safe(self):
         service = LLMService()
         result = service.generate_response("Explain arrays")
         self.assertTrue(result is None or isinstance(result, str))
+
+
+class TestAskAISerializer(TestCase):
+    def test_valid_ask_ai_data(self):
+        serializer = AskAISerializer(
+            data={
+                "question": "What are arrays?",
+                "context": "Data Structures",
+                "exam_type": "GATE",
+            }
+        )
+        self.assertTrue(serializer.is_valid())
+
+    def test_ask_ai_question_required(self):
+        serializer = AskAISerializer(data={"context": "CS"})
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("question", serializer.errors)
+
+    def test_ask_ai_question_max_length(self):
+        serializer = AskAISerializer(data={"question": "x" * 3000})
+        self.assertFalse(serializer.is_valid())
+
+    def test_ask_ai_optional_fields(self):
+        serializer = AskAISerializer(data={"question": "Test question"})
+        self.assertTrue(serializer.is_valid())
+
+
+class TestGenerateQuestionsAISerializer(TestCase):
+    def test_valid_generate_questions(self):
+        serializer = GenerateQuestionsAISerializer(
+            data={
+                "exam_type": "GATE",
+                "subject": "Computer Science",
+                "difficulty": "medium",
+                "num_questions": 5,
+                "question_type": "mcq",
+            }
+        )
+        self.assertTrue(serializer.is_valid())
+
+    def test_generate_questions_invalid_difficulty(self):
+        serializer = GenerateQuestionsAISerializer(
+            data={
+                "exam_type": "GATE",
+                "subject": "CS",
+                "difficulty": "invalid",
+                "num_questions": 5,
+                "question_type": "mcq",
+            }
+        )
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("difficulty", serializer.errors)
+
+    def test_generate_questions_num_questions_range(self):
+        serializer = GenerateQuestionsAISerializer(
+            data={
+                "exam_type": "GATE",
+                "subject": "CS",
+                "difficulty": "easy",
+                "num_questions": 25,
+                "question_type": "mcq",
+            }
+        )
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("num_questions", serializer.errors)
+
+    def test_generate_questions_question_type_choices(self):
+        serializer = GenerateQuestionsAISerializer(
+            data={
+                "exam_type": "GATE",
+                "subject": "CS",
+                "difficulty": "easy",
+                "num_questions": 5,
+                "question_type": "invalid_type",
+            }
+        )
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("question_type", serializer.errors)
+
+
+class TestDocumentUploadSerializer(TestCase):
+    def test_valid_document_upload(self):
+        user = User.objects.create_user(email=TEST_EMAIL, password=TEST_PASSWORD)
+        from unittest.mock import MagicMock
+
+        request = MagicMock()
+        request.user = user
+        serializer = DocumentUploadSerializer(
+            data={
+                "title": "Test Doc",
+                "subject": "CS",
+                "exam_type": "GATE",
+            },
+            context={"request": request},
+        )
+        self.assertTrue(serializer.is_valid())
+
+
+class TestConversationSerializer(TestCase):
+    def test_serialize_conversation(self):
+        user = User.objects.create_user(email=TEST_EMAIL, password=TEST_PASSWORD)
+        conversation = Conversation.objects.create(
+            user=user, title="Test Chat", context="CS"
+        )
+        Message.objects.create(conversation=conversation, role="user", content="Hello")
+        serializer = ConversationSerializer(conversation)
+        self.assertEqual(serializer.data["title"], "Test Chat")
+        self.assertEqual(serializer.data["context"], "CS")
+        self.assertEqual(serializer.data["message_count"], 1)
 
 
 class TestAskAIView(TestCase):
@@ -175,6 +309,59 @@ class TestAskAIView(TestCase):
         self.client.force_authenticate(user=self.user)
         response = self.client.get("/api/ask-ai/")
         self.assertEqual(response.status_code, 200)
+
+    def test_authenticated_post_invalid_data(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post("/api/ask-ai/", {}, format="json")
+        self.assertEqual(response.status_code, 400)
+
+
+class TestGenerateQuestionsView(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(email=TEST_EMAIL, password=TEST_PASSWORD)
+
+    def test_generate_questions_unauthenticated(self):
+        response = self.client.post("/api/generate-questions/", {}, format="json")
+        self.assertEqual(response.status_code, 401)
+
+    def test_generate_questions_invalid_data(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post("/api/generate-questions/", {}, format="json")
+        self.assertEqual(response.status_code, 400)
+
+
+class TestDocumentUploadView(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(email=TEST_EMAIL, password=TEST_PASSWORD)
+
+    def test_upload_document_unauthenticated(self):
+        response = self.client.post("/api/documents/", {}, format="json")
+        self.assertEqual(response.status_code, 401)
+
+    def test_upload_document_missing_fields(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post("/api/documents/", {"title": "Test"})
+        self.assertEqual(response.status_code, 400)
+
+
+class TestProcessDocumentView(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(email=TEST_EMAIL, password=TEST_PASSWORD)
+
+    def test_process_document_not_found(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            "/api/documents/process/", {"document_id": 9999}, format="json"
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_process_document_missing_id(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post("/api/documents/process/", {}, format="json")
+        self.assertEqual(response.status_code, 400)
 
 
 class TestConversationMessagesView(TestCase):
@@ -221,6 +408,20 @@ class TestConversationMessagesView(TestCase):
         self.client.force_authenticate(user=self.user)
         response = self.client.get(f"/api/conversations/{other_convo.id}/messages/")
         self.assertEqual(response.status_code, 404)
+
+    def test_messages_limit_param(self):
+        for i in range(15):
+            Message.objects.create(
+                conversation=self.conversation, role="user", content=f"Message {i}"
+            )
+
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(
+            f"/api/conversations/{self.conversation.id}/messages/?limit=5"
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(len(data), 5)
 
 
 class TestHealthCheckView(TestCase):

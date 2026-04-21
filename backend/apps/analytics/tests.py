@@ -9,8 +9,13 @@ from apps.users.models import User
 from apps.roadmap.models import Exam, Subject, Topic
 from apps.mocktest.models import MockTest, TestAttempt, Question, Answer
 from apps.analytics.models import (
-    TopicPerformance, StudyContentCache, StudySession,
-    PerformanceMetrics, WeakArea, DailyProgress, PerformanceSnapshot
+    TopicPerformance,
+    StudyContentCache,
+    StudySession,
+    PerformanceMetrics,
+    WeakArea,
+    DailyProgress,
+    PerformanceSnapshot,
 )
 from apps.analytics.services.study_content_service import StudyContentService
 from apps.analytics.services.services import AttemptAggregationService
@@ -30,7 +35,7 @@ class BaseTestCase(TestCase):
             name="GATE CS",
             category="Engineering",
             total_marks=100,
-            exam_date=date.today() + timedelta(days=180)
+            exam_date=date.today() + timedelta(days=180),
         )
         subject = Subject.objects.create(exam=exam, name="Data Structures")
         return Topic.objects.create(name="Arrays", subject=subject)
@@ -52,7 +57,6 @@ class BaseTestCase(TestCase):
 
 # ---------------- Topic Performance ----------------
 class TestTopicPerformanceModel(BaseTestCase):
-
     def test_create(self):
         user = self.create_user()
         topic = self.create_topic()
@@ -63,7 +67,7 @@ class TestTopicPerformanceModel(BaseTestCase):
             accuracy=85.5,
             avg_time=120.0,
             total_attempts=10,
-            strength="strong"
+            strength="strong",
         )
 
         self.assertEqual(performance.user, user)
@@ -74,32 +78,22 @@ class TestTopicPerformanceModel(BaseTestCase):
         topic = self.create_topic()
 
         TopicPerformance.objects.create(
-            user=user,
-            topic=topic,
-            accuracy=0.0,
-            avg_time=0.0,
-            total_attempts=0
+            user=user, topic=topic, accuracy=0.0, avg_time=0.0, total_attempts=0
         )
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 TopicPerformance.objects.create(
-                    user=user,
-                    topic=topic,
-                    accuracy=0.0,
-                    avg_time=0.0,
-                    total_attempts=0
+                    user=user, topic=topic, accuracy=0.0, avg_time=0.0, total_attempts=0
                 )
+
 
 # ---------------- Study Content Cache ----------------
 class TestStudyContentCacheModel(BaseTestCase):
-
     def test_create(self):
         topic = self.create_topic()
 
         cache = StudyContentCache.objects.create(
-            topic=topic,
-            description="Graph content",
-            youtube_links=["link1"]
+            topic=topic, description="Graph content", youtube_links=["link1"]
         )
 
         self.assertEqual(cache.topic, topic)
@@ -107,28 +101,22 @@ class TestStudyContentCacheModel(BaseTestCase):
     def test_unique(self):
         topic = self.create_topic()
         StudyContentCache.objects.create(
-            topic=topic,
-            description="test",
-            youtube_links=[]
+            topic=topic, description="test", youtube_links=[]
         )
         with self.assertRaises(IntegrityError):
             with transaction.atomic():
                 StudyContentCache.objects.create(
-                    topic=topic,
-                    description="test",
-                    youtube_links=[]
+                    topic=topic, description="test", youtube_links=[]
                 )
+
 
 # ---------------- Study Session ----------------
 class TestStudySessionModel(BaseTestCase):
-
     def test_create(self):
         user = self.create_user()
 
         session = StudySession.objects.create(
-            user=user,
-            activity_type='mock_test',
-            duration_minutes=45
+            user=user, activity_type="mock_test", duration_minutes=45
         )
 
         self.assertEqual(session.duration_minutes, 45)
@@ -146,15 +134,11 @@ class TestStudySessionModel(BaseTestCase):
 
 # ---------------- Performance Metrics ----------------
 class TestPerformanceMetricsModel(BaseTestCase):
-
     def test_create(self):
         user = self.create_user()
 
         metrics = PerformanceMetrics.objects.create(
-            user=user,
-            subject="DSA",
-            total_questions=100,
-            correct_answers=80
+            user=user, subject="DSA", total_questions=100, correct_answers=80
         )
 
         self.assertEqual(metrics.calculated_accuracy, 80.0)
@@ -170,15 +154,10 @@ class TestPerformanceMetricsModel(BaseTestCase):
 
 # ---------------- Weak Area ----------------
 class TestWeakAreaModel(BaseTestCase):
-
     def test_create(self):
         user = self.create_user()
 
-        weak = WeakArea.objects.create(
-            user=user,
-            subject="DSA",
-            topic="Graphs"
-        )
+        weak = WeakArea.objects.create(user=user, subject="DSA", topic="Graphs")
 
         self.assertEqual(weak.topic, "Graphs")
 
@@ -193,14 +172,10 @@ class TestWeakAreaModel(BaseTestCase):
 
 # ---------------- Daily Progress ----------------
 class TestDailyProgressModel(BaseTestCase):
-
     def test_create(self):
         user = self.create_user()
 
-        progress = DailyProgress.objects.create(
-            user=user,
-            date=date.today()
-        )
+        progress = DailyProgress.objects.create(user=user, date=date.today())
 
         self.assertEqual(progress.study_time_minutes, 0)
 
@@ -215,7 +190,6 @@ class TestDailyProgressModel(BaseTestCase):
 
 # ---------------- Performance Snapshot ----------------
 class TestPerformanceSnapshotModel(BaseTestCase):
-
     def test_create(self):
         user = self.create_user()
 
@@ -223,7 +197,7 @@ class TestPerformanceSnapshotModel(BaseTestCase):
             name="GATE CS",
             category="Engineering",
             total_marks=100,
-            exam_date=date.today() + timedelta(days=180)
+            exam_date=date.today() + timedelta(days=180),
         )
 
         mock = MockTest.objects.create(user=user, title="Test", exam=exam)
@@ -235,7 +209,7 @@ class TestPerformanceSnapshotModel(BaseTestCase):
             test_attempt=attempt,
             score=40,
             total_marks=50,
-            accuracy=80.0
+            accuracy=80.0,
         )
 
         self.assertEqual(snapshot.user, user)
@@ -243,14 +217,15 @@ class TestPerformanceSnapshotModel(BaseTestCase):
 
 # ---------------- Study Content Service ----------------
 class TestStudyContentService(TestCase):
-
     def test_generate_queries(self):
         queries = StudyContentService.generate_queries("Arrays")
         self.assertEqual(len(queries), 3)
 
     def test_is_good_video_filter(self):
         self.assertFalse(StudyContentService.is_good_video("Funny Meme Trailer"))
-        self.assertTrue(StudyContentService.is_good_video("Arrays tutorial for beginners"))
+        self.assertTrue(
+            StudyContentService.is_good_video("Arrays tutorial for beginners")
+        )
 
     def test_get_study_content_missing_topic_returns_none(self):
         result = StudyContentService.get_study_content("does-not-exist")
@@ -280,45 +255,48 @@ class TestStudyContentService(TestCase):
 
 # ---------------- API Views ----------------
 class TestAnalyticsViews(BaseTestCase):
-
     def setUp(self):
         self.client = APIClient()
         self.user = self.create_user()
         self.client.force_authenticate(user=self.user)
 
     def test_performance(self):
-        response = self.client.get('/api/analytics/performance/')
+        response = self.client.get("/api/analytics/performance/")
         self.assertEqual(response.status_code, 200)
 
     def test_study_content_not_found(self):
-        response = self.client.get('/api/analytics/study-content/', {"topic_name": "missing"})
+        response = self.client.get(
+            "/api/analytics/study-content/", {"topic_name": "missing"}
+        )
         self.assertEqual(response.status_code, 404)
 
     def test_study_content_requires_param(self):
-        response = self.client.get('/api/analytics/study-content/')
+        response = self.client.get("/api/analytics/study-content/")
         self.assertEqual(response.status_code, 400)
 
     def test_study_content_success(self):
         topic = self.create_topic()
-        response = self.client.get('/api/analytics/study-content/', {"topic_name": topic.name})
+        response = self.client.get(
+            "/api/analytics/study-content/", {"topic_name": topic.name}
+        )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["status"], "success")
         self.assertEqual(response.data["data"]["topic_name"], topic.name)
 
     def test_user_analytics(self):
-        response = self.client.get('/api/analytics/')
+        response = self.client.get("/api/analytics/")
         self.assertEqual(response.status_code, 200)
 
     def test_stats(self):
-        response = self.client.get('/api/analytics/stats/')
+        response = self.client.get("/api/analytics/stats/")
         self.assertEqual(response.status_code, 200)
 
     def test_adaptive_endpoints(self):
         endpoints = [
-            '/api/analytics/adaptive-roadmap/',
-            '/api/analytics/adaptive-study-plan/',
-            '/api/analytics/adaptive-revision/',
-            '/api/analytics/aggregation/'
+            "/api/analytics/adaptive-roadmap/",
+            "/api/analytics/adaptive-study-plan/",
+            "/api/analytics/adaptive-revision/",
+            "/api/analytics/aggregation/",
         ]
 
         for url in endpoints:
@@ -362,10 +340,18 @@ class TestAnalyticsServices(BaseTestCase):
         self.assertEqual(data[0]["correct_answers"], 1)
 
     def test_performance_classify_topic(self):
-        self.assertEqual(PerformanceService.classify_topic(accuracy=0.9, attempts=10), "strong")
-        self.assertEqual(PerformanceService.classify_topic(accuracy=0.6, attempts=10), "moderate")
-        self.assertEqual(PerformanceService.classify_topic(accuracy=0.2, attempts=10), "weak")
-        self.assertEqual(PerformanceService.classify_topic(accuracy=0.2, attempts=2), "insufficient")
+        self.assertEqual(
+            PerformanceService.classify_topic(accuracy=0.9, attempts=10), "strong"
+        )
+        self.assertEqual(
+            PerformanceService.classify_topic(accuracy=0.6, attempts=10), "moderate"
+        )
+        self.assertEqual(
+            PerformanceService.classify_topic(accuracy=0.2, attempts=10), "weak"
+        )
+        self.assertEqual(
+            PerformanceService.classify_topic(accuracy=0.2, attempts=2), "insufficient"
+        )
 
     def test_adaptive_priority_new_user(self):
         user = self.create_user()
@@ -373,3 +359,61 @@ class TestAnalyticsServices(BaseTestCase):
 
         results = AdaptiveRoadmapService.generate_priority(user)
         self.assertTrue(any(r["topic_id"] == topic.id for r in results))
+
+
+# ---------------- Dashboard Service Tests ----------------
+class TestDashboardService(BaseTestCase):
+    def test_get_user_roadmaps_empty(self):
+        user = self.create_user()
+        from apps.analytics.services.dashboard_service import DashboardService
+
+        result = DashboardService.get_user_roadmaps(user)
+        self.assertEqual(result, [])
+
+    def test_dashboard_summary_no_roadmap(self):
+        user = self.create_user()
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        mock_test = MockTest.objects.create(user=user, title="Test", exam=exam)
+        attempt = TestAttempt.objects.create(
+            user=user,
+            mock_test=mock_test,
+            score=40,
+            percentage=80.0,
+            submitted_at=timezone.now(),
+        )
+        from apps.analytics.services.dashboard_service import DashboardService
+
+        result = DashboardService.get_dashboard_summary(user)
+        self.assertEqual(result["tests_taken"], 1)
+        self.assertEqual(result["average_score"], 80.0)
+
+    def test_calculate_streak_no_progress(self):
+        user = self.create_user()
+        from apps.analytics.services.dashboard_service import DashboardService
+
+        streak = DashboardService._calculate_streak(user)
+        self.assertEqual(streak, 0)
+
+    def test_calculate_streak_with_progress(self):
+        user = self.create_user()
+        yesterday = date.today() - timedelta(days=1)
+        DailyProgress.objects.create(user=user, date=yesterday, study_time_minutes=30)
+        from apps.analytics.services.dashboard_service import DashboardService
+
+        streak = DashboardService._calculate_streak(user)
+        self.assertGreaterEqual(streak, 1)
+
+
+# ---------------- Analytics Service Tests ----------------
+class TestAnalyticsService(BaseTestCase):
+    def test_get_weak_subject_no_data(self):
+        user = self.create_user()
+        from apps.analytics.services.services import AnalyticsService
+
+        result = AnalyticsService.get_weak_subject(user)
+        self.assertIsNone(result)
