@@ -13,10 +13,19 @@ import os
 os.environ.setdefault("USE_LOCAL_DB", "False")
 os.environ.setdefault("DATABASE_URL", "sqlite:///test_db.sqlite3")
 
+# Force SQLite for CI
+import sys
+
+if "pytest" in sys.modules or "coverage" in sys.modules:
+    os.environ["USE_LOCAL_DB"] = "True"
+
 # Prevent any accidental external API usage during tests.
 os.environ.setdefault("GROQ_API_KEY", "")
 os.environ.setdefault("YOUTUBE_API_KEY", "")
 os.environ.setdefault("GEMINI_API_KEY", "")
+
+# Set SECRET_KEY for test environment
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-ci-testing-only")
 
 from .settings import *  # noqa: F403
 
@@ -41,4 +50,3 @@ SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
-
