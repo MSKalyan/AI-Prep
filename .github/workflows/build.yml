@@ -16,8 +16,33 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Backend Dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run Tests With Coverage
+        shell: pwsh
+        env:
+          DJANGO_SETTINGS_MODULE: config.test_settings
+          USE_LOCAL_DB: "False"
+          DATABASE_URL: "sqlite:///test_db.sqlite3"
+          GROQ_API_KEY: ""
+          GEMINI_API_KEY: ""
+          YOUTUBE_API_KEY: ""
+        run: |
+          Set-Location backend
+          coverage run -m pytest -q
+          coverage xml -o coverage.xml
+
       - name: SonarQube Scan
         uses: SonarSource/sonarqube-scan-action@fd88b7d7ccbaefd23d8f36f73b59db7a3d246602 # v6.0.0
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-
+          SONAR_HOST_URL: https://sonarcloud.io
