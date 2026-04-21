@@ -21,6 +21,26 @@ class QuestionParserService:
     MARK_TWO_ALT = "two mark"
 
     @staticmethod
+    def _contains_number_dot(text: str) -> bool:
+        i = 0
+        n = len(text)
+        while i < n:
+            if not text[i].isdigit():
+                i += 1
+                continue
+
+            j = i + 1
+            while j < n and text[j].isdigit():
+                j += 1
+
+            if j < n and text[j] == ".":
+                return True
+
+            i = j
+
+        return False
+
+    @staticmethod
     def _parse_marks(page_text):
         if (
             QuestionParserService.MARK_TWO in page_text
@@ -246,7 +266,7 @@ class QuestionParserService:
             page_upper = page.upper()
             if "ANSWER" in page_upper or "KEY" in page_upper or "Q.NO" in page_upper:
                 answer_key_pages.append((i, page))
-            elif "Q." in page or re.search(r"\d+\.", page):
+            elif "Q." in page or QuestionParserService._contains_number_dot(page):
                 question_pages.append((i, page))
 
         all_answers = {}

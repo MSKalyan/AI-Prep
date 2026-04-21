@@ -22,12 +22,8 @@ apiClient.interceptors.response.use(
 
       originalRequest._retry = true;
 
-      try {
-        await apiClient.post('/auth/refresh/');
-        return apiClient(originalRequest);
-      } catch (refreshError) {
-        throw refreshError;
-      }
+      await apiClient.post('/auth/refresh/');
+      return apiClient(originalRequest);
     }
 
     throw error;

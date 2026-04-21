@@ -1,7 +1,7 @@
 import json
-import random
 import re
 import os
+import secrets
 from django.utils import timezone
 from django.db import transaction
 
@@ -52,7 +52,7 @@ class MockTestService:
         print("====================\n")
 
         selected_questions = selected_questions[:num_questions]
-        random.shuffle(selected_questions)
+        secrets.SystemRandom().shuffle(selected_questions)
 
         topic = topics[0] if topics else None
         subject = topic.parent.name if topic and topic.parent else ""
