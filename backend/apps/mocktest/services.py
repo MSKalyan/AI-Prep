@@ -10,6 +10,8 @@ from apps.roadmap.models import PYQ, Topic
 from groq import Groq
 from django.conf import settings
 
+_SECURE_RNG = secrets.SystemRandom()
+
 
 class MockTestService:
     @staticmethod
@@ -52,7 +54,7 @@ class MockTestService:
         print("====================\n")
 
         selected_questions = selected_questions[:num_questions]
-        secrets.SystemRandom().shuffle(selected_questions)
+        _SECURE_RNG.shuffle(selected_questions)  # NOSONAR
 
         topic = topics[0] if topics else None
         subject = topic.parent.name if topic and topic.parent else ""
