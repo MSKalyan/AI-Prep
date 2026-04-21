@@ -1,0 +1,8 @@
+[run]
+omit =
+    apps/roadmap/management/commands/generate_gate_pyqs.py
+    apps/roadmap/management/commands/import_gate_pyq.py
+    apps/roadmap/management/commands/import_gate_syllabus.py
+    apps/roadmap/management/commands/seed_exam_syllabus.py
+    apps/roadmap/services/adaptive_service.py
+
