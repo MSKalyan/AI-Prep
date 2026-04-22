@@ -2,23 +2,28 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-interface Answer {
-  question: number;
-  user_answer: string;
+interface Option {
+  key: string;
+  text: string;
+}
+
+interface Question {
+  id: number;
+  question_text: string;
+  options: Option[];
 }
 
 interface MockTestData {
-  answers?: Answer[];
+  attempt_id: number;
+  remaining_seconds: number;
+  questions: Question[];
 }
 
 export function useSelectedAnswers(data: MockTestData | undefined) {
   const restored = useMemo(() => {
-    if (!data?.answers) return {};
+    if (!data?.questions) return {};
 
     const result: Record<number, string> = {};
-    data.answers.forEach((a: Answer) => {
-      result[a.question] = a.user_answer;
-    });
     return result;
   }, [data]);
 

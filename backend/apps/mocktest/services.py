@@ -14,6 +14,8 @@ _SECURE_RNG = secrets.SystemRandom()
 
 
 class MockTestService:
+    _OPTION_KEYS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
     @staticmethod
     def create_mock_test(
         user, roadmap, day, topics, num_questions=10, duration_minutes=30
@@ -33,6 +35,15 @@ class MockTestService:
 
         selected_questions = list(pyq_questions)  # Copy list
         remaining = num_questions - len(selected_questions)
+
+        # SECONDARY SOURCE: existing question bank for these topics
+        if remaining > 0 and topics:
+            bank_questions = MockTestService._get_question_bank_questions(
+                topics=topics, count=remaining, exclude_ids=[q.id for q in selected_questions]
+            )
+            print(f"Question-bank fallback found: {len(bank_questions)}")
+            selected_questions.extend(bank_questions)
+            remaining = num_questions - len(selected_questions)
 
         # FALLBACK: Use LLM to generate for remaining count, focusing on day topics
         llm_questions = []
@@ -193,14 +204,49 @@ class MockTestService:
         return existing_pyqs
 
     @staticmethod
+    def _get_question_bank_questions(topics, count, exclude_ids=None):
+        topic_ids = [t.id for t in topics if t and t.id]
+        if not topic_ids or count <= 0:
+            return []
+
+        queryset = Question.objects.filter(topic_id__in=topic_ids)
+
+        if exclude_ids:
+            queryset = queryset.exclude(id__in=exclude_ids)
+
+        # Keep only answerable MCQ questions.
+        usable = []
+        for q in queryset.order_by("?"):
+            options = MockTestService._normalize_options(q.options)
+            correct = MockTestService._extract_correct_answer(q.correct_answer, options)
+            if len(options) < 2 or not correct:
+                continue
+            if correct != q.correct_answer:
+                q.correct_answer = correct
+                q.options = options
+                q.save(update_fields=["correct_answer", "options"])
+            usable.append(q)
+            if len(usable) >= count:
+                break
+
+        return usable
+
+    @staticmethod
     def _convert_pyqs_to_questions(pyqs):
         questions = []
         for pyq in pyqs:
-            options = pyq.options if isinstance(pyq.options, dict) else {}
+            options = MockTestService._normalize_options(pyq.options)
             if not options or len(options) < 2:
                 print(f"  [PYQ] Skipping PYQ {pyq.id} - insufficient options: {options}")
                 continue
-            correct_answer = MockTestService._extract_correct_answer(pyq.correct_answer)
+            correct_answer = MockTestService._extract_correct_answer(
+                pyq.correct_answer, options
+            )
+            if not correct_answer:
+                print(
+                    f"  [PYQ] Skipping PYQ {pyq.id} - invalid correct_answer: {pyq.correct_answer}"
+                )
+                continue
             question = Question.objects.create(
                 topic=pyq.topic,
                 exam=pyq.exam,
@@ -220,14 +266,74 @@ class MockTestService:
         return questions
 
     @staticmethod
-    def _extract_correct_answer(correct):
-        if not correct:
-            return "A"
-        if isinstance(correct, list) and correct:
-            return correct[0]
-        if isinstance(correct, str):
-            return correct.upper() if len(correct) == 1 else "A"
-        return "A"
+    def _normalize_options(raw_options):
+        if raw_options is None:
+            return {}
+
+        if isinstance(raw_options, str):
+            try:
+                parsed = json.loads(raw_options)
+                raw_options = parsed
+            except (json.JSONDecodeError, OSError):
+                return {}
+
+        if isinstance(raw_options, dict):
+            normalized = {}
+            for key, value in raw_options.items():
+                key_str = str(key).strip().upper()
+                if not key_str:
+                    continue
+                normalized[key_str] = str(value).strip()
+            return normalized
+
+        if isinstance(raw_options, list):
+            normalized = {}
+            for idx, value in enumerate(raw_options):
+                if idx >= len(MockTestService._OPTION_KEYS):
+                    break
+                normalized[MockTestService._OPTION_KEYS[idx]] = str(value).strip()
+            return normalized
+
+        return {}
+
+    @staticmethod
+    def _extract_correct_answer(correct, options=None):
+        options_map = MockTestService._normalize_options(options)
+        option_keys = set(options_map.keys())
+
+        candidates = []
+
+        if isinstance(correct, list):
+            candidates.extend(correct)
+        elif isinstance(correct, dict):
+            candidates.extend(correct.values())
+            candidates.extend(correct.keys())
+        elif correct is not None:
+            candidates.append(correct)
+
+        if not candidates:
+            return ""
+
+        for candidate in candidates:
+            if candidate is None:
+                continue
+            raw = str(candidate).strip()
+            if not raw:
+                continue
+
+            cleaned = re.sub(r"^[\(\[\{]?\s*([A-Za-z])[\)\]\}\.\:\-]?\s*$", r"\1", raw)
+            cleaned = cleaned.strip().upper()
+
+            if len(cleaned) == 1:
+                if not option_keys or cleaned in option_keys:
+                    return cleaned
+
+            lowered = raw.lower().strip()
+            for key, value in options_map.items():
+                if lowered == value.lower().strip():
+                    return key
+
+        return ""
 
     @staticmethod
     def _get_any_pyq_fallback(count):
@@ -274,14 +380,25 @@ class MockTestService:
         client = Groq(api_key=settings.GROQ_API_KEY)
         main_topic = topics[0] if topics else None
         topic_name = main_topic.name if main_topic else "Agricultural Engineering"
+        topic_names = [t.name for t in topics[:3]] if topics else [topic_name]
 
-        prompt = MockTestService._build_llm_prompt(topic_name, count)
+        prompt = MockTestService._build_llm_prompt(topic_name, count, topic_names)
         content = MockTestService._call_llm_api(client, prompt)
         return MockTestService._process_llm_response(content, topics)
 
     @staticmethod
-    def _build_llm_prompt(topic_name, count):
-        return "Generate {} GATE-level MCQs specifically on \"{}\" topic. Output: JSON array only.".format(count, topic_name)
+    def _build_llm_prompt(topic_name, count, topic_names=None):
+        constrained_topics = topic_names or [topic_name]
+        topic_block = ", ".join(constrained_topics)
+        return (
+            "Generate exactly {count} high-quality GATE-level MCQ questions. "
+            "Questions must be strictly relevant to these topics only: {topics}. "
+            "Do not include any unrelated subject. "
+            "Return ONLY a JSON array where each item has keys: "
+            '"question", "options", "correct_answer", "explanation". '
+            '"options" must be an object with keys A, B, C, D. '
+            '"correct_answer" must be one of A, B, C, D.'
+        ).format(count=count, topics=topic_block)
 
     @staticmethod
     def _call_llm_api(client, prompt):
@@ -377,9 +494,21 @@ class MockTestService:
     def _create_single_question(q_data, topics, idx, total):
         """Create a single question from data."""
         try:
-            opts = q_data.get("options", {})
+            opts = MockTestService._normalize_options(q_data.get("options", {}))
             if not opts or len(opts) < 2:
                 print("    Skipping - insufficient options: {}".format(opts))
+                return None
+
+            correct_answer = MockTestService._extract_correct_answer(
+                q_data.get("correct_answer", "") or q_data.get("answer", ""),
+                opts,
+            )
+            if not correct_answer:
+                print(
+                    "    Skipping - invalid correct_answer: {}".format(
+                        q_data.get("correct_answer", "")
+                    )
+                )
                 return None
 
             print("  [LLM] Creating question {}/{}: {}...".format(
@@ -390,7 +519,7 @@ class MockTestService:
                 question_text=q_data.get("question", ""),
                 question_type="mcq",
                 options=opts,
-                correct_answer=q_data.get("correct_answer", "").upper(),
+                correct_answer=correct_answer,
                 explanation=q_data.get("explanation", ""),
                 difficulty="medium",
                 marks=1,
@@ -452,12 +581,25 @@ class MockTestService:
             print("Question not found!")
             return None, attempt
 
-        user_answer = user_answer.upper() if user_answer else ""
+        options = MockTestService._normalize_options(question.options)
+        normalized_user_answer = MockTestService._extract_correct_answer(
+            user_answer, options
+        )
+        if not normalized_user_answer:
+            normalized_user_answer = user_answer.upper().strip() if user_answer else ""
 
-        is_correct = (
-            user_answer == question.correct_answer.upper()
-            if question.correct_answer
-            else False
+        normalized_correct_answer = MockTestService._extract_correct_answer(
+            question.correct_answer, options
+        )
+        if not normalized_correct_answer:
+            normalized_correct_answer = (
+                str(question.correct_answer).upper().strip()
+                if question.correct_answer
+                else ""
+            )
+
+        is_correct = bool(normalized_user_answer) and (
+            normalized_user_answer == normalized_correct_answer
         )
 
         print(f"is_correct: {is_correct}")
@@ -466,7 +608,7 @@ class MockTestService:
             attempt=attempt,
             question=question,
             defaults={
-                "user_answer": user_answer,
+                "user_answer": normalized_user_answer,
                 "is_correct": is_correct,
                 "marks_obtained": question.marks if is_correct else 0,
                 "time_taken_seconds": time_taken_seconds,
@@ -486,25 +628,29 @@ class MockTestService:
         except TestAttempt.DoesNotExist:
             return None
 
-        # Calculate total marks and counts
+        # Calculate total marks and counts across ALL test questions
+        questions = attempt.mock_test.questions.all()
+        answers_by_question_id = {a.question_id: a for a in attempt.answers.all()}
+
         total_marks = 0
         obtained_marks = 0
         correct = 0
         incorrect = 0
         unanswered = 0
 
-        for answer in attempt.answers.all():
-            question = answer.question
+        for question in questions:
             total_marks += question.marks
+            answer = answers_by_question_id.get(question.id)
+            if not answer or not (answer.user_answer or "").strip():
+                unanswered += 1
+                continue
+
             obtained_marks += answer.marks_obtained
 
-            if answer.user_answer:
-                if answer.is_correct:
-                    correct += 1
-                else:
-                    incorrect += 1
+            if answer.is_correct:
+                correct += 1
             else:
-                unanswered += 1
+                incorrect += 1
 
         attempt.score = obtained_marks
         attempt.total_marks = total_marks
@@ -536,19 +682,40 @@ class MockTestService:
 
         for answer in answers:
             question_id = answer.get("question_id")
-            user_answer = answer.get("answer", "").upper()
+            user_answer = answer.get("answer", "")
 
             try:
                 question = Question.objects.get(id=question_id)
             except Question.DoesNotExist:
                 continue
 
-            is_correct = user_answer == question.correct_answer.upper()
+            options = MockTestService._normalize_options(question.options)
+            normalized_user_answer = MockTestService._extract_correct_answer(
+                user_answer, options
+            )
+            if not normalized_user_answer:
+                normalized_user_answer = (
+                    user_answer.upper().strip() if user_answer else ""
+                )
+
+            normalized_correct_answer = MockTestService._extract_correct_answer(
+                question.correct_answer, options
+            )
+            if not normalized_correct_answer:
+                normalized_correct_answer = (
+                    str(question.correct_answer).upper().strip()
+                    if question.correct_answer
+                    else ""
+                )
+
+            is_correct = bool(normalized_user_answer) and (
+                normalized_user_answer == normalized_correct_answer
+            )
 
             Answer.objects.create(
                 attempt=attempt,
                 question=question,
-                user_answer=user_answer,
+                user_answer=normalized_user_answer,
                 is_correct=is_correct,
                 marks_obtained=question.marks if is_correct else 0,
             )
@@ -566,8 +733,8 @@ class MockTestService:
             detailed_results.append(
                 {
                     "question_id": question_id,
-                    "user_answer": user_answer,
-                    "correct_answer": question.correct_answer,
+                    "user_answer": normalized_user_answer,
+                    "correct_answer": normalized_correct_answer,
                     "is_correct": is_correct,
                     "marks": question.marks,
                     "explanation": question.explanation,

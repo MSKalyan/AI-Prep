@@ -63,11 +63,22 @@ class TestQuestionModel(TestCase):
         )
 
     def test_extract_correct_answer_string(self):
-        self.assertEqual(MockTestService._extract_correct_answer("A"), "A")
-        self.assertEqual(MockTestService._extract_correct_answer("b"), "B")
-        self.assertEqual(MockTestService._extract_correct_answer(""), "A")
-        self.assertEqual(MockTestService._extract_correct_answer(["C", "D"]), "C")
-        self.assertEqual(MockTestService._extract_correct_answer("very-long"), "A")
+        self.assertEqual(
+            MockTestService._extract_correct_answer("A", {"A": "one", "B": "two"}), "A"
+        )
+        self.assertEqual(
+            MockTestService._extract_correct_answer("b", {"A": "one", "B": "two"}), "B"
+        )
+        self.assertEqual(MockTestService._extract_correct_answer("", {"A": "one"}), "")
+        self.assertEqual(
+            MockTestService._extract_correct_answer(["C", "D"], {"C": "three"}), "C"
+        )
+        self.assertEqual(
+            MockTestService._extract_correct_answer(
+                "Paris", {"A": "London", "B": "Paris", "C": "Rome"}
+            ),
+            "B",
+        )
 
     def test_get_topic_stats_empty(self):
         stats = MockTestService.get_topic_stats([])
@@ -944,6 +955,88 @@ class TestServiceHelpers(TestCase):
     def test_build_llm_prompt(self):
         result = MockTestService._build_llm_prompt("Arrays", 5)
         self.assertIn("Arrays", result)
+
+    def test_finalize_test_counts_all_questions(self):
+        user = User.objects.create_user(
+            email="fin@example.com", password=TEST_PASSWORD
+        )
+        exam = Exam.objects.create(
+            name="GATE CE",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=120),
+        )
+        subject = Subject.objects.create(exam=exam, name="Structures")
+        topic = Topic.objects.create(name="Beam", subject=subject)
+
+        q1 = Question.objects.create(
+            topic=topic,
+            exam=exam,
+            question_text="Q1",
+            options={"A": "1", "B": "2"},
+            correct_answer="A",
+            source="llm",
+        )
+        q2 = Question.objects.create(
+            topic=topic,
+            exam=exam,
+            question_text="Q2",
+            options={"A": "3", "B": "4"},
+            correct_answer="B",
+            source="llm",
+        )
+
+        mock_test = MockTest.objects.create(user=user, title="T1", exam=exam)
+        mock_test.questions.add(q1, q2)
+        attempt = TestAttempt.objects.create(user=user, mock_test=mock_test)
+
+        Answer.objects.create(
+            attempt=attempt,
+            question=q1,
+            user_answer="A",
+            is_correct=True,
+            marks_obtained=1.0,
+        )
+
+        result = MockTestService.finalize_test(attempt.id)
+        self.assertIsNotNone(result)
+        self.assertEqual(result.correct_answers, 1)
+        self.assertEqual(result.incorrect_answers, 0)
+        self.assertEqual(result.unanswered, 1)
+
+    def test_submit_answer_matches_textual_correct_answer(self):
+        user = User.objects.create_user(
+            email="submit-text@example.com", password=TEST_PASSWORD
+        )
+        exam = Exam.objects.create(
+            name="GATE EE",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=120),
+        )
+        subject = Subject.objects.create(exam=exam, name="Network")
+        topic = Topic.objects.create(name="Basics", subject=subject)
+        q = Question.objects.create(
+            topic=topic,
+            exam=exam,
+            question_text="Capital of France?",
+            options={"A": "London", "B": "Paris"},
+            correct_answer="Paris",
+            source="llm",
+        )
+        test = MockTest.objects.create(user=user, title="T2", exam=exam)
+        test.questions.add(q)
+        attempt = TestAttempt.objects.create(user=user, mock_test=test)
+
+        answer, _ = MockTestService.submit_answer(
+            user=user,
+            attempt_id=attempt.id,
+            question_id=q.id,
+            user_answer="B",
+            time_taken_seconds=5,
+        )
+        self.assertIsNotNone(answer)
+        self.assertTrue(answer.is_correct)
 
     def test_process_llm_response_empty(self):
         result = MockTestService._process_llm_response("", [])

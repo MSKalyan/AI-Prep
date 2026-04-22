@@ -218,8 +218,7 @@ export default function WeekPlanner({ roadmapId, week, studyMode = false, onSele
                     );
 
                     return (
-                      <button
-                        type="button"
+                      <div
                         key={t.id}
                         onClick={handleTopicClick}
                         onKeyDown={handleTopicKeyDown(handleTopicClick)}
@@ -262,7 +261,7 @@ export default function WeekPlanner({ roadmapId, week, studyMode = false, onSele
                             {buttonLabel}
                           </button>
                         )}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>

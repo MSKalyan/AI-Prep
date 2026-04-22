@@ -1,7 +1,7 @@
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   useMockTestDetail,
   useSubmitAnswer,
@@ -34,18 +34,45 @@ type MockTestAttemptContentProps = Readonly<{
 
 function MockTestAttemptContent({ testId, data }: MockTestAttemptContentProps) {
   const router = useRouter();
-  const { mutate } = useSubmitAnswer();
+  const { mutateAsync } = useSubmitAnswer();
 
   useMockTestController(testId);
   const { currentIndex, setCurrentIndex } = useQuestionIndex(testId);
   const { selected, setSelected } = useSelectedAnswers(data);
 
   const [questionStartTime, setQuestionStartTime] = useState(() => Date.now());
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const pendingSavePromises = useRef<Promise<unknown>[]>([]);
 
   const handleSubmit = async () => {
-    if (!data?.attempt_id) return;
-    await finalizeTest({ attempt_id: data.attempt_id });
-    router.push(`/dashboard/mocktest/results/${data.attempt_id}`);
+    if (!data?.attempt_id || isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      if (pendingSavePromises.current.length > 0) {
+        await Promise.allSettled(pendingSavePromises.current);
+      }
+
+      // Re-save selected answers once before finalization to avoid race conditions.
+      const selectedEntries = Object.entries(selected);
+      if (selectedEntries.length > 0) {
+        await Promise.allSettled(
+          selectedEntries.map(([questionId, answerKey]) =>
+            mutateAsync({
+              attempt_id: data.attempt_id,
+              question_id: Number(questionId),
+              user_answer: answerKey,
+              time_taken_seconds: 0,
+            })
+          )
+        );
+      }
+
+      await finalizeTest({ attempt_id: data.attempt_id });
+      router.push(`/dashboard/mocktest/results/${data.attempt_id}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const timeLeft = useCountdown(data?.remaining_seconds, handleSubmit);
@@ -73,11 +100,15 @@ function MockTestAttemptContent({ testId, data }: MockTestAttemptContentProps) {
       [question.id]: value,
     }));
 
-    mutate({
+    const savePromise = mutateAsync({
       attempt_id: data.attempt_id,
       question_id: question.id,
       user_answer: value,
       time_taken_seconds: timeTaken,
+    }).catch(() => null);
+    pendingSavePromises.current = [...pendingSavePromises.current, savePromise];
+    void savePromise.finally(() => {
+      pendingSavePromises.current = pendingSavePromises.current.filter((p) => p !== savePromise);
     });
 
     // eslint-disable-next-line react-hooks/purity
@@ -138,7 +169,7 @@ function MockTestAttemptContent({ testId, data }: MockTestAttemptContentProps) {
 
             {currentIndex === data.questions.length - 1 ? (
               <button onClick={handleSubmit} className="px-6 py-2 bg-black text-white rounded-lg">
-                Submit Test
+                {isSubmitting ? 'Submitting...' : 'Submit Test'}
               </button>
             ) : (
               <button
