@@ -267,73 +267,99 @@ class MockTestService:
 
     @staticmethod
     def _normalize_options(raw_options):
-        if raw_options is None:
-            return {}
-
-        if isinstance(raw_options, str):
-            try:
-                parsed = json.loads(raw_options)
-                raw_options = parsed
-            except (json.JSONDecodeError, OSError):
-                return {}
-
-        if isinstance(raw_options, dict):
-            normalized = {}
-            for key, value in raw_options.items():
-                key_str = str(key).strip().upper()
-                if not key_str:
-                    continue
-                normalized[key_str] = str(value).strip()
-            return normalized
-
-        if isinstance(raw_options, list):
-            normalized = {}
-            for idx, value in enumerate(raw_options):
-                if idx >= len(MockTestService._OPTION_KEYS):
-                    break
-                normalized[MockTestService._OPTION_KEYS[idx]] = str(value).strip()
-            return normalized
-
+        payload = MockTestService._deserialize_options_payload(raw_options)
+        if isinstance(payload, dict):
+            return MockTestService._normalize_option_dict(payload)
+        if isinstance(payload, list):
+            return MockTestService._normalize_option_list(payload)
         return {}
+
+    @staticmethod
+    def _deserialize_options_payload(raw_options):
+        if raw_options is None:
+            return None
+        if not isinstance(raw_options, str):
+            return raw_options
+        try:
+            return json.loads(raw_options)
+        except (json.JSONDecodeError, OSError):
+            return None
+
+    @staticmethod
+    def _normalize_option_dict(raw_options):
+        normalized = {}
+        for key, value in raw_options.items():
+            key_str = str(key).strip().upper()
+            if key_str:
+                normalized[key_str] = str(value).strip()
+        return normalized
+
+    @staticmethod
+    def _normalize_option_list(raw_options):
+        normalized = {}
+        for idx, value in enumerate(raw_options[: len(MockTestService._OPTION_KEYS)]):
+            normalized[MockTestService._OPTION_KEYS[idx]] = str(value).strip()
+        return normalized
 
     @staticmethod
     def _extract_correct_answer(correct, options=None):
         options_map = MockTestService._normalize_options(options)
         option_keys = set(options_map.keys())
-
-        candidates = []
-
-        if isinstance(correct, list):
-            candidates.extend(correct)
-        elif isinstance(correct, dict):
-            candidates.extend(correct.values())
-            candidates.extend(correct.keys())
-        elif correct is not None:
-            candidates.append(correct)
-
-        if not candidates:
-            return ""
-
-        for candidate in candidates:
-            if candidate is None:
-                continue
+        for candidate in MockTestService._collect_answer_candidates(correct):
             raw = str(candidate).strip()
             if not raw:
                 continue
-
-            cleaned = re.sub(r"^[\(\[\{]?\s*([A-Za-z])[\)\]\}\.\:\-]?\s*$", r"\1", raw)
-            cleaned = cleaned.strip().upper()
-
-            if len(cleaned) == 1:
-                if not option_keys or cleaned in option_keys:
-                    return cleaned
-
-            lowered = raw.lower().strip()
-            for key, value in options_map.items():
-                if lowered == value.lower().strip():
-                    return key
+            cleaned = MockTestService._extract_option_letter(raw)
+            if len(cleaned) == 1 and (not option_keys or cleaned in option_keys):
+                return cleaned
+            matched_key = MockTestService._find_option_key_by_value(raw, options_map)
+            if matched_key:
+                return matched_key
 
         return ""
+
+    @staticmethod
+    def _collect_answer_candidates(correct):
+        if isinstance(correct, list):
+            return [c for c in correct if c is not None]
+        if isinstance(correct, dict):
+            values = [c for c in correct.values() if c is not None]
+            keys = [c for c in correct.keys() if c is not None]
+            return values + keys
+        return [correct] if correct is not None else []
+
+    @staticmethod
+    def _extract_option_letter(raw_value):
+        cleaned = re.sub(
+            r"^[\(\[\{]?\s*([A-Za-z])[\)\]\}\.\:\-]?\s*$", r"\1", raw_value
+        )
+        return cleaned.strip().upper()
+
+    @staticmethod
+    def _find_option_key_by_value(raw_value, options_map):
+        lowered = raw_value.lower().strip()
+        for key, value in options_map.items():
+            if lowered == str(value).lower().strip():
+                return key
+        return ""
+
+    @staticmethod
+    def _normalize_text_answer(raw_value):
+        return str(raw_value).upper().strip() if raw_value else ""
+
+    @staticmethod
+    def _resolve_answer_values(question, raw_user_answer):
+        options = MockTestService._normalize_options(question.options)
+        normalized_user_answer = MockTestService._extract_correct_answer(
+            raw_user_answer, options
+        ) or MockTestService._normalize_text_answer(raw_user_answer)
+        normalized_correct_answer = MockTestService._extract_correct_answer(
+            question.correct_answer, options
+        ) or MockTestService._normalize_text_answer(question.correct_answer)
+        is_correct = bool(normalized_user_answer) and (
+            normalized_user_answer == normalized_correct_answer
+        )
+        return normalized_user_answer, normalized_correct_answer, is_correct
 
     @staticmethod
     def _get_any_pyq_fallback(count):
@@ -581,25 +607,8 @@ class MockTestService:
             print("Question not found!")
             return None, attempt
 
-        options = MockTestService._normalize_options(question.options)
-        normalized_user_answer = MockTestService._extract_correct_answer(
-            user_answer, options
-        )
-        if not normalized_user_answer:
-            normalized_user_answer = user_answer.upper().strip() if user_answer else ""
-
-        normalized_correct_answer = MockTestService._extract_correct_answer(
-            question.correct_answer, options
-        )
-        if not normalized_correct_answer:
-            normalized_correct_answer = (
-                str(question.correct_answer).upper().strip()
-                if question.correct_answer
-                else ""
-            )
-
-        is_correct = bool(normalized_user_answer) and (
-            normalized_user_answer == normalized_correct_answer
+        normalized_user_answer, _, is_correct = MockTestService._resolve_answer_values(
+            question, user_answer
         )
 
         print(f"is_correct: {is_correct}")
@@ -681,61 +690,27 @@ class MockTestService:
         detailed_results = []
 
         for answer in answers:
-            question_id = answer.get("question_id")
-            user_answer = answer.get("answer", "")
-
-            try:
-                question = Question.objects.get(id=question_id)
-            except Question.DoesNotExist:
+            evaluated = MockTestService._evaluate_single_answer(attempt, answer)
+            if not evaluated:
                 continue
 
-            options = MockTestService._normalize_options(question.options)
-            normalized_user_answer = MockTestService._extract_correct_answer(
-                user_answer, options
-            )
-            if not normalized_user_answer:
-                normalized_user_answer = (
-                    user_answer.upper().strip() if user_answer else ""
-                )
+            question = evaluated["question"]
+            total_marks += question.marks
+            obtained_marks += evaluated["obtained_marks"]
 
-            normalized_correct_answer = MockTestService._extract_correct_answer(
-                question.correct_answer, options
-            )
-            if not normalized_correct_answer:
-                normalized_correct_answer = (
-                    str(question.correct_answer).upper().strip()
-                    if question.correct_answer
-                    else ""
-                )
-
-            is_correct = bool(normalized_user_answer) and (
-                normalized_user_answer == normalized_correct_answer
-            )
-
-            Answer.objects.create(
-                attempt=attempt,
-                question=question,
-                user_answer=normalized_user_answer,
-                is_correct=is_correct,
-                marks_obtained=question.marks if is_correct else 0,
-            )
-
-            if is_correct:
+            if evaluated["status"] == "correct":
                 correct += 1
-                obtained_marks += question.marks
-            elif user_answer:
+            elif evaluated["status"] == "wrong":
                 wrong += 1
             else:
                 unanswered += 1
 
-            total_marks += question.marks
-
             detailed_results.append(
                 {
-                    "question_id": question_id,
-                    "user_answer": normalized_user_answer,
-                    "correct_answer": normalized_correct_answer,
-                    "is_correct": is_correct,
+                    "question_id": question.id,
+                    "user_answer": evaluated["user_answer"],
+                    "correct_answer": evaluated["correct_answer"],
+                    "is_correct": evaluated["is_correct"],
                     "marks": question.marks,
                     "explanation": question.explanation,
                 }
@@ -757,4 +732,43 @@ class MockTestService:
                 (obtained_marks / total_marks * 100) if total_marks > 0 else 0, 2
             ),
             "results": detailed_results,
+        }
+
+    @staticmethod
+    def _evaluate_single_answer(attempt, answer_payload):
+        question_id = answer_payload.get("question_id")
+        raw_user_answer = answer_payload.get("answer", "")
+
+        try:
+            question = Question.objects.get(id=question_id)
+        except Question.DoesNotExist:
+            return None
+
+        normalized_user_answer, normalized_correct_answer, is_correct = (
+            MockTestService._resolve_answer_values(question, raw_user_answer)
+        )
+        marks_obtained = question.marks if is_correct else 0
+
+        Answer.objects.create(
+            attempt=attempt,
+            question=question,
+            user_answer=normalized_user_answer,
+            is_correct=is_correct,
+            marks_obtained=marks_obtained,
+        )
+
+        if is_correct:
+            status = "correct"
+        elif raw_user_answer:
+            status = "wrong"
+        else:
+            status = "unanswered"
+
+        return {
+            "question": question,
+            "user_answer": normalized_user_answer,
+            "correct_answer": normalized_correct_answer,
+            "is_correct": is_correct,
+            "obtained_marks": marks_obtained,
+            "status": status,
         }

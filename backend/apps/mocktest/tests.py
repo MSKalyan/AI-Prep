@@ -870,6 +870,7 @@ class TestGenerateMockTestView(TestCase):
             topic=topic,
             exam=exam,
             question_text="What is an array?",
+            options={"A": "Data structure", "B": "Function"},
             correct_answer="A",
             source="llm",
         )
