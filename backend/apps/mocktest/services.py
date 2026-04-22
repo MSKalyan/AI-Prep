@@ -307,7 +307,25 @@ class MockTestService:
         import re
         content = content.strip()
 
-        # Handle markdown
+        # Handle markdown and find JSON array
+        content = MockTestService._clean_markdown(content)
+        start = content.find('[')
+        if start == -1:
+            return []
+
+        content = MockTestService._extract_json_array(content, start)
+
+        # Parse JSON
+        questions_data = MockTestService._parse_json_content(content)
+        if not questions_data:
+            return []
+
+        return MockTestService._create_questions_from_parsed(questions_data, topics)
+
+    @staticmethod
+    def _clean_markdown(content):
+        """Clean markdown code blocks from content."""
+        import re
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0]
         elif "```" in content:
@@ -316,12 +334,11 @@ class MockTestService:
         if content.startswith('```'):
             content = re.sub(r'^```\w*\n?', '', content)
             content = re.sub(r'\n?```$', '', content)
+        return content.strip()
 
-        # Find array start
-        start = content.find('[')
-        if start == -1:
-            return []
-
+    @staticmethod
+    def _extract_json_array(content, start):
+        """Extract the JSON array by finding matching brackets."""
         depth = 0
         for i, c in enumerate(content[start:], start):
             if c == '[':
@@ -329,52 +346,60 @@ class MockTestService:
             elif c == ']':
                 depth -= 1
                 if depth == 0:
-                    content = content[start:i+1]
-                    break
+                    return content[start:i+1]
+        return content[start:]
 
-        # Fix common JSON issues
-            content = content.replace('}{', '},{').replace('\n', '').replace('  ', '')
+    @staticmethod
+    def _parse_json_content(content):
+        """Parse JSON content, handling common issues."""
+        content = content.replace('}{', '},{').replace('\n', '').replace('  ', '')
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            data = MockTestService._extract_json_objects(content)
 
-            try:
-                questions_data = json.loads(content)
-            except json.JSONDecodeError:
-                # Extract each { ... } object using regex
-                questions_data = MockTestService._extract_json_objects(content)
+        if not isinstance(data, list):
+            return []
+        print("  [LLM] Parsed {} questions".format(len(data)))
+        return data
 
-            if not isinstance(questions_data, list):
-                questions_data = []
+    @staticmethod
+    def _create_questions_from_parsed(questions_data, topics):
+        """Create Question objects from parsed data."""
+        created_questions = []
+        for idx, q_data in enumerate(questions_data):
+            question = MockTestService._create_single_question(q_data, topics, idx, len(questions_data))
+            if question:
+                created_questions.append(question)
+        return created_questions
 
-            print("  [LLM] Parsed {} questions".format(len(questions_data)))
+    @staticmethod
+    def _create_single_question(q_data, topics, idx, total):
+        """Create a single question from data."""
+        try:
+            opts = q_data.get("options", {})
+            if not opts or len(opts) < 2:
+                print("    Skipping - insufficient options: {}".format(opts))
+                return None
 
-            created_questions = []
-            for idx, q_data in enumerate(questions_data):
-                print("  [LLM] Creating question {}/{}: {}...".format(
-                    idx+1, len(questions_data), q_data.get("question", "")[:50]))
-                try:
-                    # Validate options
-                    opts = q_data.get("options", {})
-                    if not opts or len(opts) < 2:
-                        print("    Skipping - insufficient options: {}".format(opts))
-                        continue
+            print("  [LLM] Creating question {}/{}: {}...".format(
+                idx+1, total, q_data.get("question", "")[:50]))
 
-                    question = Question.objects.create(
-                        topic=topics[0] if topics else None,
-                        question_text=q_data.get("question", ""),
-                        question_type="mcq",
-                        options=opts,
-                        correct_answer=q_data.get("correct_answer", "").upper(),
-                        explanation=q_data.get("explanation", ""),
-                        difficulty="medium",
-                        marks=1,
-                        negative_marks=0.0,
-                        source="llm",
-                    )
-                    created_questions.append(question)
-                except Exception as e:
-                    print("    Error creating question: {}".format(e))
-                    continue
-
-            return created_questions
+            return Question.objects.create(
+                topic=topics[0] if topics else None,
+                question_text=q_data.get("question", ""),
+                question_type="mcq",
+                options=opts,
+                correct_answer=q_data.get("correct_answer", "").upper(),
+                explanation=q_data.get("explanation", ""),
+                difficulty="medium",
+                marks=1,
+                negative_marks=0.0,
+                source="llm",
+            )
+        except Exception as e:
+            print("    Error creating question: {}".format(e))
+            return None
 
     @staticmethod
     def _generate_llm_questions_with_retry(topics, count, max_retries=2):
