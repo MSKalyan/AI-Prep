@@ -64,8 +64,12 @@ export default function AskAIChat({
           sources: m.retrieved_documents || [],
         }));
         setMessages(formatted.slice(-10));
-      } catch {
-        console.error('Failed to load messages');
+      } catch (err) {
+        const error = err as { response?: { status?: number } };
+        if (error.response?.status === 404 || error.response?.status === 401) {
+          localStorage.removeItem('conversation_id');
+          setConversationId(null);
+        }
       }
     };
 

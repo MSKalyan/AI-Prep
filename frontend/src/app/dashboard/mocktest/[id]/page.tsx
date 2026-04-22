@@ -54,7 +54,15 @@ function MockTestAttemptContent({ testId, data }: MockTestAttemptContentProps) {
     return <div className="p-6">Loading...</div>;
   }
 
+  if (!data?.questions?.length) {
+    return <div className="p-6">No questions available</div>;
+  }
+
   const question = data.questions[currentIndex];
+
+  if (!question) {
+    return <div className="p-6">Question not found</div>;
+  }
 
   const handleSelect = (value: string) => {
     // eslint-disable-next-line react-hooks/purity

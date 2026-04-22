@@ -21,30 +21,38 @@ class MockTestService:
         topic_ids = sorted([t.id for t in topics])
 
         print("\n=== MOCKTEST DEBUG ===")
+        print(f"Day: {day}")
         print(f"Topics: {[t.name for t in topics]}")
         print(f"Num questions requested: {num_questions}")
 
-        # PRIMARY SOURCE: Get PYQs from roadmap.PYQ table
-        pyq_questions = MockTestService._get_pyq_questions(topics, num_questions)
+        # PRIMARY SOURCE: Get PYQs from roadmap.PYQ table - search ALL day topics
+        main_topic = topics[0] if topics else None
+        pyq_questions = MockTestService._get_pyq_questions(topics, num_questions) if topics else []
 
-        print(f"PYQ questions found: {len(pyq_questions)}")
+        print(f"PYQ questions found in {len(topics)} day topics: {len(pyq_questions)}")
 
-        selected_questions = pyq_questions[:]
-
+        selected_questions = list(pyq_questions)  # Copy list
         remaining = num_questions - len(selected_questions)
 
-        # FALLBACK: Use LLM to generate questions if not enough PYQs
+        # FALLBACK: Use LLM to generate for remaining count, focusing on day topics
         llm_questions = []
         if remaining > 0:
-            print(f"Generating {remaining} questions via LLM fallback")
+            # Use day topics for LLM to keep relevance
+            llm_topics = topics if len(topics) <= 3 else topics[:3]
+            print(f"Generating {remaining} questions via LLM for day topics: {[t.name for t in llm_topics]}")
             llm_questions = MockTestService._generate_llm_questions_with_retry(
-                topics=topics, count=remaining
+                topics=llm_topics, count=remaining
             )
             print(f"LLM questions generated: {len(llm_questions)}")
             selected_questions.extend(llm_questions)
 
-        # Last resort: generate all questions with LLM
-        if len(selected_questions) == 0:
+        # Last resort: generate all from day topics only
+        if len(selected_questions) == 0 and topics:
+            print("No questions found, generating all via LLM for day topics")
+            llm_topics = topics[:2]  # Limit for rate limit
+            selected_questions = MockTestService._generate_llm_questions_with_retry(
+                topics=llm_topics, count=num_questions
+            )
             print("No questions found, generating all via LLM")
             selected_questions = MockTestService._generate_llm_questions_with_retry(
                 topics=topics, count=num_questions
@@ -52,6 +60,9 @@ class MockTestService:
 
         print(f"Total questions: {len(selected_questions)}")
         print("====================\n")
+
+        if not selected_questions:
+            raise ValueError(f"No questions available. PYQs: {len(pyq_questions)}, LLM failed. Please add PYQs or try a different topic.")
 
         selected_questions = selected_questions[:num_questions]
         _SECURE_RNG.shuffle(selected_questions)  # NOSONAR
@@ -62,15 +73,18 @@ class MockTestService:
         title = MockTestService._build_mock_test_title(subject, topic)
 
         with transaction.atomic():
+            # Get topic name for description
+            topic_name = main_topic.name if main_topic else "Mixed topics"
+
             mock_test = MockTest.objects.create(
                 user=user,
                 roadmap=roadmap,
                 title=title,
-                description=f"Day {day} mixed topics test",
+                description=f"Day {day}: {topic_name}",
                 duration_minutes=duration_minutes,
                 status="active",
                 generation_reason="daily_practice",
-                generation_topics=topic_ids,
+                generation_topics=topic_ids[:3],  # Only first 3 for relevant topics
                 started_at=None,
             )
 
@@ -189,6 +203,7 @@ class MockTestService:
         for pyq in pyqs:
             options = pyq.options if isinstance(pyq.options, dict) else {}
             if not options or len(options) < 2:
+                print(f"  [PYQ] Skipping PYQ {pyq.id} - insufficient options: {options}")
                 continue
             correct_answer = MockTestService._extract_correct_answer(pyq.correct_answer)
             question = Question.objects.create(
@@ -263,11 +278,14 @@ class MockTestService:
     def _generate_llm_questions(topics, count):
         client = Groq(api_key=settings.GROQ_API_KEY)
 
-        topic_names = [t.name for t in topics]
+        # Use only 1 main topic for specificity and rate limit
+        main_topic = topics[0] if topics else None
+        topic_name = main_topic.name if main_topic else "Agricultural Engineering"
 
-        prompt = f"""Generate {count} GATE-level MCQs for: {", ".join(topic_names[:5])}.
+        prompt = f"""Generate {count} GATE-level MCQs specifically on "{topic_name}" topic.
+The questions should be from Agricultural Engineering (GATE agriculture syllabus).
 
-OUTPUT: Start with [ and end with ]. NO other text.
+Output: JSON array only, no text.
 Format: [{{"question": "...", "options": {{"A":"...","B":"...","C":"...","D":"..."}}, "correct_answer": "A", "explanation": "..."}}]"""
 
         try:
@@ -275,7 +293,7 @@ Format: [{{"question": "...", "options": {{"A":"...","B":"...","C":"...","D":"..
                 model=settings.LLM_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,
-                max_tokens=4000,
+                max_tokens=5000,
             )
 
             content = response.choices[0].message.content
@@ -295,42 +313,82 @@ Format: [{{"question": "...", "options": {{"A":"...","B":"...","C":"...","D":"..
             elif "```" in content:
                 content = content.split("```")[1].split("```")[0]
 
-            # Also handle plain text with JSON (like "Here are 10 questions:\n[...")
-            # Find the first '[' and parse from there
-            bracket_pos = content.find("[")
-            if bracket_pos >= 0:
-                content = content[bracket_pos:]
+            # Parse JSON - simpler approach
+            import re
+            questions_data = []
 
-            # Also handle any leading text before [
-            if not content.startswith("["):
-                import re
+            # Remove markdown and clean
+            content = content.strip()
+            if content.startswith('```'):
+                content = re.sub(r'^```\w*\n?', '', content)
+                content = re.sub(r'\n?```$', '', content)
 
-                match = re.search(r"\[", content)
-                if match:
-                    content = content[match.start() :]
+            # Find [ ... ] array
+            start = content.find('[')
+            if start == -1:
+                print("  [LLM] No array found")
+                return []
 
-            print(f"  [LLM] Content to parse: {content[:200]}...")
+            # Find matching ]
+            depth = 0
+            for i, c in enumerate(content[start:], start):
+                if c == '[':
+                    depth += 1
+                elif c == ']':
+                    depth -= 1
+                    if depth == 0:
+                        content = content[start:i+1]
+                        break
 
-            questions_data = json.loads(content)
+            # Fix common JSON issues
+            content = content.replace('}{', '},{').replace('\n', '').replace('  ', '')
+
+            try:
+                questions_data = json.loads(content)
+            except:
+                print(f"  [LLM] Parse still failed, trying regex extract")
+                # Extract each { ... } object using balanced braces
+                questions_data = []
+                pattern = r'\{(?:[^{}]|\{[^{}]*\})*\}'
+                for match in re.finditer(pattern, content):
+                    try:
+                        obj = json.loads(match.group())
+                        if "question" in obj and "options" in obj:
+                            questions_data.append(obj)
+                    except:
+                        continue
+
+            if not isinstance(questions_data, list):
+                questions_data = []
+
+            print(f"  [LLM] Parsed {len(questions_data)} questions")
 
             created_questions = []
-            for q_data in questions_data:
-                print(
-                    f"  [LLM] Creating question: {q_data.get('question', '')[:50]}..."
-                )
-                question = Question.objects.create(
-                    topic=topics[0] if topics else None,
-                    question_text=q_data.get("question", ""),
-                    question_type="mcq",
-                    options=q_data.get("options", {}),
-                    correct_answer=q_data.get("correct_answer", "").upper(),
-                    explanation=q_data.get("explanation", ""),
-                    difficulty="medium",
-                    marks=1,
-                    negative_marks=0.0,
-                    source="llm",
-                )
-                created_questions.append(question)
+            for idx, q_data in enumerate(questions_data):
+                print(f"  [LLM] Creating question {idx+1}/{len(questions_data)}: {q_data.get('question', '')[:50]}...")
+                try:
+                    # Validate options
+                    opts = q_data.get("options", {})
+                    if not opts or len(opts) < 2:
+                        print(f"    Skipping - insufficient options: {opts}")
+                        continue
+
+                    question = Question.objects.create(
+                        topic=topics[0] if topics else None,
+                        question_text=q_data.get("question", ""),
+                        question_type="mcq",
+                        options=opts,
+                        correct_answer=q_data.get("correct_answer", "").upper(),
+                        explanation=q_data.get("explanation", ""),
+                        difficulty="medium",
+                        marks=1,
+                        negative_marks=0.0,
+                        source="llm",
+                    )
+                    created_questions.append(question)
+                except Exception as e:
+                    print(f"    Error creating question: {e}")
+                    continue
 
             return created_questions
 

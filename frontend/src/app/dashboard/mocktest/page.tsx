@@ -76,12 +76,23 @@ function MockTestContent() {
         });
 
         if (!data?.mock_test?.id) {
-          throw new Error('Invalid response');
+          console.error('Invalid response from createMockTest:', data);
+          throw new Error('Failed to create mock test');
+        }
+
+        console.log('Mock test created:', data.mock_test.id, 'questions:', data.mock_test.question_count);
+
+        if (!data.mock_test.question_count) {
+          console.error('No questions generated for mock test');
+          alert('No questions available for this topic. Please try a different topic or day.');
+          router.replace('/dashboard');
+          return;
         }
 
         router.replace(`/dashboard/mocktest/${data.mock_test.id}`);
       } catch (error) {
         console.error('Mock test creation failed:', error);
+        alert('Failed to create mock test. Please try again.');
         router.replace('/dashboard');
       }
     };

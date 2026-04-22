@@ -15,7 +15,6 @@ REQUEST_TIMEOUT_SECONDS = 10
 
 class StudyContentService:
 
-    # ---------- GROQ CLIENT (SAFE) ----------
     @staticmethod
     def get_client():
         api_key = os.getenv("GROQ_API_KEY")
@@ -23,28 +22,28 @@ class StudyContentService:
             return None
         return Groq(api_key=api_key)
 
-    # ================= LLM: QUERY GENERATION =================
     @staticmethod
     def generate_queries(topic_name):
         client = StudyContentService.get_client()
 
         if not client:
             return [
-                f"{topic_name} tutorial",
-                f"{topic_name} interview questions",
-                f"{topic_name} problems"
+                f"{topic_name} GATE tutorial English",
+                f"{topic_name} GATE exam problems English",
+                f"{topic_name} GATE interview questions English"
             ]
 
         prompt = f"""
-        Generate exactly only 3 high-quality YouTube search queries for learning:
+        Generate exactly only 3 high-quality YouTube search queries for GATE exam preparation on:
         {topic_name}
 
-        Include:
-        - beginner explanation
-        - interview questions
-        - problem solving
+        Include (in order of priority):
+        - GATE tutorial explanation (English)
+        - GATE numerical problems solving
+        - GATE previous year questions solutions
 
         Return only plain list (no numbering).
+        Always add "GATE" and prefer "English" in queries for relevant results.
         """
 
         try:
@@ -70,7 +69,6 @@ class StudyContentService:
                 f"{topic_name} problems"
             ]
 
-    # ================= LLM: DESCRIPTION =================
     @staticmethod
     def generate_description(topic_name):
         client = StudyContentService.get_client()
@@ -102,47 +100,75 @@ class StudyContentService:
         if not YOUTUBE_API_KEY:
             return []
 
+        # Search in preferring English, Telugu, Hindi languages
+        preferred_langs = ["English", "Telugu", "Hindi"]
+
         for query in queries:
-            url = "https://www.googleapis.com/youtube/v3/search"
+            for lang in preferred_langs:
+                search_query = f"{query} {lang}"
 
-            params = {
-                "part": "snippet",
-                "q": query,
-                "key": YOUTUBE_API_KEY,
-                "maxResults": 3,
-                "type": "video",
-                "videoDuration": "medium",
-                "safeSearch": "strict"
-            }
+                url = "https://www.googleapis.com/youtube/v3/search"
 
-            try:
-                res = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS)
-                data = res.json()
+                params = {
+                    "part": "snippet",
+                    "q": search_query,
+                    "key": YOUTUBE_API_KEY,
+                    "maxResults": 5,
+                    "type": "video",
+                    "videoDuration": "medium",
+                    "safeSearch": "strict"
+                }
 
-                if res.status_code != 200:
-                    print(f"YouTube API error: {data}")
+                try:
+                    res = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS)
+                    data = res.json()
+
+                    if res.status_code != 200:
+                        print(f"YouTube API error: {data}")
+                        continue
+
+                    for item in data.get("items", []):
+                        video_id = item["id"]["videoId"]
+                        title = item["snippet"]["title"]
+                        channel_title = item["snippet"]["channelTitle"]
+
+                        if StudyContentService.is_good_video(title, channel_title):
+                            videos.append(
+                                f"https://www.youtube.com/watch?v={video_id}"
+                            )
+
+                except Exception as e:
+                    print(f"YouTube fetch error: {e}")
                     continue
 
-                for item in data.get("items", []):
-                    video_id = item["id"]["videoId"]
-                    title = item["snippet"]["title"]
-
-                    if StudyContentService.is_good_video(title):
-                        videos.append(
-                            f"https://www.youtube.com/watch?v={video_id}"
-                        )
-
-            except Exception as e:
-                print(f"YouTube fetch error: {e}")
-                continue
+            # If we have enough videos, break
+            if len(videos) >= 3:
+                break
 
         return list(dict.fromkeys(videos))[:3]
 
     # ================= FILTER =================
     @staticmethod
-    def is_good_video(title):
-        bad_keywords = ["shorts", "trailer", "funny", "meme"]
-        return not any(word in title.lower() for word in bad_keywords)
+    def is_good_video(title, channel_title=""):
+        # Bad keywords to filter out
+        bad_keywords = ["shorts", "trailer", "funny", "meme", "song", "lyrics", "comedy", "bollywood", "tollywood"]
+        title_lower = title.lower()
+
+        # Filter if contains bad keywords
+        if any(word in title_lower for word in bad_keywords):
+            return False
+
+        # Filter out Tamil and other unwanted languages in title
+        unwanted_langs = ["tamil", "தமிழ்", "malayalam", "മലയാളം", "kannada", "ಕನ್ನಡ", "bengali", "বাংলা", "punjabi", " Gujarati", "marathi"]
+        if any(lang in title_lower for lang in unwanted_langs):
+            return False
+
+        # Filter if channel is regional language not wanted
+        channel_lower = channel_title.lower()
+        if any(lang in channel_lower for lang in unwanted_langs):
+            return False
+
+        return True
 
     # ================= MAIN =================
     @staticmethod
