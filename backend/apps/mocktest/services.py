@@ -422,7 +422,7 @@ class MockTestService:
                 obj = json.loads(match.group())
                 if "question" in obj and "options" in obj:
                     questions_list.append(obj)
-            except (json.JSONDecodeError, ValueError):
+            except (json.JSONDecodeError, OSError):
                 continue
 
         if not questions_list:

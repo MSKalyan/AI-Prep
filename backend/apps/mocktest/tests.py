@@ -913,3 +913,42 @@ class TestGenerateMockTestView(TestCase):
             "/api/mocktest/generate/", {"roadmap_id": 9999, "day": 1}, format="json"
         )
         self.assertEqual(response.status_code, 400)
+
+
+# ---------------- Service Helper Tests ----------------
+class TestServiceHelpers(TestCase):
+    def test_clean_markdown(self):
+        content = "```json\n[{\"question\": \"test\"}]\n```"
+        result = MockTestService._clean_markdown(content)
+        self.assertIn("[{", result)
+
+    def test_clean_markdown_no_fence(self):
+        content = '{"question": "test"}'
+        result = MockTestService._clean_markdown(content)
+        self.assertEqual(result, '{"question": "test"}')
+
+    def test_extract_json_array(self):
+        content = '[{"question": "test"}]extra'
+        result = MockTestService._extract_json_array(content, 0)
+        self.assertIn('{"question', result)
+
+    def test_parse_json_content_valid(self):
+        content = '[{"question": "test", "options": {"A": "a"}}]'
+        result = MockTestService._parse_json_content(content)
+        self.assertEqual(len(result), 1)
+
+    def test_parse_json_content_invalid(self):
+        result = MockTestService._parse_json_content("invalid")
+        self.assertEqual(result, [])
+
+    def test_build_llm_prompt(self):
+        result = MockTestService._build_llm_prompt("Arrays", 5)
+        self.assertIn("Arrays", result)
+
+    def test_process_llm_response_empty(self):
+        result = MockTestService._process_llm_response("", [])
+        self.assertEqual(result, [])
+
+    def test_generate_llm_questions_with_retry_no_topics(self):
+        result = MockTestService._generate_llm_questions_with_retry([], 1, max_retries=1)
+        self.assertEqual(result, [])
