@@ -226,6 +226,8 @@ class TestStudyContentService(TestCase):
         self.assertTrue(
             StudyContentService.is_good_video("Arrays tutorial for beginners")
         )
+        self.assertFalse(StudyContentService.is_good_video("Arrays Tamil song", "Tamil Channel"))
+        self.assertTrue(StudyContentService.is_good_video("Arrays GATE", "GATE Classes"))
 
     def test_get_study_content_missing_topic_returns_none(self):
         result = StudyContentService.get_study_content("does-not-exist")
@@ -251,6 +253,57 @@ class TestStudyContentService(TestCase):
         self.assertEqual(data["topic_name"], "Graphs")
         self.assertEqual(data["description"], "Cached description")
         self.assertEqual(len(data["youtube_links"]), 1)
+
+    def test_generate_and_cache(self):
+        # Test with unique topic name
+        import uuid
+        unique_topic = "EntropyTest{}".format(uuid.uuid4().hex[:6])
+        exam = Exam.objects.create(
+            name="GATE IN",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        subject = Subject.objects.create(exam=exam, name="Thermo")
+        topic = Topic.objects.create(name=unique_topic, subject=subject)
+
+        result = StudyContentService._generate_and_cache(topic)
+        self.assertIn("topic_id", result)
+        self.assertEqual(result["topic_name"], unique_topic)
+
+    def test_cached_content_with_no_links(self):
+        # Test that cache without youtube_links returns None
+        exam = Exam.objects.create(
+            name="GATE ME",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        subject = Subject.objects.create(exam=exam, name="Physics")
+        import uuid
+        topic = Topic.objects.create(name="NoLinks{}".format(uuid.uuid4().hex[:6]), subject=subject)
+
+        # Cache with empty links
+        StudyContentCache.objects.create(
+            topic=topic,
+            description="No links",
+            youtube_links=[],
+        )
+
+        cached = StudyContentService._get_cached_content(topic)
+        self.assertIsNone(cached)
+        exam = Exam.objects.create(
+            name="GATE IN",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        subject = Subject.objects.create(exam=exam, name="Thermodynamics")
+        topic = Topic.objects.create(name="Entropy", subject=subject)
+
+        result = StudyContentService._generate_and_cache(topic)
+        self.assertIn("topic_id", result)
+        self.assertEqual(result["topic_name"], "Entropy")
 
 
 # ---------------- API Views ----------------

@@ -12,6 +12,7 @@ from apps.mocktest.serializers import (
     MockTestSerializer,
     SubmitAnswerSerializer,
 )
+from apps.mocktest.services import MockTestService
 
 # Tests should be hermetic: don't require env vars to be set in CI.
 TEST_PASSWORD = os.environ.get("TEST_PASSWORD", "testpass123!")  # noqa: S2068
@@ -58,11 +59,39 @@ class TestQuestionModel(TestCase):
             topic=topic,
             exam=exam,
             question_text="Sample question",
+            correct_answer="A",
+        )
+
+    def test_extract_correct_answer_string(self):
+        self.assertEqual(MockTestService._extract_correct_answer("A"), "A")
+        self.assertEqual(MockTestService._extract_correct_answer("b"), "B")
+        self.assertEqual(MockTestService._extract_correct_answer(""), "A")
+        self.assertEqual(MockTestService._extract_correct_answer(["C", "D"]), "C")
+        self.assertEqual(MockTestService._extract_correct_answer("very-long"), "A")
+
+    def test_get_topic_stats_empty(self):
+        stats = MockTestService.get_topic_stats([])
+        self.assertIsNone(stats["topic_name"])
+        self.assertEqual(stats["pyq_available"], 0)
+
+    def test_question_string_representation_with_source(self):
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        subject = Subject.objects.create(exam=exam, name="Data Structures")
+        topic = Topic.objects.create(name="Arrays", subject=subject)
+        question = Question.objects.create(
+            topic=topic,
+            exam=exam,
+            question_text="Sample",
             correct_answer="Answer",
             source="pyq",
             difficulty="medium",
         )
-        self.assertEqual(str(question), f"{topic} (pyq) - medium")
+        self.assertEqual(str(question), "{} (pyq) - medium".format(topic))
 
     def test_question_default_values(self):
         exam = Exam.objects.create(
@@ -90,6 +119,27 @@ class TestQuestionModel(TestCase):
 
 
 class TestMockTestModel(TestCase):
+    def test_build_mock_test_title_with_subject_and_topic(self):
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        subject = Subject.objects.create(exam=exam, name="Data Structures")
+        topic = Topic.objects.create(name="Arrays", subject=subject)
+        title = MockTestService._build_mock_test_title(subject.name, topic)
+        self.assertEqual(title, "Data Structures - Arrays")
+
+    def test_build_mock_test_title_topic_only(self):
+        topic = Topic.objects.create(name="Arrays")
+        title = MockTestService._build_mock_test_title("", topic)
+        self.assertEqual(title, "Arrays")
+
+    def test_build_mock_test_title_default(self):
+        title = MockTestService._build_mock_test_title("", None)
+        self.assertEqual(title, "Mock Test")
+
     def test_create_mock_test(self):
         user = User.objects.create_user(
             email="test@example.com", password=TEST_PASSWORD
@@ -822,6 +872,27 @@ class TestGenerateMockTestView(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("mock_test", response.data)
         self.assertIn("attempt", response.data)
+
+    def test_evaluate_test_not_found(self):
+        from apps.mocktest.services import MockTestService
+        result = MockTestService.evaluate_test(9999, [])
+        self.assertIn("error", result)
+        self.assertEqual(result["error"], "Attempt not found")
+
+    def test_normalize_options_dict(self):
+        from apps.mocktest.views import MockTestDetailView
+        opts = MockTestDetailView._normalize_options({"A": "a", "B": "b"})
+        self.assertEqual(opts, {"A": "a", "B": "b"})
+
+    def test_normalize_options_none(self):
+        from apps.mocktest.views import MockTestDetailView
+        opts = MockTestDetailView._normalize_options(None)
+        self.assertEqual(opts, {})
+
+    def test_normalize_options_list(self):
+        from apps.mocktest.views import MockTestDetailView
+        opts = MockTestDetailView._normalize_options(["opt1", "opt2"])
+        self.assertEqual(opts, {"A": "opt1", "B": "opt2"})
 
     def test_generate_mock_test_missing_params(self):
         user = User.objects.create_user(

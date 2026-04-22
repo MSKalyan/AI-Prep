@@ -180,22 +180,33 @@ class StudyContentService:
         if not topic:
             return None
 
-        cached = StudyContentCache.objects.filter(topic=topic).first()
+        # Check cache first
+        cached = StudyContentService._get_cached_content(topic)
+        if cached:
+            return cached
 
-        if (
-            cached
-            and cached.youtube_links
-            and (timezone.now() - cached.created_at) < timedelta(days=7)
-        ):
+        # Generate new content
+        return StudyContentService._generate_and_cache(topic)
+
+    @staticmethod
+    def _get_cached_content(topic):
+        """Check if valid cached content exists."""
+        cached = StudyContentCache.objects.filter(topic=topic).first()
+        if not cached or not cached.youtube_links:
+            return None
+        if (timezone.now() - cached.created_at) < timedelta(days=7):
             return {
                 "topic_id": topic.id,
                 "topic_name": topic.name,
                 "description": cached.description,
                 "youtube_links": cached.youtube_links
             }
+        return None
 
+    @staticmethod
+    def _generate_and_cache(topic):
+        """Generate and cache new study content."""
         topic_name = topic.name
-
         queries = StudyContentService.generate_queries(topic_name)
         videos = StudyContentService.fetch_youtube_videos(queries)
         description = StudyContentService.generate_description(topic_name)

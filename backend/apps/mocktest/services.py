@@ -48,14 +48,9 @@ class MockTestService:
 
         # Last resort: generate all from day topics only
         if len(selected_questions) == 0 and topics:
-            print("No questions found, generating all via LLM for day topics")
             llm_topics = topics[:2]  # Limit for rate limit
             selected_questions = MockTestService._generate_llm_questions_with_retry(
                 topics=llm_topics, count=num_questions
-            )
-            print("No questions found, generating all via LLM")
-            selected_questions = MockTestService._generate_llm_questions_with_retry(
-                topics=topics, count=num_questions
             )
 
         print(f"Total questions: {len(selected_questions)}")
@@ -345,32 +340,24 @@ Format: [{{"question": "...", "options": {{"A":"...","B":"...","C":"...","D":"..
 
             try:
                 questions_data = json.loads(content)
-            except:
-                print(f"  [LLM] Parse still failed, trying regex extract")
-                # Extract each { ... } object using balanced braces
-                questions_data = []
-                pattern = r'\{(?:[^{}]|\{[^{}]*\})*\}'
-                for match in re.finditer(pattern, content):
-                    try:
-                        obj = json.loads(match.group())
-                        if "question" in obj and "options" in obj:
-                            questions_data.append(obj)
-                    except:
-                        continue
+            except json.JSONDecodeError:
+                # Extract each { ... } object using regex
+                questions_data = MockTestService._extract_json_objects(content)
 
             if not isinstance(questions_data, list):
                 questions_data = []
 
-            print(f"  [LLM] Parsed {len(questions_data)} questions")
+            print("  [LLM] Parsed {} questions".format(len(questions_data)))
 
             created_questions = []
             for idx, q_data in enumerate(questions_data):
-                print(f"  [LLM] Creating question {idx+1}/{len(questions_data)}: {q_data.get('question', '')[:50]}...")
+                print("  [LLM] Creating question {}/{}: {}...".format(
+                    idx+1, len(questions_data), q_data.get("question", "")[:50]))
                 try:
                     # Validate options
                     opts = q_data.get("options", {})
                     if not opts or len(opts) < 2:
-                        print(f"    Skipping - insufficient options: {opts}")
+                        print("    Skipping - insufficient options: {}".format(opts))
                         continue
 
                     question = Question.objects.create(
@@ -403,6 +390,26 @@ Format: [{{"question": "...", "options": {{"A":"...","B":"...","C":"...","D":"..
             if questions:
                 return questions
         return []
+
+    @staticmethod
+    def _extract_json_objects(content):
+        """Extract valid question objects from JSON content using regex."""
+        import re
+        questions_list = []
+
+        # Try regex extraction
+        pattern = r'\{(?:[^{}]|\{[^{}]*\})*\}'
+        for match in re.finditer(pattern, content):
+            try:
+                obj = json.loads(match.group())
+                if "question" in obj and "options" in obj:
+                    questions_list.append(obj)
+            except (json.JSONDecodeError, ValueError):
+                continue
+
+        if not questions_list:
+            print("  [LLM] No valid question objects found via regex")
+        return questions_list
 
     @staticmethod
     def submit_answer(user, attempt_id, question_id, user_answer, time_taken_seconds=0):
