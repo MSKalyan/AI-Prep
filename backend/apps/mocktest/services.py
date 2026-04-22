@@ -272,17 +272,19 @@ class MockTestService:
     @staticmethod
     def _generate_llm_questions(topics, count):
         client = Groq(api_key=settings.GROQ_API_KEY)
-
-        # Use only 1 main topic for specificity and rate limit
         main_topic = topics[0] if topics else None
         topic_name = main_topic.name if main_topic else "Agricultural Engineering"
 
-        prompt = f"""Generate {count} GATE-level MCQs specifically on "{topic_name}" topic.
-The questions should be from Agricultural Engineering (GATE agriculture syllabus).
+        prompt = MockTestService._build_llm_prompt(topic_name, count)
+        content = MockTestService._call_llm_api(client, prompt)
+        return MockTestService._process_llm_response(content, topics)
 
-Output: JSON array only, no text.
-Format: [{{"question": "...", "options": {{"A":"...","B":"...","C":"...","D":"..."}}, "correct_answer": "A", "explanation": "..."}}]"""
+    @staticmethod
+    def _build_llm_prompt(topic_name, count):
+        return "Generate {} GATE-level MCQs specifically on \"{}\" topic. Output: JSON array only.".format(count, topic_name)
 
+    @staticmethod
+    def _call_llm_api(client, prompt):
         try:
             response = client.chat.completions.create(
                 model=settings.LLM_MODEL,
@@ -290,52 +292,47 @@ Format: [{{"question": "...", "options": {{"A":"...","B":"...","C":"...","D":"..
                 temperature=0.7,
                 max_tokens=5000,
             )
-
             content = response.choices[0].message.content
+            print("  [LLM] Response length: {}".format(len(content) if content else 0))
+            return content if content else ""
+        except Exception as e:
+            print("LLM question generation error: {}".format(e))
+            return ""
 
-            print(f"  [LLM] Response length: {len(content) if content else 0}")
+    @staticmethod
+    def _process_llm_response(content, topics):
+        if not content:
+            return []
 
-            if not content:
-                print("  [LLM] Empty response from LLM")
-                return []
+        import re
+        content = content.strip()
 
-            # Extract JSON
-            content = content.strip()
+        # Handle markdown
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0]
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0]
 
-            # Handle markdown code fences
-            if "```json" in content:
-                content = content.split("```json")[1].split("```")[0]
-            elif "```" in content:
-                content = content.split("```")[1].split("```")[0]
+        if content.startswith('```'):
+            content = re.sub(r'^```\w*\n?', '', content)
+            content = re.sub(r'\n?```$', '', content)
 
-            # Parse JSON - simpler approach
-            import re
-            questions_data = []
+        # Find array start
+        start = content.find('[')
+        if start == -1:
+            return []
 
-            # Remove markdown and clean
-            content = content.strip()
-            if content.startswith('```'):
-                content = re.sub(r'^```\w*\n?', '', content)
-                content = re.sub(r'\n?```$', '', content)
+        depth = 0
+        for i, c in enumerate(content[start:], start):
+            if c == '[':
+                depth += 1
+            elif c == ']':
+                depth -= 1
+                if depth == 0:
+                    content = content[start:i+1]
+                    break
 
-            # Find [ ... ] array
-            start = content.find('[')
-            if start == -1:
-                print("  [LLM] No array found")
-                return []
-
-            # Find matching ]
-            depth = 0
-            for i, c in enumerate(content[start:], start):
-                if c == '[':
-                    depth += 1
-                elif c == ']':
-                    depth -= 1
-                    if depth == 0:
-                        content = content[start:i+1]
-                        break
-
-            # Fix common JSON issues
+        # Fix common JSON issues
             content = content.replace('}{', '},{').replace('\n', '').replace('  ', '')
 
             try:
@@ -374,14 +371,10 @@ Format: [{{"question": "...", "options": {{"A":"...","B":"...","C":"...","D":"..
                     )
                     created_questions.append(question)
                 except Exception as e:
-                    print(f"    Error creating question: {e}")
+                    print("    Error creating question: {}".format(e))
                     continue
 
             return created_questions
-
-        except Exception as e:
-            print(f"LLM question generation error: {e}")
-            return []
 
     @staticmethod
     def _generate_llm_questions_with_retry(topics, count, max_retries=2):

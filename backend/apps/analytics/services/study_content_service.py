@@ -95,57 +95,58 @@ class StudyContentService:
     # ================= YOUTUBE FETCH =================
     @staticmethod
     def fetch_youtube_videos(queries):
-        videos = []
-
         if not YOUTUBE_API_KEY:
             return []
 
-        # Search in preferring English, Telugu, Hindi languages
+        videos = []
         preferred_langs = ["English", "Telugu", "Hindi"]
 
         for query in queries:
-            for lang in preferred_langs:
-                search_query = f"{query} {lang}"
-
-                url = "https://www.googleapis.com/youtube/v3/search"
-
-                params = {
-                    "part": "snippet",
-                    "q": search_query,
-                    "key": YOUTUBE_API_KEY,
-                    "maxResults": 5,
-                    "type": "video",
-                    "videoDuration": "medium",
-                    "safeSearch": "strict"
-                }
-
-                try:
-                    res = requests.get(url, params=params, timeout=REQUEST_TIMEOUT_SECONDS)
-                    data = res.json()
-
-                    if res.status_code != 200:
-                        print(f"YouTube API error: {data}")
-                        continue
-
-                    for item in data.get("items", []):
-                        video_id = item["id"]["videoId"]
-                        title = item["snippet"]["title"]
-                        channel_title = item["snippet"]["channelTitle"]
-
-                        if StudyContentService.is_good_video(title, channel_title):
-                            videos.append(
-                                f"https://www.youtube.com/watch?v={video_id}"
-                            )
-
-                except Exception as e:
-                    print(f"YouTube fetch error: {e}")
-                    continue
-
-            # If we have enough videos, break
+            query_videos = StudyContentService._fetch_videos_for_query(query, preferred_langs)
+            videos.extend(query_videos)
             if len(videos) >= 3:
                 break
 
         return list(dict.fromkeys(videos))[:3]
+
+    @staticmethod
+    def _fetch_videos_for_query(query, preferred_langs):
+        """Fetch videos for a single query across languages."""
+        videos = []
+
+        for lang in preferred_langs:
+            search_query = "{} {}".format(query, lang)
+            params = {
+                "part": "snippet",
+                "q": search_query,
+                "key": YOUTUBE_API_KEY,
+                "maxResults": 5,
+                "type": "video",
+                "videoDuration": "medium",
+                "safeSearch": "strict"
+            }
+
+            try:
+                res = requests.get(
+                    "https://www.googleapis.com/youtube/v3/search",
+                    params=params,
+                    timeout=REQUEST_TIMEOUT_SECONDS
+                )
+                if res.status_code != 200:
+                    continue
+
+                for item in res.json().get("items", []):
+                    video_id = item["id"]["videoId"]
+                    title = item["snippet"]["title"]
+                    channel_title = item["snippet"]["channelTitle"]
+
+                    if StudyContentService.is_good_video(title, channel_title):
+                        videos.append("https://www.youtube.com/watch?v={}".format(video_id))
+
+            except Exception:
+                continue
+
+        return videos
 
     # ================= FILTER =================
     @staticmethod
