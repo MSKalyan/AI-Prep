@@ -623,3 +623,78 @@ class TestAnalyticsService(BaseTestCase):
 
         streak = AnalyticsService._calculate_study_streak(user)
         self.assertEqual(streak, 1)
+
+
+class TestPerformanceService(BaseTestCase):
+    def test_compute_and_store_empty(self):
+        user = self.create_user()
+        from apps.analytics.services.performance_service import PerformanceService
+
+        result = PerformanceService.compute_and_store(user)
+        self.assertEqual(result, [])
+
+
+class TestStudyContentService(BaseTestCase):
+    def test_generate_queries_fallback(self):
+        from apps.analytics.services.study_content_service import StudyContentService
+
+        queries = StudyContentService.generate_queries("Arrays")
+        self.assertTrue(len(queries) >= 3)
+
+    def test_generate_description_fallback(self):
+        from apps.analytics.services.study_content_service import StudyContentService
+
+        desc = StudyContentService.generate_description("Arrays")
+        self.assertTrue(len(desc) > 0)
+
+    def test_is_good_video_rejects_bad(self):
+        from apps.analytics.services.study_content_service import StudyContentService
+
+        self.assertFalse(StudyContentService.is_good_video("Funny meme video"))
+        self.assertFalse(StudyContentService.is_good_video("Arrays shorts"))
+
+    def test_is_good_video_accepts_good(self):
+        from apps.analytics.services.study_content_service import StudyContentService
+
+        self.assertTrue(StudyContentService.is_good_video("Arrays GATE tutorial"))
+        self.assertTrue(StudyContentService.is_good_video("Arrays by GATE Classes"))
+
+    def test_is_good_video_rejects_tamil(self):
+        from apps.analytics.services.study_content_service import StudyContentService
+
+        self.assertFalse(StudyContentService.is_good_video("Arrays in Tamil"))
+        self.assertFalse(StudyContentService.is_good_video("Arrays", "Tamil Channel"))
+
+    def test_fetch_youtube_videos_no_key(self):
+        from apps.analytics.services.study_content_service import StudyContentService
+
+        videos = StudyContentService.fetch_youtube_videos(["test query"])
+        self.assertEqual(videos, [])
+
+    def test_get_study_content_topic_not_found(self):
+        from apps.analytics.services.study_content_service import StudyContentService
+
+        result = StudyContentService.get_study_content("NonexistentTopicXYZ123")
+        self.assertIsNone(result)
+
+    def test_get_study_content_with_cache(self):
+        topic = self.create_topic()
+        from apps.analytics.services.study_content_service import StudyContentService
+        from apps.analytics.models import StudyContentCache
+
+        StudyContentCache.objects.create(
+            topic=topic,
+            description="Test description",
+            youtube_links=["https://youtube.com/watch?v=abc"],
+            created_at=timezone.now(),
+        )
+        result = StudyContentService.get_study_content(topic.name)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["description"], "Test description")
+
+    def test_get_study_content_no_cache(self):
+        topic = self.create_topic()
+        from apps.analytics.services.study_content_service import StudyContentService
+
+        result = StudyContentService.get_study_content(topic.name)
+        self.assertIsNotNone(result)

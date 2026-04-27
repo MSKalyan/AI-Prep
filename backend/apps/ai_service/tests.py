@@ -516,3 +516,111 @@ class TestProcessDocumentViewErrorHandling(TestCase):
                 format="json"
             )
             self.assertEqual(response.status_code, 500)
+
+
+class TestAISerializers(TestCase):
+    def test_ask_ai_serializer_valid(self):
+        data = {"question": "What is an array?", "context": "Data Structures"}
+        serializer = AskAISerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_ask_ai_serializer_missing_question(self):
+        data = {"context": "Data Structures"}
+        serializer = AskAISerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+        self.assertIn("question", serializer.errors)
+
+    def test_ask_ai_serializer_question_too_long(self):
+        data = {"question": "x" * 3000}
+        serializer = AskAISerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_ask_ai_serializer_with_exam_type(self):
+        data = {"question": "What is GATE?", "exam_type": "GATE CS"}
+        serializer = AskAISerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_ask_ai_serializer_with_conversation_id(self):
+        data = {"question": "Continue", "conversation_id": 123}
+        serializer = AskAISerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_generate_questions_serializer_valid(self):
+        data = {
+            "exam_type": "GATE",
+            "subject": "Computer Science",
+            "difficulty": "easy",
+            "num_questions": 5,
+            "question_type": "mcq",
+        }
+        serializer = GenerateQuestionsAISerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_generate_questions_serializer_invalid_difficulty(self):
+        data = {
+            "exam_type": "GATE",
+            "subject": "CS",
+            "difficulty": "invalid",
+            "num_questions": 5,
+            "question_type": "mcq",
+        }
+        serializer = GenerateQuestionsAISerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_generate_questions_serializer_num_questions_min(self):
+        data = {
+            "exam_type": "GATE",
+            "subject": "CS",
+            "difficulty": "easy",
+            "num_questions": 0,
+            "question_type": "mcq",
+        }
+        serializer = GenerateQuestionsAISerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_generate_questions_serializer_num_questions_max(self):
+        data = {
+            "exam_type": "GATE",
+            "subject": "CS",
+            "difficulty": "easy",
+            "num_questions": 25,
+            "question_type": "mcq",
+        }
+        serializer = GenerateQuestionsAISerializer(data=data)
+        self.assertFalse(serializer.is_valid())
+
+    def test_generate_questions_serializer_with_topic(self):
+        data = {
+            "exam_type": "GATE",
+            "subject": "CS",
+            "topic": "Arrays",
+            "difficulty": "easy",
+            "num_questions": 5,
+            "question_type": "mcq",
+        }
+        serializer = GenerateQuestionsAISerializer(data=data)
+        self.assertTrue(serializer.is_valid())
+
+    def test_roadmap_ai_response_serializer_valid(self):
+        from apps.ai_service.serializers import RoadmapAIResponseSerializer
+
+        original = {
+            "weeks": [
+                {"week": 1, "phase": "study", "topics": [{"name": "Arrays", "hours": 2}]}
+            ]
+        }
+        data = {
+            "weeks": [
+                {"week": 1, "phase": "study", "topics": [{"name": "Arrays", "hours": 2, "explanation": "test"}]}
+            ]
+        }
+        serializer = RoadmapAIResponseSerializer(data=data, context={"original": original})
+        self.assertTrue(serializer.is_valid())
+
+    def test_roadmap_ai_response_serializer_week_count_mismatch(self):
+        from apps.ai_service.serializers import RoadmapAIResponseSerializer
+
+        original = {"weeks": [{"week": 1, "phase": "study", "topics": [{"name": "Arrays", "hours": 2}]}]}
+        data = {"weeks": []}
+        serializer = RoadmapAIResponseSerializer(data=data, context={"original": original})
+        self.assertFalse(serializer.is_valid())
