@@ -589,3 +589,37 @@ class TestAnalyticsService(BaseTestCase):
 
         result = AnalyticsService.get_weak_subject(user)
         self.assertIsNone(result)
+
+    def test_calculate_priority_weak(self):
+        from apps.analytics.services.services import AnalyticsService
+
+        priority = AnalyticsService._calculate_priority(30)
+        self.assertEqual(priority, 1)
+
+    def test_calculate_priority_moderate(self):
+        from apps.analytics.services.services import AnalyticsService
+
+        priority = AnalyticsService._calculate_priority(60)
+        self.assertEqual(priority, 2)
+
+    def test_calculate_priority_strong(self):
+        from apps.analytics.services.services import AnalyticsService
+
+        priority = AnalyticsService._calculate_priority(80)
+        self.assertEqual(priority, 3)
+
+    def test_calculate_streak_empty(self):
+        user = self.create_user()
+        from apps.analytics.services.services import AnalyticsService
+
+        streak = AnalyticsService._calculate_study_streak(user)
+        self.assertEqual(streak, 0)
+
+    def test_calculate_streak_with_progress(self):
+        user = self.create_user()
+        today = timezone.now().date()
+        DailyProgress.objects.create(user=user, date=today, study_time_minutes=30)
+        from apps.analytics.services.services import AnalyticsService
+
+        streak = AnalyticsService._calculate_study_streak(user)
+        self.assertEqual(streak, 1)
