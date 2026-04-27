@@ -862,6 +862,178 @@ class TestActivateRoadmapView(TestCase):
         self.assertEqual(response.status_code, 404)
 
 
+class TestDeterministicRoadmapGenerateView(TestCase):
+    def test_generate_roadmap_success(self):
+        user = User.objects.create_user(
+            email="test@example.com", password=TEST_PASSWORD
+        )
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        client = APIClient()
+        client.force_authenticate(user=user)
+        response = client.post(
+            "/api/roadmap/generate/",
+            {
+                "exam_id": exam.id,
+                "target_date": (date.today() + timedelta(days=90)).isoformat(),
+                "study_hours_per_day": 2,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertIn("roadmap_id", response.data)
+
+    def test_generate_roadmap_invalid_exam(self):
+        user = User.objects.create_user(
+            email="test@example.com", password=TEST_PASSWORD
+        )
+        client = APIClient()
+        client.force_authenticate(user=user)
+        response = client.post(
+            "/api/roadmap/generate/",
+            {
+                "exam_id": 9999,
+                "target_date": (date.today() + timedelta(days=90)).isoformat(),
+                "study_hours_per_day": 2,
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 400)
+
+
+class TestTopicExplanationView(TestCase):
+    def test_get_explanation_existing(self):
+        user = User.objects.create_user(
+            email="test@example.com", password=TEST_PASSWORD
+        )
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        roadmap = Roadmap.objects.create(
+            user=user,
+            exam=exam,
+            target_date=date.today() + timedelta(days=90),
+        )
+        subject = Subject.objects.create(exam=exam, name="DSA", order=1)
+        topic = Topic.objects.create(name="Arrays", subject=subject)
+        roadmap_topic = RoadmapTopic.objects.create(
+            roadmap=roadmap,
+            topic=topic,
+            week_number=1,
+            day_number=1,
+            ai_explanation="Test explanation",
+        )
+        client = APIClient()
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/roadmap/topics/{roadmap_topic.id}/explanation/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["explanation"], "Test explanation")
+
+
+class TestTopicStudyView(TestCase):
+    def test_get_study_data(self):
+        user = User.objects.create_user(
+            email="test@example.com", password=TEST_PASSWORD
+        )
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        roadmap = Roadmap.objects.create(
+            user=user,
+            exam=exam,
+            target_date=date.today() + timedelta(days=90),
+        )
+        subject = Subject.objects.create(exam=exam, name="DSA", order=1)
+        topic = Topic.objects.create(name="Arrays", subject=subject)
+        roadmap_topic = RoadmapTopic.objects.create(
+            roadmap=roadmap,
+            topic=topic,
+            week_number=1,
+            day_number=1,
+        )
+        client = APIClient()
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/roadmap/topics/{roadmap_topic.id}/study/")
+        self.assertEqual(response.status_code, 200)
+
+
+class TestRoadmapTopicsView(TestCase):
+    def test_get_roadmap_topics(self):
+        user = User.objects.create_user(
+            email="test@example.com", password=TEST_PASSWORD
+        )
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        roadmap = Roadmap.objects.create(
+            user=user,
+            exam=exam,
+            target_date=date.today() + timedelta(days=90),
+        )
+        subject = Subject.objects.create(exam=exam, name="DSA", order=1)
+        topic = Topic.objects.create(name="Arrays", subject=subject)
+        RoadmapTopic.objects.create(
+            roadmap=roadmap,
+            topic=topic,
+            week_number=1,
+            day_number=1,
+        )
+        client = APIClient()
+        client.force_authenticate(user=user)
+        response = client.get(f"/api/roadmap/{roadmap.id}/topics/")
+        self.assertEqual(response.status_code, 200)
+
+
+class TestRoadmapDetailViewCompleteAction(TestCase):
+    def test_mark_topic_complete(self):
+        user = User.objects.create_user(
+            email="test@example.com", password=TEST_PASSWORD
+        )
+        exam = Exam.objects.create(
+            name="GATE CS",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        roadmap = Roadmap.objects.create(
+            user=user,
+            exam=exam,
+            target_date=date.today() + timedelta(days=90),
+        )
+        subject = Subject.objects.create(exam=exam, name="DSA", order=1)
+        topic = Topic.objects.create(name="Arrays", subject=subject)
+        roadmap_topic = RoadmapTopic.objects.create(
+            roadmap=roadmap,
+            topic=topic,
+            week_number=1,
+            day_number=1,
+            is_completed=False,
+        )
+        client = APIClient()
+        client.force_authenticate(user=user)
+        response = client.patch(
+            f"/api/roadmap/{roadmap.id}/",
+            {"action": "complete", "topic_id": roadmap_topic.id},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        roadmap_topic.refresh_from_db()
+        self.assertTrue(roadmap_topic.is_completed)
+
+
 # ---------------- Roadmap Service Tests ----------------
 class TestRoadmapService(TestCase):
     def test_generate_roadmap_creates_roadmap(self):

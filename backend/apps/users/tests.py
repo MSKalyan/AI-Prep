@@ -423,3 +423,48 @@ class TestRefreshAccessTokenView(TestCase):
         response = client.post("/api/auth/refresh/")
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.data["detail"], "Invalid refresh token")
+
+
+class TestCookieJWTAuthentication(TestCase):
+    def test_authenticate_with_header(self):
+        from apps.users.authentication import CookieJWTAuthentication
+        from rest_framework.test import APIRequestFactory
+        from rest_framework_simplejwt.exceptions import InvalidToken
+
+        factory = APIRequestFactory()
+        request = factory.get("/")
+        request.META["HTTP_AUTHORIZATION"] = "Bearer valid_token"
+
+        auth = CookieJWTAuthentication()
+        try:
+            result = auth.authenticate(request)
+        except InvalidToken:
+            result = None
+        self.assertIsNone(result)
+
+    def test_authenticate_with_cookie(self):
+        from apps.users.authentication import CookieJWTAuthentication
+        from rest_framework.test import APIRequestFactory
+        from rest_framework_simplejwt.exceptions import InvalidToken
+
+        factory = APIRequestFactory()
+        request = factory.get("/")
+        request.COOKIES["auth_token"] = "some_token"
+
+        auth = CookieJWTAuthentication()
+        try:
+            result = auth.authenticate(request)
+        except InvalidToken:
+            result = None
+        self.assertIsNone(result)
+
+    def test_authenticate_no_token(self):
+        from apps.users.authentication import CookieJWTAuthentication
+        from rest_framework.test import APIRequestFactory
+
+        factory = APIRequestFactory()
+        request = factory.get("/")
+
+        auth = CookieJWTAuthentication()
+        result = auth.authenticate(request)
+        self.assertIsNone(result)

@@ -149,3 +149,18 @@ class RoadmapService:
                 "is_revision": (adaptive["strength"] == "weak" if adaptive else False),
             },
         }
+
+    @staticmethod
+    def mark_topic_completed(topic_id, user):
+        from django.utils import timezone
+        from django.shortcuts import get_object_or_404
+
+        roadmap_topic = get_object_or_404(
+            RoadmapTopic.objects.select_related("roadmap", "topic"),
+            id=topic_id,
+            roadmap__user=user,
+        )
+        roadmap_topic.is_completed = True
+        roadmap_topic.completed_at = timezone.now()
+        roadmap_topic.save()
+        return roadmap_topic
