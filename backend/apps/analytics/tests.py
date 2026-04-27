@@ -406,12 +406,131 @@ class TestAnalyticsServices(BaseTestCase):
             PerformanceService.classify_topic(accuracy=0.2, attempts=2), "insufficient"
         )
 
+    def test_performance_compute_and_store_empty(self):
+        user = self.create_user()
+        result = PerformanceService.compute_and_store(user)
+        self.assertEqual(result, [])
+
     def test_adaptive_priority_new_user(self):
         user = self.create_user()
         topic = self.create_topic()
 
         results = AdaptiveRoadmapService.generate_priority(user)
         self.assertTrue(any(r["topic_id"] == topic.id for r in results))
+
+    def test_adaptive_priority_with_performance_weak(self):
+        user = self.create_user()
+        topic = self.create_topic()
+        TopicPerformance.objects.create(
+            user=user,
+            topic=topic,
+            accuracy=0.3,
+            avg_time=30.0,
+            strength="weak",
+            total_attempts=5,
+        )
+        results = AdaptiveRoadmapService.generate_priority(user)
+        self.assertTrue(len(results) > 0)
+        weak_topic = next((r for r in results if r["topic_id"] == topic.id), None)
+        self.assertEqual(weak_topic["strength"], "weak")
+
+    def test_adaptive_priority_with_performance_moderate(self):
+        user = self.create_user()
+        topic = self.create_topic()
+        TopicPerformance.objects.create(
+            user=user,
+            topic=topic,
+            accuracy=0.6,
+            avg_time=25.0,
+            strength="moderate",
+            total_attempts=10,
+        )
+        results = AdaptiveRoadmapService.generate_priority(user)
+        moderate_topic = next((r for r in results if r["topic_id"] == topic.id), None)
+        self.assertEqual(moderate_topic["strength"], "moderate")
+
+    def test_adaptive_priority_with_performance_strong(self):
+        user = self.create_user()
+        topic = self.create_topic()
+        TopicPerformance.objects.create(
+            user=user,
+            topic=topic,
+            accuracy=0.9,
+            avg_time=20.0,
+            strength="strong",
+            total_attempts=15,
+        )
+        results = AdaptiveRoadmapService.generate_priority(user)
+        strong_topic = next((r for r in results if r["topic_id"] == topic.id), None)
+        self.assertEqual(strong_topic["strength"], "strong")
+
+    def test_adaptive_priority_with_performance_insufficient(self):
+        user = self.create_user()
+        topic = self.create_topic()
+        TopicPerformance.objects.create(
+            user=user,
+            topic=topic,
+            accuracy=0.1,
+            avg_time=45.0,
+            strength="insufficient",
+            total_attempts=1,
+        )
+        results = AdaptiveRoadmapService.generate_priority(user)
+        insufficient_topic = next((r for r in results if r["topic_id"] == topic.id), None)
+        self.assertEqual(insufficient_topic["strength"], "insufficient")
+
+    def test_get_revision_map(self):
+        user = self.create_user()
+        topic = self.create_topic()
+        TopicPerformance.objects.create(
+            user=user,
+            topic=topic,
+            accuracy=0.3,
+            avg_time=30.0,
+            strength="weak",
+            total_attempts=5,
+        )
+        revision_map = AdaptiveRoadmapService.get_revision_map(user)
+        self.assertIn(topic.id, revision_map)
+        self.assertEqual(revision_map[topic.id]["strength"], "weak")
+
+    def test_get_today_revision_empty(self):
+        user = self.create_user()
+        revision = AdaptiveRoadmapService.get_today_revision(user, limit=3)
+        self.assertEqual(len(revision), 0)
+
+    def test_get_today_revision_with_roadmap(self):
+        user = self.create_user()
+        topic = self.create_topic()
+        TopicPerformance.objects.create(
+            user=user,
+            topic=topic,
+            accuracy=0.3,
+            avg_time=30.0,
+            strength="weak",
+            total_attempts=5,
+        )
+        exam = Exam.objects.create(
+            name="GATE Revision",
+            category="Engineering",
+            total_marks=100,
+            exam_date=date.today() + timedelta(days=180),
+        )
+        from apps.roadmap.models import Roadmap, RoadmapTopic
+        roadmap = Roadmap.objects.create(
+            user=user,
+            exam=exam,
+            target_date=date.today() + timedelta(days=90),
+            is_active=True,
+        )
+        RoadmapTopic.objects.create(
+            roadmap=roadmap,
+            topic=topic,
+            week_number=1,
+            day_number=1,
+        )
+        revision = AdaptiveRoadmapService.get_today_revision(user, limit=3)
+        self.assertIsInstance(revision, list)
 
 
 # ---------------- Dashboard Service Tests ----------------

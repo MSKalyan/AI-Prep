@@ -429,3 +429,90 @@ class TestHealthCheckView(TestCase):
         client = APIClient()
         response = client.get("/api/health/")
         self.assertEqual(response.status_code, 200)
+
+
+class TestAskAIViewErrorHandling(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(email=TEST_EMAIL, password=TEST_PASSWORD)
+
+    def test_ask_ai_conversation_not_found(self):
+        from unittest.mock import patch
+        self.client.force_authenticate(user=self.user)
+        with patch("apps.ai_service.services.services.AIService.ask_ai") as mock_ask:
+            mock_ask.side_effect = Conversation.DoesNotExist("Conversation not found")
+            response = self.client.post(
+                "/api/ask-ai/",
+                {"question": "test", "conversation_id": 99999},
+                format="json"
+            )
+            self.assertEqual(response.status_code, 404)
+
+    def test_ask_ai_generic_exception(self):
+        from unittest.mock import patch
+        self.client.force_authenticate(user=self.user)
+        with patch("apps.ai_service.services.services.AIService.ask_ai") as mock_ask:
+            mock_ask.side_effect = Exception("Some error")
+            response = self.client.post(
+                "/api/ask-ai/",
+                {"question": "test"},
+                format="json"
+            )
+            self.assertEqual(response.status_code, 500)
+
+
+class TestConversationMessagesViewErrorHandling(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(email=TEST_EMAIL, password=TEST_PASSWORD)
+        self.conversation = Conversation.objects.create(user=self.user, title="Test")
+
+    def test_conversation_not_found(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get("/api/conversations/99999/messages/")
+        self.assertEqual(response.status_code, 404)
+
+    def test_invalid_limit_param(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.get(f"/api/conversations/{self.conversation.id}/messages/?limit=abc")
+        self.assertEqual(response.status_code, 200)
+
+
+class TestProcessDocumentViewErrorHandling(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(email=TEST_EMAIL, password=TEST_PASSWORD)
+
+    def test_process_document_not_found(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            "/api/documents/process/",
+            {"document_id": 99999},
+            format="json"
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_process_document_already_processed(self):
+        from apps.ai_service.models import Document
+        doc = Document.objects.create(user=self.user, title="Test", processed=True)
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            "/api/documents/process/",
+            {"document_id": doc.id},
+            format="json"
+        )
+        self.assertEqual(response.status_code, 200)
+
+    def test_process_document_generic_error(self):
+        from unittest.mock import patch
+        from apps.ai_service.models import Document
+        doc = Document.objects.create(user=self.user, title="Test", processed=False)
+        self.client.force_authenticate(user=self.user)
+        with patch("apps.ai_service.views.RAGService.ingest_document") as mock_ingest:
+            mock_ingest.side_effect = Exception("RAG error")
+            response = self.client.post(
+                "/api/documents/process/",
+                {"document_id": doc.id},
+                format="json"
+            )
+            self.assertEqual(response.status_code, 500)
