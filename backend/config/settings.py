@@ -223,9 +223,9 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.1-8b-instant")
 
-LLM_TEMPERATURE = float(os.environ.get("LLM_TEMPERATURE", "0.3"))
+LLM_TEMPERATURE = float(os.environ.get("LLM_TEMPERATURE", 0.7))
 
-LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "2000"))
+LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", 512))
 
 AI_MODE = os.environ.get("AI_MODE", "groq")
 

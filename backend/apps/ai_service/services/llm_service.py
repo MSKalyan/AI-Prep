@@ -1,23 +1,16 @@
 import json
 import time
 
-from groq import Groq
 from django.conf import settings
-from django.db import transaction
 
 from apps.ai_service.models import AIUsageLog
+from apps.ai_service.llm.base import LLMBase
 
 
 class LLMService:
     def __init__(self):
-        api_key = settings.GROQ_API_KEY
-
-        self.client = None
-        if api_key:
-            self.client = Groq(api_key=api_key)
-        self.model = settings.LLM_MODEL
-        self.temperature = settings.LLM_TEMPERATURE
-        self.max_tokens = settings.LLM_MAX_TOKENS
+        self.llm = LLMBase()
+        self.model = self.llm.get_model_name()
 
     def generate_response(
         self,
@@ -27,30 +20,24 @@ class LLMService:
         expect_json: bool = False,
     ):
         start_time = time.time()
+
         if not self.client:
             return None
+
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are an educational assistant."},
-                    {"role": "user", "content": prompt},
-                ],
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-            )
+            # LangChain handles message internally (string is fine)
+            response = self.llm.invoke(prompt)
 
             content = ""
-            if response and response.choices:
-                message = response.choices[0].message
-                if message and message.content:
-                    content = message.content.strip()
+            if response and hasattr(response, "content"):
+                content = response.content.strip()
 
-            usage = getattr(response, "usage", None)
+            # LangChain usage metadata (if available)
+            usage = getattr(response, "usage_metadata", {}) or {}
 
-            prompt_tokens = getattr(usage, "prompt_tokens", 0) if usage else 0
-            completion_tokens = getattr(usage, "completion_tokens", 0) if usage else 0
-            total_tokens = getattr(usage, "total_tokens", 0) if usage else 0
+            prompt_tokens = usage.get("prompt_token_count", 0)
+            completion_tokens = usage.get("completion_token_count", 0)
+            total_tokens = usage.get("total_token_count", 0)
 
             response_time = int((time.time() - start_time) * 1000)
 

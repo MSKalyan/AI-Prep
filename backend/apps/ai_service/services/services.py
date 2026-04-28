@@ -1,30 +1,18 @@
-import os
-import json
 import time
 from django.conf import settings
-from groq import Groq
-import google as genai
-
+from apps.ai_service.llm.base import LLMBase
 from ..models import Conversation, Message, AIUsageLog
 from ..rag.services.rag_service import RAGService
-
+from apps.ai_service.llm.prompts import SYSTEM_EXAM_STRICT, SYSTEM_EXAM_HELPFUL
 
 class AIService:
     def __init__(self):
-        self.ai_mode = os.getenv("AI_MODE", "groq")
-        self.groq_api_key = os.getenv("GROQ_API_KEY")
-        self.gemini_api_key = os.getenv("GEMINI_API_KEY")
 
         self.model = settings.LLM_MODEL
         self.temperature = settings.LLM_TEMPERATURE
         self.max_tokens = settings.LLM_MAX_TOKENS
 
-        if self.ai_mode == "groq" and self.groq_api_key:
-            self.groq = Groq(api_key=self.groq_api_key)
-        elif self.ai_mode == "gemini" and self.gemini_api_key:
-            genai.configure(api_key=self.gemini_api_key)
-            self.gemini_model = genai.GenerativeModel("gemini-1.5-flash")
-
+        self.llm = LLMBase()
         self.rag = RAGService()
 
     def ask_ai(
@@ -66,9 +54,6 @@ class AIService:
                 conversation.messages.all().order_by("-created_at")[:5]
             )[::-1]
 
-            # -------------------------
-            # RAG RETRIEVAL (FIRST)
-            # -------------------------
             rag_result = self.rag.query(
                 query=question, exam_type=exam_type, subject=context
             )
@@ -86,9 +71,6 @@ class AIService:
                     retrieved_docs, question, previous_messages, context, exam_type
                 )
 
-            # -------------------------
-            # STORE MESSAGES
-            # -------------------------
             Message.objects.create(
                 conversation=conversation,
                 role="user",
@@ -132,9 +114,7 @@ class AIService:
             )
             raise e
 
-    # -------------------------
-    # PROMPTS
-    # -------------------------
+
     def _should_fallback(self, text):
         normalized = text.strip().lower()
         triggers = [
@@ -149,17 +129,14 @@ class AIService:
         return (
             not normalized
             or any(trigger in normalized for trigger in triggers)
-            or len(normalized) < 50
+            or len(normalized) < 20
         )
 
     def _build_system_prompt(self, context, exam_type, strict=True):
         if strict:
-            base = "You are a strict exam assistant. Answer ONLY from provided context."
+            base =  SYSTEM_EXAM_STRICT
         else:
-            base = (
-                "You are a helpful exam assistant. Use the provided context if it contains the answer, "
-                "otherwise answer from general knowledge. Do not invent facts."
-            )
+            base = SYSTEM_EXAM_HELPFUL
         if context:
             base += f"\nContext hint: {context}"
         if exam_type:
@@ -215,9 +192,7 @@ Question:
 Answer:
 """
 
-    # -------------------------
-    # LLM CALL
-    # -------------------------
+ 
     def _call_with_fallback(
         self, question, previous_messages, context, exam_type, strict=True
     ):
@@ -257,60 +232,22 @@ Answer:
         return messages
 
     def _call_llm(self, messages):
-        if self.ai_mode == "mock":
-            return {
-                "choices": [{"message": {"content": "Mock response"}}],
-                "usage": {
-                    "prompt_tokens": 0,
-                    "completion_tokens": 0,
-                    "total_tokens": 0,
-                },
-            }
+        response = self.llm.invoke(messages)
 
-        if self.ai_mode == "groq":
-            response = self.groq.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=self.temperature,
-                max_tokens=self.max_tokens,
-            )
+        content = response.content if hasattr(response, "content") else ""
 
-            usage_obj = getattr(response, "usage", None)
+        usage_obj = getattr(response, "usage_metadata", {}) or {}
 
-            return {
-                "choices": [
-                    {"message": {"content": response.choices[0].message.content}}
-                ],
-                "usage": {
-                    "prompt_tokens": getattr(usage_obj, "prompt_tokens", 0),
-                    "completion_tokens": getattr(usage_obj, "completion_tokens", 0),
-                    "total_tokens": getattr(usage_obj, "total_tokens", 0),
-                },
-            }
-
-        if self.ai_mode == "gemini":
-            prompt = ""
-            for msg in messages:
-                role = msg.get("role", "")
-                content = msg.get("content", "")
-                prompt += f"{role.upper()}: {content}\n"
-
-            response = self.gemini_model.generate_content(prompt)
-
-            return {
-                "choices": [{"message": {"content": response.text}}],
-                "usage": {
-                    "prompt_tokens": 0,
-                    "completion_tokens": 0,
-                    "total_tokens": 0,
-                },
-            }
-
-        raise ValueError("Invalid AI_MODE")
-
-    # -------------------------
-    # LOGGING
-    # -------------------------
+        return {
+            "choices": [
+                {"message": {"content": content}}
+            ],
+            "usage": {
+                "prompt_tokens": usage_obj.get("prompt_token_count", 0),
+                "completion_tokens": usage_obj.get("completion_token_count", 0),
+                "total_tokens": usage_obj.get("total_token_count", 0),
+            },
+        }
     def _log_usage(
         self, user, endpoint, usage, response_time, success, error_message=None
     ):

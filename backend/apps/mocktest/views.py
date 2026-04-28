@@ -19,7 +19,7 @@ from apps.analytics.services.services import AnalyticsService
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from groq import Groq
+from apps.ai_service.llm.base import LLMBase, LLMFactory
 from django.conf import settings
 from .models import Question
 import json
@@ -462,9 +462,8 @@ class ExplainQuestionView(APIView):
 
         try:
             question = Question.objects.get(id=question_id)
-
-            client = Groq(api_key=settings.GROQ_API_KEY)
-
+            client=LLMFactory.get_client().client
+           
             prompt = f"""
 
 Explain this MCQ in a structured bullet format.
@@ -504,14 +503,9 @@ Key Concept:
 
 """
 
-            response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=200,
-            )
+            res = client.invoke([{"role": "user", "content": prompt}])
 
-            explanation = response.choices[0].message.content.strip()
+            explanation = res.content if hasattr(res, "content") else ""
             explanation = "\n".join(
                 [line for line in explanation.split("\n") if line.strip()]
             )

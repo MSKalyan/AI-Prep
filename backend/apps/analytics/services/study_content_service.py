@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from apps.analytics.models import StudyContentCache
 from apps.roadmap.models import Topic
-from groq import Groq
+from apps.ai_service.llm.base import LLMBase,LLMFactory
 
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
@@ -17,10 +17,7 @@ class StudyContentService:
 
     @staticmethod
     def get_client():
-        api_key = os.getenv("GROQ_API_KEY")
-        if not api_key:
-            return None
-        return Groq(api_key=api_key)
+        return LLMFactory.get_client().client
 
     @staticmethod
     def generate_queries(topic_name):
@@ -47,12 +44,9 @@ class StudyContentService:
         """
 
         try:
-            res = client.chat.completions.create(
-                model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": prompt}]
-            )
+            res = client.invoke([{"role": "user", "content": prompt}])
 
-            text = res.choices[0].message.content
+            text = res.content if hasattr(res, "content") else ""
 
             queries = [
                 line.strip("- ").strip()
@@ -82,12 +76,9 @@ class StudyContentService:
         """
 
         try:
-            res = client.chat.completions.create(
-                model="gpt-4.1-mini",
-                messages=[{"role": "user", "content": prompt}]
-            )
+            res = client.invoke([{"role": "user", "content": prompt}])
 
-            return res.choices[0].message.content.strip()
+            return res.content if hasattr(res, "content") else ""
 
         except Exception:
             return f"{topic_name} is an important concept. Focus on understanding fundamentals and solving problems."
@@ -171,7 +162,6 @@ class StudyContentService:
 
         return True
 
-    # ================= MAIN =================
     @staticmethod
     def get_study_content(topic_name):
         if not topic_name:
@@ -180,13 +170,9 @@ class StudyContentService:
         topic = Topic.objects.filter(name__iexact=str(topic_name).strip()).first()
         if not topic:
             return None
-
-        # Check cache first
         cached = StudyContentService._get_cached_content(topic)
         if cached:
             return cached
-
-        # Generate new content
         return StudyContentService._generate_and_cache(topic)
 
     @staticmethod

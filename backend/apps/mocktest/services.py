@@ -7,7 +7,7 @@ from django.db import transaction
 
 from .models import Question, MockTest, TestAttempt, Answer
 from apps.roadmap.models import PYQ, Topic
-from groq import Groq
+from apps.ai_service.llm.base import LLMBase,LLMFactory
 from django.conf import settings
 
 _SECURE_RNG = secrets.SystemRandom()
@@ -15,7 +15,6 @@ _SECURE_RNG = secrets.SystemRandom()
 
 class MockTestService:
     _OPTION_KEYS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
     @staticmethod
     def create_mock_test(
         user, roadmap, day, topics, num_questions=10, duration_minutes=30
@@ -403,7 +402,7 @@ class MockTestService:
 
     @staticmethod
     def _generate_llm_questions(topics, count):
-        client = Groq(api_key=settings.GROQ_API_KEY)
+        client=LLMFactory.get_client().client
         main_topic = topics[0] if topics else None
         topic_name = main_topic.name if main_topic else "Agricultural Engineering"
         topic_names = [t.name for t in topics[:3]] if topics else [topic_name]
@@ -429,13 +428,8 @@ class MockTestService:
     @staticmethod
     def _call_llm_api(client, prompt):
         try:
-            response = client.chat.completions.create(
-                model=settings.LLM_MODEL,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.7,
-                max_tokens=5000,
-            )
-            content = response.choices[0].message.content
+            response = client.invoke([{"role": "user", "content": prompt}])
+            content = response.content if hasattr(response, "content") else ""
             print("  [LLM] Response length: {}".format(len(content) if content else 0))
             return content if content else ""
         except Exception as e:
