@@ -1,7 +1,5 @@
 from rest_framework import serializers
 from .models import StudySession, PerformanceMetrics, WeakArea, DailyProgress
-
-
 class StudySessionSerializer(serializers.ModelSerializer):
     class Meta:
         model = StudySession
