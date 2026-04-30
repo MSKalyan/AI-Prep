@@ -92,7 +92,6 @@ function MockTestAttemptContent({ testId, data }: MockTestAttemptContentProps) {
   }
 
   const handleSelect = (value: string) => {
-    // eslint-disable-next-line react-hooks/purity
     const timeTaken = Math.floor((Date.now() - questionStartTime) / 1000);
 
     setSelected((prev) => ({
@@ -111,7 +110,6 @@ function MockTestAttemptContent({ testId, data }: MockTestAttemptContentProps) {
       pendingSavePromises.current = pendingSavePromises.current.filter((p) => p !== savePromise);
     });
 
-    // eslint-disable-next-line react-hooks/purity
     setQuestionStartTime(Date.now());
   };
 

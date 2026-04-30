@@ -76,3 +76,56 @@ class DashboardService:
             current_date -= timedelta(days=1)
 
         return streak
+
+    @staticmethod
+    def _get_roadmap_stats(active_roadmap):
+        total_topics = RoadmapTopic.objects.filter(roadmap=active_roadmap).count()
+        completed_topics = RoadmapTopic.objects.filter(
+            roadmap=active_roadmap, is_completed=True
+        ).count()
+        pending_topics = max(total_topics - completed_topics, 0)
+        progress_percentage = (
+            round((completed_topics / total_topics) * 100, 2) if total_topics else 0
+        )
+
+        return {
+            "roadmap_id": active_roadmap.id,
+            "roadmap_exam": active_roadmap.exam.name if active_roadmap.exam else None,
+            "target_date": active_roadmap.target_date,
+            "total_topics": total_topics,
+            "completed_topics": completed_topics,
+            "pending_topics": pending_topics,
+            "progress_percentage": progress_percentage,
+        }
+
+    @staticmethod
+    def _build_no_roadmap_response(study_streak, roadmaps, test_stats):
+        return {
+            "study_streak": study_streak,
+            "weak_subject": None,
+            "roadmaps": roadmaps,
+            "active_roadmap": None,
+            "tests_taken": test_stats["tests_taken"],
+            "average_score": test_stats["average_score"],
+            "total_topics": 0,
+            "completed_topics": 0,
+            "pending_topics": 0,
+            "progress_percentage": 0,
+        }
+
+    @staticmethod
+    def _build_dashboard_response(
+        study_streak, weak_subject, roadmaps, test_stats, roadmap_stats
+    ):
+        return {
+            "study_streak": study_streak,
+            "weak_subject": weak_subject,
+            "roadmaps": roadmaps,
+            "active_roadmap": roadmap_stats,
+            "tests_taken": test_stats["tests_taken"],
+            "average_score": test_stats["average_score"],
+            "total_topics": roadmap_stats["total_topics"],
+            "completed_topics": roadmap_stats["completed_topics"],
+            "pending_topics": roadmap_stats["pending_topics"],
+            "progress_percentage": roadmap_stats["progress_percentage"],
+        }

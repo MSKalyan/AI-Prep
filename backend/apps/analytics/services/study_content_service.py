@@ -190,8 +190,11 @@ class StudyContentService:
 
     @staticmethod
     def _enqueue_generation(topic_id):
-        from apps.analytics.tasks import generate_topic_study_content
-        generate_topic_study_content.delay(topic_id)
+        try:
+            from apps.analytics.tasks import generate_topic_study_content
+            generate_topic_study_content.delay(topic_id)
+        except Exception:
+            logger.warning("Unable to enqueue study content generation task", exc_info=True)
 
     @staticmethod
     def _build_pending_content(topic):

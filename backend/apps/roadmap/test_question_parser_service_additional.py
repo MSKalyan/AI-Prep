@@ -6,6 +6,12 @@ import requests
 from apps.roadmap.services.pyq.question_parser_service import QuestionParserService
 
 
+def _mock_response(status_code=200, text=""):
+    response = SimpleNamespace(status_code=status_code, text=text)
+    response.raise_for_status = lambda: None
+    return response
+
+
 @pytest.mark.parametrize(
     "text,expected",
     [
@@ -41,8 +47,7 @@ def test_parse_question_success_with_filters_and_year(monkeypatch):
       <div>this is a two mark problem</div>
     </body></html>
     """
-    fake_resp = SimpleNamespace(status_code=200, text=html)
-    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: fake_resp)
+    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: _mock_response(200, html))
 
     question, topics, year, marks = QuestionParserService.parse_question(
         "https://example.com/gate-cse-2024/question/1"
@@ -55,7 +60,7 @@ def test_parse_question_success_with_filters_and_year(monkeypatch):
 
 
 def test_parse_question_returns_empty_on_non_200(monkeypatch):
-    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: SimpleNamespace(status_code=404, text=""))
+    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: _mock_response(404, ""))
     assert QuestionParserService.parse_question("https://example.com/x") == ("", [], None, None)
 
 
