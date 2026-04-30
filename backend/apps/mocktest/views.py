@@ -72,7 +72,7 @@ class MockTestDetailView(APIView):
                     return parsed
                 if isinstance(parsed, list):
                     raw_options = parsed
-            except (json.JSONDecodeError, TypeError, ValueError):
+            except (TypeError, ValueError):
                 logger.warning("Failed to parse question options payload", exc_info=True)
                 return {}
 
