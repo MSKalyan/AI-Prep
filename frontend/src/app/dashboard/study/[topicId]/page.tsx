@@ -66,8 +66,7 @@ export default function StudyPage() {
       });
 
       router.push(`/dashboard/mocktest/${res.mock_test.id}`);
-    } catch (err) {
-      console.error('Failed to start test', err);
+    } catch {
     } finally {
       setIsStartingTest(false);
     }

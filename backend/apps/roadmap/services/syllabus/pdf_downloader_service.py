@@ -1,6 +1,6 @@
 import os
-import requests
 from urllib.parse import urlparse
+from common.utils.retry_utils import safe_get
 
 DOWNLOAD_DIR = "data/gate_syllabus"
 REQUEST_TIMEOUT_SECONDS = 30
@@ -16,8 +16,7 @@ def download_pdf(url):
     if os.path.exists(path):
         return path
 
-    r = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS, stream=True)
-    r.raise_for_status()
+    r = safe_get(url, timeout=REQUEST_TIMEOUT_SECONDS, stream=True)
 
     with open(path, "wb") as f:
         for chunk in r.iter_content(chunk_size=CHUNK_SIZE_BYTES):

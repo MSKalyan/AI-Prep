@@ -1,6 +1,7 @@
 import re
 import requests
 from bs4 import BeautifulSoup
+from common.utils.retry_utils import safe_get
 
 
 class QuestionParserService:
@@ -53,12 +54,9 @@ class QuestionParserService:
     def parse_question(url):
 
         try:
-            response = requests.get(
+            response = safe_get(
                 url, headers=QuestionParserService.HEADERS, timeout=10
             )
-
-            if response.status_code != 200:
-                return "", [], None, None
 
         except requests.RequestException:
             return "", [], None, None

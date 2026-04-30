@@ -25,80 +25,34 @@ class DashboardService:
 
     @staticmethod
     def get_dashboard_summary(user):
-
         study_streak = DashboardService._calculate_streak(user)
-
         weak_subject = AnalyticsService.get_weak_subject(user)
-
         roadmaps = DashboardService.get_user_roadmaps(user)
 
         active_roadmap = Roadmap.objects.filter(user=user, is_active=True).first()
+        test_stats = DashboardService._get_test_stats(user)
 
-        # If no active roadmap
         if not active_roadmap:
-            tests = TestAttempt.objects.filter(user=user, submitted_at__isnull=False)
+            return DashboardService._build_no_roadmap_response(
+                study_streak, roadmaps, test_stats
+            )
 
-            tests_taken = tests.count()
+        roadmap_stats = DashboardService._get_roadmap_stats(active_roadmap)
 
-            avg_score = tests.aggregate(Avg("percentage"))["percentage__avg"] or 0
-
-            return {
-                "study_streak": study_streak,
-                "topics_completed": 0,
-                "roadmap_progress": 0,
-                "tests_taken": tests_taken,
-                "average_score": avg_score,
-                "continue_studying": None,
-                "weak_subject": None,
-                "roadmaps": roadmaps,
-            }
-
-        # ---------- Roadmap statistics ----------
-
-        topics = RoadmapTopic.objects.filter(roadmap=active_roadmap)
-
-        total_topics = topics.count()
-
-        completed_topics = topics.filter(is_completed=True).count()
-
-        progress = 0
-        if total_topics > 0:
-            progress = (completed_topics / total_topics) * 100
-
-        # ---------- Continue studying ----------
-
-        next_topic = (
-            topics.filter(is_completed=False)
-            .select_related("topic")
-            .order_by("week_number", "day_number")
-            .first()
+        return DashboardService._build_dashboard_response(
+            study_streak,
+            weak_subject,
+            roadmaps,
+            test_stats,
+            roadmap_stats,
         )
-
-        continue_topic = None
-
-        if next_topic:
-            continue_topic = {
-                "topic_id": next_topic.id,
-                "topic_name": next_topic.topic.name,
-            }
-
-        # ---------- Test statistics ----------
-
+    @staticmethod
+    def _get_test_stats(user):
         tests = TestAttempt.objects.filter(user=user, submitted_at__isnull=False)
 
-        tests_taken = tests.count()
-
-        avg_score = tests.aggregate(Avg("percentage"))["percentage__avg"] or 0
-
         return {
-            "study_streak": study_streak,
-            "topics_completed": completed_topics,
-            "roadmap_progress": round(progress, 2),
-            "tests_taken": tests_taken,
-            "average_score": round(avg_score, 2),
-            "continue_studying": continue_topic,
-            "weak_subject": weak_subject,
-            "roadmaps": roadmaps,
+            "tests_taken": tests.count(),
+            "average_score": tests.aggregate(Avg("percentage"))["percentage__avg"] or 0,
         }
 
     @staticmethod

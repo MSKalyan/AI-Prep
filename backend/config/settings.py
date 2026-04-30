@@ -223,11 +223,33 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 
 LLM_MODEL = os.environ.get("LLM_MODEL", "llama-3.1-8b-instant")
 
-LLM_TEMPERATURE = float(os.environ.get("LLM_TEMPERATURE", "0.3"))
+def _get_env_float(key, default):
+    value = os.environ.get(key, str(default))
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return float(default)
 
-LLM_MAX_TOKENS = int(os.environ.get("LLM_MAX_TOKENS", "2000"))
+
+def _get_env_int(key, default):
+    value = os.environ.get(key, str(default))
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return int(default)
+
+
+LLM_TEMPERATURE = _get_env_float("LLM_TEMPERATURE", 0.3)
+
+LLM_MAX_TOKENS = _get_env_int("LLM_MAX_TOKENS", 2000)
 
 AI_MODE = os.environ.get("AI_MODE", "groq")
+
+# Celery
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
+CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
+CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "False") == "True"
+CELERY_TASK_EAGER_PROPAGATES = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/

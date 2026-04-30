@@ -1,9 +1,10 @@
-import traceback
+import logging
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.parsers import MultiPartParser, FormParser
+from .serializers import DocumentUploadSerializer
 
 from apps.ai_service.rag.services.rag_service import RAGService
 from .serializers import (
@@ -13,12 +14,14 @@ from .serializers import (
 )
 from .services.services import AIService
 from .models import Conversation, Message, Document
+from django.db import DatabaseError
 
+logger = logging.getLogger(__name__)
 
 class AskAIView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
+    def post(self, request) -> Response:
         serializer = AskAISerializer(data=request.data)
 
         if serializer.is_valid():
@@ -41,8 +44,8 @@ class AskAIView(APIView):
                     status=status.HTTP_404_NOT_FOUND,
                 )
 
-            except Exception as e:
-                traceback.print_exc()
+            except (DatabaseError, ValueError, TypeError, KeyError, AttributeError, TimeoutError) as e:
+                logger.error("Ask AI request failed", exc_info=True)
                 return Response(
                     {"error": f"AI service error: {str(e)}"},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -50,7 +53,7 @@ class AskAIView(APIView):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def get(self, request):
+    def get(self, request) -> Response:
         conversations = Conversation.objects.filter(user=request.user)[:20]
         serializer = ConversationSerializer(conversations, many=True)
         return Response(serializer.data)
@@ -59,7 +62,7 @@ class AskAIView(APIView):
 class ConversationMessagesView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, conversation_id):
+    def get(self, request, conversation_id) -> Response:
         # Prevent IDOR by ensuring the conversation belongs to the user.
         try:
             conversation = Conversation.objects.get(id=conversation_id, user=request.user)
@@ -68,7 +71,7 @@ class ConversationMessagesView(APIView):
 
         try:
             limit = int(request.query_params.get("limit", "10"))
-        except ValueError:
+        except (ValueError, TypeError):
             limit = 10
 
         limit = max(1, min(limit, 100))
@@ -96,56 +99,57 @@ class ConversationMessagesView(APIView):
 
 class GenerateQuestionsView(APIView):
     permission_classes = [IsAuthenticated]
-
-    def post(self, request):
+    def post(self, request) -> Response:
         serializer = GenerateQuestionsAISerializer(data=request.data)
 
-        if serializer.is_valid():
-            try:
-                ai_service = AIService()
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-                questions = ai_service.generate_questions(
-                    exam_type=serializer.validated_data["exam_type"],
-                    subject=serializer.validated_data["subject"],
-                    topic=serializer.validated_data.get("topic", ""),
-                    difficulty=serializer.validated_data["difficulty"],
-                    num_questions=serializer.validated_data["num_questions"],
-                    question_type=serializer.validated_data["question_type"],
-                )
+        try:
+            questions = self._generate_questions(serializer.validated_data)
+            return self._build_success_response(questions)
 
-                if questions:
-                    return Response(
-                        {
-                            "questions": questions,
-                            "count": len(questions),
-                            "message": "Questions generated successfully",
-                        },
-                        status=status.HTTP_201_CREATED,
-                    )
-                else:
-                    return Response(
-                        {"error": "Failed to generate questions"},
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    )
+        except (DatabaseError, ValueError, TypeError, KeyError, AttributeError, TimeoutError) as e:
+            return self._handle_error(e)
+    def _generate_questions(self, data) -> list:
+        ai_service = AIService()
+        return ai_service.generate_questions(
+            exam_type=data["exam_type"],
+            subject=data["subject"],
+            topic=data.get("topic", ""),
+            difficulty=data["difficulty"],
+            num_questions=data["num_questions"],
+            question_type=data["question_type"],
+        )
+    def _build_success_response(self, questions) -> Response:
+        if not questions:
+            return Response(
+                {"error": "Failed to generate questions"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
 
-            except Exception as e:
-                return Response(
-                    {"error": f"Question generation error: {str(e)}"},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                )
+        return Response(
+            {
+                "questions": questions,
+                "count": len(questions),
+                "message": "Questions generated successfully",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+    def _handle_error(self, error) -> Response:
+        logger.error("Question generation failed", exc_info=True)
+        return Response(
+            {"error": f"Question generation error: {str(error)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
 
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-
-from rest_framework.parsers import MultiPartParser, FormParser
-from .serializers import DocumentUploadSerializer
 
 
 class DocumentUploadView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
 
-    def post(self, request):
+    def post(self, request) -> Response:
         serializer = DocumentUploadSerializer(
             data=request.data,
             context={"request": request}
@@ -162,48 +166,39 @@ class DocumentUploadView(APIView):
                 },
                 status=status.HTTP_201_CREATED,
             )
-
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class ProcessDocumentView(APIView):
     permission_classes = [IsAuthenticated]
-
-    def post(self, request):
+    def post(self, request) -> Response:
         document_id = request.data.get("document_id")
-
         if not document_id:
             return Response(
                 {"error": "document_id is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
         try:
             document = Document.objects.get(id=document_id, user=request.user)
-
             if document.processed:
                 return Response(
                     {"message": "Document already processed"},
                     status=status.HTTP_200_OK,
                 )
-
             rag = RAGService()
             rag.ingest_document(document)
-
             document.processed = True
             document.save()
-
             return Response(
                 {"message": "Document processed successfully"},
                 status=status.HTTP_200_OK,
             )
-
         except Document.DoesNotExist:
             return Response(
                 {"error": "Document not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
-
-        except Exception as e:
+        except (DatabaseError, ValueError, TypeError, AttributeError, TimeoutError) as e:
+            logger.error("Document processing failed", exc_info=True)
             return Response(
                 {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -212,5 +207,5 @@ class ProcessDocumentView(APIView):
 class HealthCheckView(APIView):
     permission_classes = [AllowAny]
 
-    def get(self, request):
+    def get(self, request) -> Response:
         return Response({"status": "ok"})

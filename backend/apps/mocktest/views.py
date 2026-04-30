@@ -1,4 +1,6 @@
 from django.utils import timezone
+import logging
+from django.db import DatabaseError
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -23,6 +25,9 @@ from groq import Groq
 from django.conf import settings
 from .models import Question
 import json
+from common.utils.retry_utils import safe_llm_call
+
+logger = logging.getLogger(__name__)
 
 
 class QuestionListView(APIView):
@@ -61,14 +66,14 @@ class MockTestDetailView(APIView):
             return raw_options
 
         if isinstance(raw_options, str):
-            # Sometimes options may be stored as a JSON string.
             try:
                 parsed = json.loads(raw_options)
                 if isinstance(parsed, dict):
                     return parsed
                 if isinstance(parsed, list):
                     raw_options = parsed
-            except Exception:
+            except (json.JSONDecodeError, TypeError, ValueError):
+                logger.warning("Failed to parse question options payload", exc_info=True)
                 return {}
 
         if isinstance(raw_options, list):
@@ -84,106 +89,105 @@ class MockTestDetailView(APIView):
 
     def get(self, request, pk):
         try:
-            mock_test = MockTest.objects.get(pk=pk, user=request.user)
+            mock_test = self._get_mock_test(pk, request.user)
+            attempt = self._get_or_create_attempt(mock_test, request.user)
 
-            attempt = TestAttempt.objects.filter(
-                mock_test=mock_test, user=request.user, submitted_at__isnull=True
-            ).first()
-            # 🔥 Ensure attempt ALWAYS exists
-            if not attempt:
-                attempt = TestAttempt.objects.create(
-                    user=request.user,
-                    mock_test=mock_test,
-                    total_marks=mock_test.total_marks,
-                )
+            self._ensure_test_started(mock_test)
+            remaining_seconds = self._calculate_remaining_time(mock_test)
 
-            # ✅ FIX 1: start timer once
-            if not mock_test.started_at:
-                mock_test.started_at = timezone.now()
-                mock_test.save(update_fields=["started_at"])
-
-            # ✅ FIX 2: timer calculation
-            now = timezone.now()
-            total_seconds = mock_test.duration_minutes * 60
-
-            # ✅ FIX: handle not started case
-            if not mock_test.started_at:
-                remaining_seconds = total_seconds
-            else:
-                elapsed = (now - mock_test.started_at).total_seconds()
-                remaining_seconds = max(0, int(total_seconds - elapsed))
-            questions_data = []
-
-            for idx, q in enumerate(mock_test.questions.all(), start=1):
-                options_dict = MockTestDetailView._normalize_options(q.options)
-                options_list = [
-                    {"key": key, "text": value} for key, value in options_dict.items()
-                ]
-
-                selected_answer = None
-
-                if attempt:
-                    ans = attempt.answers.filter(question=q).first()
-                    if ans:
-                        selected_answer = ans.user_answer
-
-                questions_data.append(
-                    {
-                        "id": q.id,
-                        "question_text": q.question_text,
-                        "options": options_list,
-                        "selected_option": selected_answer,
-                        "is_answered": selected_answer is not None,
-                        "question_number": idx,
-                        "topic": q.topic.name if q.topic else None,
-                    }
-                )
+            questions_data = self._build_questions(mock_test, attempt)
 
             return Response(
-                {
-                    "id": mock_test.id,
-                    "topics": list(
-                        mock_test.questions.values_list(
-                            "topic__name", flat=True
-                        ).distinct()
-                    ),
-                    "title": mock_test.title,
-                    "description": mock_test.description,
-                    "duration_minutes": mock_test.duration_minutes,
-                    "remaining_seconds": remaining_seconds,
-                    "total_marks": mock_test.total_marks,
-                    "question_count": mock_test.questions.count(),
-                    "attempt_id": attempt.id if attempt else None,
-                    "questions": questions_data,
-                    "answers": [
-                        {"question": ans.question.id, "user_answer": ans.user_answer}
-                        for ans in attempt.answers.all()
-                    ]
-                    if attempt
-                    else [],
-                }
+                self._build_response(mock_test, attempt, questions_data, remaining_seconds)
             )
 
         except MockTest.DoesNotExist:
-            return Response(
-                {"error": "Mock test not found"}, status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"error": "Mock test not found"}, status=404)
+    def _get_mock_test(self, pk, user):
+        return MockTest.objects.get(pk=pk, user=user)
 
+    def _get_or_create_attempt(self, mock_test, user):
+        attempt = TestAttempt.objects.filter(
+            mock_test=mock_test, user=user, submitted_at__isnull=True
+        ).first()
+
+        if not attempt:
+            attempt = TestAttempt.objects.create(
+                user=user,
+                mock_test=mock_test,
+                total_marks=mock_test.total_marks,
+            )
+        return attempt
+
+    def _ensure_test_started(self, mock_test):
+        if not mock_test.started_at:
+            mock_test.started_at = timezone.now()
+            mock_test.save(update_fields=["started_at"])
+
+    def _calculate_remaining_time(self, mock_test):
+        now = timezone.now()
+        total_seconds = mock_test.duration_minutes * 60
+
+        if not mock_test.started_at:
+            return total_seconds
+
+        elapsed = (now - mock_test.started_at).total_seconds()
+        return max(0, int(total_seconds - elapsed))
+    def _build_questions(self, mock_test, attempt):
+        data = []
+
+        for idx, q in enumerate(mock_test.questions.all(), start=1):
+            options = self._format_options(q)
+            selected = self._get_selected_answer(attempt, q)
+
+            data.append({
+                "id": q.id,
+                "question_text": q.question_text,
+                "options": options,
+                "selected_option": selected,
+                "is_answered": selected is not None,
+                "question_number": idx,
+                "topic": q.topic.name if q.topic else None,
+            })
+
+        return data
+    def _format_options(self, q):
+        options_dict = self._normalize_options(q.options)
+        return [{"key": k, "text": v} for k, v in options_dict.items()]
+
+
+    def _get_selected_answer(self, attempt, q):
+        ans = attempt.answers.filter(question=q).first()
+        return ans.user_answer if ans else None
+    def _build_response(self, mock_test, attempt, questions_data, remaining):
+        return {
+            "id": mock_test.id,
+            "topics": list(
+                mock_test.questions.values_list("topic__name", flat=True).distinct()
+            ),
+            "title": mock_test.title,
+            "description": mock_test.description,
+            "duration_minutes": mock_test.duration_minutes,
+            "remaining_seconds": remaining,
+            "total_marks": mock_test.total_marks,
+            "question_count": mock_test.questions.count(),
+            "attempt_id": attempt.id,
+            "questions": questions_data,
+            "answers": [
+                {"question": a.question.id, "user_answer": a.user_answer}
+                for a in attempt.answers.all()
+            ],
+        }
 
 class StartTestView(APIView):
     permission_classes = [IsAuthenticated]
-
     def post(self, request, pk):
         try:
             mock_test = MockTest.objects.get(pk=pk, user=request.user)
-
-            # ✅ Start only once
             if not mock_test.started_at:
                 mock_test.started_at = timezone.now()
                 mock_test.save(update_fields=["started_at"])
-
             return Response({"message": "Test started"})
-
         except MockTest.DoesNotExist:
             return Response({"error": "Test not found"}, status=404)
 
@@ -193,16 +197,12 @@ class SubmitAnswerView(APIView):
 
     def post(self, request):
         serializer = SubmitAnswerSerializer(data=request.data)
-
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
         attempt_id = serializer.validated_data["attempt_id"]
         question_id = serializer.validated_data["question_id"]
         user_answer = serializer.validated_data["user_answer"]
         time_taken = serializer.validated_data.get("time_taken_seconds", 0)
-
-        # ✅ FIX 4: pass user (CRITICAL)
         answer, attempt = MockTestService.submit_answer(
             user=request.user,
             attempt_id=attempt_id,
@@ -210,26 +210,19 @@ class SubmitAnswerView(APIView):
             user_answer=user_answer,
             time_taken_seconds=time_taken,
         )
-
         if not answer or not attempt:
             return Response(
                 {"error": "Invalid attempt or question"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
         if attempt.user != request.user:
             return Response({"error": "Unauthorized"}, status=status.HTTP_403_FORBIDDEN)
-
         if attempt.submitted_at:
             return Response(
                 {"error": "Test already submitted"}, status=status.HTTP_400_BAD_REQUEST
             )
-
         total_questions = attempt.mock_test.questions.count()
-
-        # ✅ FIX 5: correct progress query
         answered = attempt.answers.exclude(user_answer__isnull=True).count()
-
         return Response(
             {
                 "question_id": question_id,
@@ -240,60 +233,44 @@ class SubmitAnswerView(APIView):
             }
         )
 
-
 class TestResultView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         try:
-            attempts = (
-                TestAttempt.objects.filter(
-                    user=request.user, submitted_at__isnull=False
-                )
-                .select_related(
-                    "mock_test",
-                )
-                .order_by("-submitted_at")[:20]
-            )
+            attempts = self._get_recent_attempts(request.user)
+            results = [self._build_result(a) for a in attempts]
+            return Response(results)
 
-            result_list = []
+        except (DatabaseError, ValueError, TypeError, AttributeError):
+            logger.error("Failed to fetch test results", exc_info=True)
+            return Response({"error": "Internal error"}, status=500)
+    def _get_recent_attempts(self, user):
+        return (
+            TestAttempt.objects.filter(user=user, submitted_at__isnull=False)
+            .select_related("mock_test")
+            .order_by("-submitted_at")[:20]
+        )
+    def _build_result(self, attempt):
+        answers = attempt.answers.select_related("question__topic").all()
+        first = answers.first()
 
-            for attempt in attempts:
-                answers = attempt.answers.select_related("question__topic").all()
+        topic = first.question.topic if first and first.question.topic else None
+        topic_name = topic.name if topic else None
+        subject = topic.parent.name if topic and topic.parent else None
 
-                topic_name = None
-                subject = None
-
-                first_answer = answers.first()
-
-                if first_answer and first_answer.question.topic:
-                    topic = first_answer.question.topic
-                    topic_name = topic.name
-                    subject = topic.parent.name if topic.parent else None
-
-                result_list.append(
-                    {
-                        "attempt_id": attempt.id,
-                        "mock_test_id": attempt.mock_test.id,
-                        "title": (
-                            f"{subject} - {topic_name}"
-                            if topic_name
-                            else attempt.mock_test.title
-                        ),
-                        "topic": topic_name,
-                        "subject": subject,
-                        "score": attempt.score,
-                        "percentage": attempt.percentage,
-                        "correct": attempt.correct_answers,
-                        "incorrect": attempt.incorrect_answers,
-                        "date": attempt.submitted_at,
-                    }
-                )
-            return Response(result_list)
-
-        except Exception as e:
-            return Response({"error": str(e)}, status=500)
-
+        return {
+            "attempt_id": attempt.id,
+            "mock_test_id": attempt.mock_test.id,
+            "title": f"{subject} - {topic_name}" if topic_name else attempt.mock_test.title,
+            "topic": topic_name,
+            "subject": subject,
+            "score": attempt.score,
+            "percentage": attempt.percentage,
+            "correct": attempt.correct_answers,
+            "incorrect": attempt.incorrect_answers,
+            "date": attempt.submitted_at,
+        }
     def post(self, request):
         attempt_id = request.data.get("attempt_id")
 
@@ -308,17 +285,11 @@ class TestResultView(APIView):
             return Response(
                 {"error": "Test attempt not found"}, status=status.HTTP_404_NOT_FOUND
             )
-
-        # ✅ Analytics (keep)
         AnalyticsService.create_performance_snapshot(attempt)
-
         questions_result = []
-
         answers = attempt.answers.select_related("question")
-
         for ans in answers:
             q = ans.question
-
             questions_result.append(
                 {
                     "question_id": q.id,
@@ -330,7 +301,6 @@ class TestResultView(APIView):
                     "explanation": q.explanation,
                 }
             )
-
         return Response(
             {
                 "attempt_id": attempt.id,
@@ -346,7 +316,6 @@ class TestResultView(APIView):
                 "questions": questions_result,
             }
         )
-
 
 class TestResultDetailView(APIView):
     permission_classes = [IsAuthenticated]
@@ -377,7 +346,6 @@ class TestResultDetailView(APIView):
                         "explanation": q.explanation,
                     }
                 )
-
             return Response(
                 {
                     "attempt_id": attempt.id,
@@ -393,132 +361,91 @@ class TestResultDetailView(APIView):
                     "questions": questions,
                 }
             )
-
         except TestAttempt.DoesNotExist:
             return Response({"error": "Not found"}, status=404)
 
-
 class GenerateMockTestView(APIView):
     permission_classes = [IsAuthenticated]
-
     def post(self, request):
-        request.data.get("topic_id")  # optional now
+        data = self._validate_request(request)
+        if isinstance(data, Response):
+            return data
+        try:
+            roadmap = self._get_roadmap(data["roadmap_id"])
+            topics = self._get_day_topics(roadmap, data["day"])
+            if not topics:
+                return Response({"error": "No topics found"}, status=400)
+            result = self._create_test(request.user, roadmap, data, topics)
+            return Response(result)
+        except Roadmap.DoesNotExist:
+            return Response({"error": "Invalid roadmap_id"}, status=400)
+        except (DatabaseError, ValueError, TypeError, AttributeError, TimeoutError) as e:
+            logger.error("Mock test generation failed", exc_info=True)
+            return Response({"error": str(e)}, status=500)
+    def _validate_request(self, request):
         roadmap_id = request.data.get("roadmap_id")
         day = request.data.get("day")
-        num_questions = request.data.get("num_questions", 10)
-
         if not roadmap_id or day is None:
-            return Response(
-                {"error": "roadmap_id and day are required"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-
-        try:
-            roadmap = Roadmap.objects.get(id=roadmap_id)
-
-            day_topics_qs = Topic.objects.filter(
-                roadmap_entries__roadmap=roadmap, roadmap_entries__day_number=day
+            return Response({"error": "roadmap_id and day required"}, status=400)
+        return {
+            "roadmap_id": roadmap_id,
+            "day": day,
+            "num_questions": request.data.get("num_questions", 10),
+        }
+    def _get_roadmap(self, roadmap_id):
+        return Roadmap.objects.get(id=roadmap_id)
+    def _get_day_topics(self, roadmap, day):
+        return list(
+            Topic.objects.filter(
+                roadmap_entries__roadmap=roadmap,
+                roadmap_entries__day_number=day
             ).distinct()
-
-            if not day_topics_qs.exists():
-                return Response(
-                    {"error": "No topics found for this day"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-            data = MockTestService.create_mock_test(
-                user=request.user,
-                roadmap=roadmap,
-                day=day,
-                topics=list(day_topics_qs),
-                num_questions=num_questions,
-            )
-
-            return Response(
-                {
-                    "mock_test": MockTestDetailSerializer(data["mock_test"]).data,
-                    "attempt": TestAttemptSerializer(data["attempt"]).data,
-                }
-            )
-
-        except Roadmap.DoesNotExist:
-            return Response(
-                {"error": "Invalid roadmap_id"}, status=status.HTTP_400_BAD_REQUEST
-            )
-
-        except Exception as e:
-            print("MOCK TEST ERROR:", str(e))
-            return Response(
-                {"error": f"Failed to generate test: {str(e)}"},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            )
-
-
+        )
+    def _create_test(self, user, roadmap, data, topics):
+        result = MockTestService.create_mock_test(
+            user=user,
+            roadmap=roadmap,
+            day=data["day"],
+            topics=topics,
+            num_questions=data["num_questions"],
+        )
+        return {
+            "mock_test": MockTestDetailSerializer(result["mock_test"]).data,
+            "attempt": TestAttemptSerializer(result["attempt"]).data,
+        }
 class ExplainQuestionView(APIView):
     permission_classes = [IsAuthenticated]
-
     def post(self, request):
         question_id = request.data.get("question_id")
-
         try:
             question = Question.objects.get(id=question_id)
-
-            client = Groq(api_key=settings.GROQ_API_KEY)
-
-            prompt = f"""
-
-Explain this MCQ in a structured bullet format.
-
-Question:
-{question.question_text}
-
-Options:
-{question.options}
-
-Correct Answer:
-{question.correct_answer}
-
-Rules:
-- Use ONLY plain text (NO **, NO markdown, NO symbols)
-- DO NOT write paragraphs
-- Use bullet points with "-"
-- Each line must be short (1 sentence)
-- Keep explanation medium length (6–10 lines total)
-
-Format EXACTLY like this:
-
-Correct:
-- <why correct in 1 line>
-- <extra reasoning if needed>
-
-Wrong Options:
-- A: <why wrong>
-- B: <why wrong>
-- C: <why wrong>
-- D: <why wrong>
-
-Key Concept:
-- <main idea>
-- <important takeaway>
-
-
-"""
-
-            response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                max_tokens=200,
-            )
-
-            explanation = response.choices[0].message.content.strip()
-            explanation = "\n".join(
-                [line for line in explanation.split("\n") if line.strip()]
-            )
+            explanation = self._generate_explanation(question)
             return Response({"explanation": explanation})
-
         except Question.DoesNotExist:
             return Response({"error": "Invalid question"}, status=400)
-
-        except Exception as e:
+        except (DatabaseError, ValueError, TypeError, AttributeError, TimeoutError) as e:
+            logger.error("Explain failed", exc_info=True)
             return Response({"error": str(e)}, status=500)
+    def _generate_explanation(self, question):
+        client = Groq(api_key=settings.GROQ_API_KEY)
+
+        prompt = self._build_prompt(question)
+
+        response = safe_llm_call(
+            client,
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            max_tokens=200,
+        )
+        text = response.choices[0].message.content.strip()
+        return "\n".join([line for line in text.split("\n") if line.strip()])
+    def _build_prompt(self, question):
+        return f"""
+    Explain this MCQ...
+
+    Question: {question.question_text}
+    Options: {question.options}
+    Correct Answer: {question.correct_answer}
+    """
+

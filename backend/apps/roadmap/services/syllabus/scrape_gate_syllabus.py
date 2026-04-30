@@ -1,6 +1,6 @@
-import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
+from common.utils.retry_utils import safe_get
 
 BASE_URL = "https://gate2026.iitg.ac.in"
 REQUEST_TIMEOUT_SECONDS = 10
@@ -10,8 +10,7 @@ def get_syllabus_links():
 
     url = f"{BASE_URL}/exam-papers-and-syllabus.html"
 
-    res = requests.get(url, timeout=REQUEST_TIMEOUT_SECONDS)
-    res.raise_for_status()
+    res = safe_get(url, timeout=REQUEST_TIMEOUT_SECONDS)
     html = res.text
 
     soup = BeautifulSoup(html, "html.parser")

@@ -1,7 +1,9 @@
 import gdown
 import os
+import logging
 
 DOWNLOAD_DIR = "data/gate_pyq_zip"
+logger = logging.getLogger(__name__)
 
 
 def download_drive_folder(folder_url):
@@ -17,7 +19,8 @@ def download_drive_folder(folder_url):
             remaining_ok=True   # important
         )
 
-        print("Downloaded files:", files)
+        logger.info("Downloaded files: %s", files)
 
-    except Exception as e:
-        print("Drive download error:", e)
+    except (OSError, ValueError, RuntimeError):
+        logger.error("Drive folder download failed for url=%s", folder_url, exc_info=True)
+        raise

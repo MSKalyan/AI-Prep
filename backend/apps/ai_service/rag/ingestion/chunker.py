@@ -1,10 +1,12 @@
-# Better chunking (sentence-aware)
+from typing import List
+
 import re
 
-def chunk_text(text, chunk_size=400):
+
+def chunk_text(text: str, chunk_size: int = 400) -> List[str]:
     sentences = re.split(r'(?<=[.!?]) +', text)
     
-    chunks = []
+    chunks: List[str] = []
     current = ""
 
     for sent in sentences:

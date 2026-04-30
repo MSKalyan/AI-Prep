@@ -7,6 +7,7 @@ attrs==25.4.0
 beautifulsoup4==4.14.3
 black==25.1.0
 certifi==2026.1.4
+celery==5.4.0
 cffi==2.0.0
 charset-normalizer==3.4.4
 click-didyoumean==0.3.1

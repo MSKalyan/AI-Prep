@@ -17,7 +17,7 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///test_db.sqlite3")
 import sys
 
 if "pytest" in sys.modules or "coverage" in sys.modules:
-    os.environ["USE_LOCAL_DB"] = "True"
+    os.environ.update({"USE_LOCAL_DB": "True"})
 
 # Prevent any accidental external API usage during tests.
 os.environ.setdefault("GROQ_API_KEY", "")

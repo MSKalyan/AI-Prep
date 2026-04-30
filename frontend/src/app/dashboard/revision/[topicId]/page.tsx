@@ -27,8 +27,7 @@ export default function RevisionPage() {
       });
 
       router.push(`/dashboard/mocktest/${res.mock_test.id}`);
-    } catch (err) {
-      console.error('Revision test failed', err);
+    } catch {
     }
   };
 

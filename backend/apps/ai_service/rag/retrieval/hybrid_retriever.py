@@ -1,12 +1,13 @@
+from typing import List, Dict, Any, Optional
+
 from ..db.chroma_client import get_collection
 from ..ingestion.embedder import get_embeddings
 
 
-def keyword_score(query, text):
+def keyword_score(query: str, text: str) -> int:
     query_words = set(query.lower().split())
     text_words = set(text.lower().split())
 
-    # weighted match
     score = 0
     for word in query_words:
         if word in text_words:
@@ -15,12 +16,17 @@ def keyword_score(query, text):
     return score
 
 
-def hybrid_retrieve(query, top_k=5, exam_type=None, subject=None):
+def hybrid_retrieve(
+    query: str,
+    top_k: int = 5,
+    exam_type: Optional[str] = None,
+    subject: Optional[str] = None,
+) -> List[Dict[str, Any]]:
     collection = get_collection()
 
     query_embedding = get_embeddings([query])[0]
 
-    where = {}
+    where: Dict[str, str] = {}
     if exam_type:
         where["exam_type"] = exam_type
     if subject:
@@ -28,7 +34,7 @@ def hybrid_retrieve(query, top_k=5, exam_type=None, subject=None):
 
     results = collection.query(
         query_embeddings=[query_embedding],
-        n_results=top_k * 3,  # fetch more for reranking
+        n_results=top_k * 3,
         where=where if where else None,
         include=["documents", "metadatas", "distances"]
     )
@@ -42,12 +48,10 @@ def hybrid_retrieve(query, top_k=5, exam_type=None, subject=None):
     for doc, meta, dist in zip(docs, metas, distances):
         kw_score = keyword_score(query, meta.get("text", ""))
 
-        # Combine scores
         final_score = (1 - dist) + (0.3 * kw_score)
 
         scored.append((final_score, doc, meta))
 
-    # Sort by hybrid score
     scored.sort(key=lambda x: x[0], reverse=True)
 
     return [

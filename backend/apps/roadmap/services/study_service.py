@@ -1,8 +1,11 @@
 import re
+import logging
 
 from apps.roadmap.models import RoadmapTopic, PYQ
 from apps.ai_service.services.llm_service import LLMService
 from apps.analytics.services.study_content_service import StudyContentService
+
+logger = logging.getLogger(__name__)
 
 
 class StudyService:
@@ -38,8 +41,8 @@ class StudyService:
         try:
             raw = LLMService().generate_response(prompt=prompt)
             return StudyService.clean_ai_output(raw)
-        except Exception as e:
-            print("Groq failed:", e)
+        except (TimeoutError, ValueError, TypeError, AttributeError):
+            logger.error("Failed to generate AI explanation for topic '%s'", topic_name, exc_info=True)
 
             # fallback
             return f"""
@@ -60,6 +63,10 @@ class StudyService:
 
     @staticmethod
     def get_topic_study_data(topic_id):
+        if topic_id is None:
+            raise ValueError("topic_id is required")
+        if not isinstance(topic_id, int):
+            raise TypeError("topic_id must be an integer")
 
         topic = RoadmapTopic.objects.select_related(
             "topic", "topic__parent", "roadmap"

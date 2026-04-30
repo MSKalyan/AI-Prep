@@ -1,4 +1,7 @@
 from django.db import transaction
+from collections import defaultdict
+from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from apps.roadmap.models import Roadmap, RoadmapTopic, Exam, Topic
 from apps.roadmap.services.pyq.time_distribution_service import TimeDistributionService
 from apps.roadmap.services.pyq.weightage_service import WeightageService
@@ -43,10 +46,18 @@ class RoadmapService:
     @staticmethod
     def _create_week_topics(roadmap, week_data, global_fallback, daily_limit):
         w_num = week_data["week_number"]
-
-        rev_topic = (
-            week_data["items"][-1]["topic"] if week_data["items"] else global_fallback
+        items = week_data["items"]
+        RoadmapService._create_revision_topic(
+            roadmap, w_num, items, global_fallback, daily_limit
         )
+        RoadmapService._create_practice_topic(
+            roadmap, w_num, items, global_fallback, daily_limit
+        )
+        RoadmapService._create_study_topics(roadmap, w_num, items, daily_limit)
+
+    @staticmethod
+    def _create_revision_topic(roadmap, w_num, items, global_fallback, daily_limit):
+        rev_topic = items[-1]["topic"] if items else global_fallback
         RoadmapTopic.objects.create(
             roadmap=roadmap,
             week_number=w_num,
@@ -57,9 +68,9 @@ class RoadmapService:
             priority=1,
         )
 
-        mock_topic = (
-            week_data["items"][0]["topic"] if week_data["items"] else global_fallback
-        )
+    @staticmethod
+    def _create_practice_topic(roadmap, w_num, items, global_fallback, daily_limit):
+        mock_topic = items[0]["topic"] if items else global_fallback
         RoadmapTopic.objects.create(
             roadmap=roadmap,
             week_number=w_num,
@@ -70,36 +81,44 @@ class RoadmapService:
             priority=1,
         )
 
+    @staticmethod
+    def _create_study_topics(roadmap, w_num, items, daily_limit):
         curr_day = 1
         day_rem_h = daily_limit
+        for item in items:
+            curr_day, day_rem_h = RoadmapService._allocate_topic_hours(
+                roadmap, w_num, item, curr_day, day_rem_h, daily_limit
+            )
 
-        for item in week_data["items"]:
-            topic_h = float(item["hours"])
+    @staticmethod
+    def _allocate_topic_hours(roadmap, w_num, item, curr_day, day_rem_h, daily_limit):
+        topic_h = float(item["hours"])
+        while topic_h > 0.1 and curr_day <= 5:
+            allocated = min(topic_h, day_rem_h)
+            if allocated > 0.1:
+                RoadmapService._create_study_topic_row(
+                    roadmap, w_num, curr_day, item["topic"], allocated
+                )
+            topic_h -= allocated
+            day_rem_h -= allocated
+            if day_rem_h <= 0.1:
+                curr_day += 1
+                day_rem_h = daily_limit
+        return curr_day, day_rem_h
 
-            while topic_h > 0.1 and curr_day <= 5:
-                allocated = min(topic_h, day_rem_h)
-
-                if allocated > 0.1:
-                    RoadmapTopic.objects.create(
-                        roadmap=roadmap,
-                        week_number=w_num,
-                        day_number=curr_day,
-                        topic=item["topic"],
-                        estimated_hours=round(allocated, 1),
-                        phase="study",
-                    )
-
-                topic_h -= allocated
-                day_rem_h -= allocated
-
-                if day_rem_h <= 0.1:
-                    curr_day += 1
-                    day_rem_h = daily_limit
+    @staticmethod
+    def _create_study_topic_row(roadmap, w_num, curr_day, topic, allocated):
+        RoadmapTopic.objects.create(
+            roadmap=roadmap,
+            week_number=w_num,
+            day_number=curr_day,
+            topic=topic,
+            estimated_hours=round(allocated, 1),
+            phase="study",
+        )
 
     @staticmethod
     def get_user_roadmap(user):
-        from collections import defaultdict
-
         roadmap = (
             RoadmapTopic.objects.select_related("topic", "roadmap")
             .filter(roadmap__user=user, roadmap__is_active=True)
@@ -152,9 +171,6 @@ class RoadmapService:
 
     @staticmethod
     def mark_topic_completed(topic_id, user):
-        from django.utils import timezone
-        from django.shortcuts import get_object_or_404
-
         roadmap_topic = get_object_or_404(
             RoadmapTopic.objects.select_related("roadmap", "topic"),
             id=topic_id,

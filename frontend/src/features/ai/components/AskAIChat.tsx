@@ -17,6 +17,7 @@ type Source = {
 };
 
 type ChatMessage = {
+  id: string;
   role: 'user' | 'assistant';
   content: string;
   sources?: Source[];
@@ -29,6 +30,7 @@ interface AskAIPayload {
 }
 
 interface ApiMessage {
+  created_at?: string;
   role: 'user' | 'assistant';
   content: string;
   retrieved_documents?: Source[];
@@ -59,6 +61,7 @@ export default function AskAIChat({
       try {
         const res = await apiClient.get(`/conversations/${conversationId}/messages/`);
         const formatted: ChatMessage[] = res.data.map((m: ApiMessage) => ({
+          id: m.created_at || `${m.role}-${m.content}`,
           role: m.role,
           content: m.content,
           sources: m.retrieved_documents || [],
@@ -113,7 +116,11 @@ export default function AskAIChat({
     setIsLoading(true);
 
     setMessages((prev) => {
-      const newMessage: ChatMessage = { role: 'user', content: q };
+      const newMessage: ChatMessage = {
+        id: crypto.randomUUID(),
+        role: 'user',
+        content: q,
+      };
       return [...prev, newMessage].slice(-10);
     });
 
@@ -137,6 +144,7 @@ export default function AskAIChat({
 
       setMessages((prev) => {
         const newMessage: ChatMessage = {
+          id: crypto.randomUUID(),
           role: 'assistant',
           content: String(answer),
           sources: sources || [],
@@ -183,9 +191,9 @@ export default function AskAIChat({
             Ask a doubt and the AI will answer.
           </div>
         ) : (
-          messages.map((message, i) => (
+          messages.map((message) => (
             <div
-              key={`${message.role}-${i}`}
+              key={message.id}
               className={`p-2 rounded-md text-xs sm:text-sm ${
                 message.role === 'user'
                   ? 'bg-blue-50 border border-blue-200 text-blue-800'

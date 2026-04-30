@@ -71,41 +71,60 @@ class Command(BaseCommand):
         skipped = 0
 
         for sq in questions:
-            question_text = sq.get("question_text", "")
-            options = sq.get("options", {})
-            correct_answer = sq.get("correct_answer")
-            marks = sq.get("marks", 1)
-            question_type = sq.get("question_type", "mcq")
-
-            topic = TopicMapperService.map_topic(question_text, exam=exam)
-            if not self._is_valid_question(question_text, options, correct_answer, topic):
-                skipped += 1
-                continue
-
-            if dry_run:
-                self.stdout.write(
-                    f"[DRY] Would create: {question_text[:50]}... -> {topic.name}"
-                )
-                continue
-
-            pyq_obj = PYQImportService.save_question_with_options(
-                exam=exam,
-                topic=topic,
-                question_text=question_text,
-                year=year,
-                marks=marks,
-                question_type=question_type,
-                options=options,
-                correct_answer=correct_answer,
-                source_url=path,
+            is_created = self._process_single_question(
+                exam=exam, year=year, path=path, sq=sq, dry_run=dry_run
             )
-
-            if pyq_obj:
+            if is_created is True:
                 created += 1
-            else:
+            elif is_created is False:
                 skipped += 1
 
         return created, skipped
+
+    def _process_single_question(self, *, exam, year, path, sq, dry_run: bool):
+        question_payload = self._extract_question_payload(sq, exam)
+        if not question_payload:
+            return False
+
+        if dry_run:
+            self._print_dry_run(question_payload["question_text"], question_payload["topic"])
+            return None
+
+        pyq_obj = PYQImportService.save_question_with_options(
+            exam=exam,
+            topic=question_payload["topic"],
+            question_text=question_payload["question_text"],
+            year=year,
+            marks=question_payload["marks"],
+            question_type=question_payload["question_type"],
+            options=question_payload["options"],
+            correct_answer=question_payload["correct_answer"],
+            source_url=path,
+        )
+        return bool(pyq_obj)
+
+    def _extract_question_payload(self, sq, exam):
+        question_text = sq.get("question_text", "")
+        options = sq.get("options", {})
+        correct_answer = sq.get("correct_answer")
+        marks = sq.get("marks", 1)
+        question_type = sq.get("question_type", "mcq")
+        topic = TopicMapperService.map_topic(question_text, exam=exam)
+
+        if not self._is_valid_question(question_text, options, correct_answer, topic):
+            return None
+
+        return {
+            "question_text": question_text,
+            "options": options,
+            "correct_answer": correct_answer,
+            "marks": marks,
+            "question_type": question_type,
+            "topic": topic,
+        }
+
+    def _print_dry_run(self, question_text, topic):
+        self.stdout.write(f"[DRY] Would create: {question_text[:50]}... -> {topic.name}")
 
     def _process_pdf(self, *, exam, pdf, dry_run: bool):
         year = pdf["year"]
@@ -115,7 +134,7 @@ class Command(BaseCommand):
 
         try:
             text = extract_text(path)
-        except Exception as e:
+        except (OSError, ValueError) as e:
             self.stdout.write(
                 self.style.WARNING(f"Skipping corrupted PDF -> {path} ({str(e)})")
             )

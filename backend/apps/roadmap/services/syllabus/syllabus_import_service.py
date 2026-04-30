@@ -1,7 +1,9 @@
 from datetime import date
+import logging
 
 from apps.roadmap.models import Exam, Subject, Topic, Subtopic
 
+logger = logging.getLogger(__name__)
 
 def save_syllabus(exam_name, syllabus):
 
@@ -18,7 +20,7 @@ def save_syllabus(exam_name, syllabus):
 
         subject_name = subject_data["subject"]
 
-        print("SUBJECT:", subject_name)
+        logger.info("SUBJECT: %s", subject_name)
 
         subject, _ = Subject.objects.get_or_create(
             exam=exam,

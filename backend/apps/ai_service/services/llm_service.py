@@ -1,11 +1,15 @@
 import json
 import time
+import logging
 
 from groq import Groq
 from django.conf import settings
-from django.db import transaction
+from django.db import DatabaseError
 
 from apps.ai_service.models import AIUsageLog
+from common.utils.retry_utils import safe_llm_call
+
+logger = logging.getLogger(__name__)
 
 
 class LLMService:
@@ -30,7 +34,8 @@ class LLMService:
         if not self.client:
             return None
         try:
-            response = self.client.chat.completions.create(
+            response = safe_llm_call(
+                self.client,
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "You are an educational assistant."},
@@ -75,7 +80,7 @@ class LLMService:
 
             return content
 
-        except Exception as e:
+        except (TimeoutError, ValueError, TypeError, AttributeError):
             response_time = int((time.time() - start_time) * 1000)
 
             self._log_usage(
@@ -83,12 +88,10 @@ class LLMService:
                 endpoint=endpoint,
                 success=False,
                 response_time=response_time,
-                error_message=str(e)[:500],
+                error_message="LLM response generation failed",
             )
-
-            print(f"LLM Error: {e}")
-
-            return None
+            logger.error("LLM response generation failed", exc_info=True)
+            raise
 
     def _log_usage(
         self,
@@ -113,5 +116,6 @@ class LLMService:
                 success=success,
                 error_message=error_message,
             )
-        except Exception as log_error:
-            print(f"AIUsageLog failed: {log_error}")
+        except DatabaseError:
+            logger.error("Failed to persist AI usage log", exc_info=True)
+            raise

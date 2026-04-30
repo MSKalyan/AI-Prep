@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/features/auth';
 import { createMockTest } from '@/features/mocktest/services';
@@ -35,21 +35,19 @@ function MockTestPageContent() {
 function MockTestContent() {
   const router = useRouter();
   const params = useSearchParams();
+  const [isCreating, setIsCreating] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
+
+  const topicIdRaw = params.get('topicId');
+  const roadmapIdRaw = params.get('roadmapId');
+  const dayRaw = params.get('day');
 
   useEffect(() => {
     const init = async () => {
+      setIsCreating(true);
+      setErrorMessage('');
       try {
-        const topicIdRaw = params.get('topicId');
-        const roadmapIdRaw = params.get('roadmapId');
-        const dayRaw = params.get('day');
-
-        // Validate params
         if (!topicIdRaw || !roadmapIdRaw || !dayRaw) {
-          console.error('Missing params', {
-            topicIdRaw,
-            roadmapIdRaw,
-            dayRaw,
-          });
           router.replace('/dashboard');
           return;
         }
@@ -59,11 +57,6 @@ function MockTestContent() {
         const day = Number(dayRaw);
 
         if (!topicId || !roadmapId || !day) {
-          console.error('Invalid numeric params', {
-            topicId,
-            roadmapId,
-            day,
-          });
           router.replace('/dashboard');
           return;
         }
@@ -76,31 +69,45 @@ function MockTestContent() {
         });
 
         if (!data?.mock_test?.id) {
-          console.error('Invalid response from createMockTest:', data);
           throw new Error('Failed to create mock test');
         }
 
-        console.log('Mock test created:', data.mock_test.id, 'questions:', data.mock_test.question_count);
-
         if (!data.mock_test.question_count) {
-          console.error('No questions generated for mock test');
-          alert('No questions available for this topic. Please try a different topic or day.');
-          router.replace('/dashboard');
-          return;
+          throw new Error('No questions available for this topic. Please try a different topic or day.');
         }
 
         router.replace(`/dashboard/mocktest/${data.mock_test.id}`);
       } catch (error) {
-        console.error('Mock test creation failed:', error);
-        alert('Failed to create mock test. Please try again.');
-        router.replace('/dashboard');
+        const message =
+          error instanceof Error ? error.message : 'Unexpected error occurred';
+        setErrorMessage(message);
+      } finally {
+        setIsCreating(false);
       }
     };
 
     init();
-  }, [params, router]);
+  }, [topicIdRaw, roadmapIdRaw, dayRaw, router]);
 
-  return <div className="p-4 sm:p-6">Starting test...</div>;
+  if (isCreating) {
+    return <div className="p-4 sm:p-6">Starting test...</div>;
+  }
+
+  if (errorMessage) {
+    return (
+      <div className="p-4 sm:p-6 space-y-3">
+        <div className="text-sm text-red-600">{errorMessage}</div>
+        <button
+          onClick={() => router.replace('/dashboard')}
+          className="px-4 py-2 bg-black text-white rounded"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  return <div className="p-4 sm:p-6">Redirecting...</div>;
 }
 
 /* -------------------- PAGE (WRAPPER) -------------------- */

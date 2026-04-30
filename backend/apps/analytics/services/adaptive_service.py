@@ -1,4 +1,5 @@
 from apps.analytics.models import TopicPerformance
+from apps.roadmap.models import Topic, RoadmapTopic
 
 
 class AdaptiveRoadmapService:
@@ -12,97 +13,84 @@ class AdaptiveRoadmapService:
 
     @staticmethod
     def generate_priority(user):
+        performances = TopicPerformance.objects.select_related("topic").filter(user=user)
 
-        performances = TopicPerformance.objects.select_related("topic").filter(
-            user=user
-        )
-
-        # ---------- NEW USER ----------
         if not performances.exists():
-            from apps.roadmap.models import Topic
+            return AdaptiveRoadmapService._default_priorities()
 
-            topics = Topic.objects.all()
-
-            results = []
-
-            for topic in topics:
-                weightage = getattr(topic, "weightage", 1.0)
-
-                results.append(
-                    {
-                        "topic_id": topic.id,
-                        "topic_name": topic.name,
-                        "priority": round(weightage, 4),
-                        "accuracy": 0.0,
-                        "strength": "new",
-                        "weightage": weightage,
-                    }
-                )
-
-            results.sort(key=lambda x: (-x["priority"], x["topic_id"]))
-            return results
-
-        # ---------- NORMAL FLOW ----------
         max_weight = max(p.topic.weightage for p in performances)
 
-        results = []
+        results = [
+            AdaptiveRoadmapService._build_priority_item(perf, max_weight)
+            for perf in performances
+        ]
 
-        for perf in performances:
-            topic = perf.topic
-            accuracy = perf.accuracy
-            strength = perf.strength
+        return AdaptiveRoadmapService._sort_results(results)
 
-            weightage = topic.weightage or 1.0
-            weightage_norm = weightage / max_weight if max_weight > 0 else 0
+    @staticmethod
+    def _default_priorities():
+        topics = Topic.objects.all()
 
-            weakness = 1 - accuracy
+        results = [
+            {
+                "topic_id": topic.id,
+                "topic_name": topic.name,
+                "priority": round(getattr(topic, "weightage", 1.0), 4),
+                "accuracy": 0.0,
+                "strength": "new",
+                "weightage": getattr(topic, "weightage", 1.0),
+            }
+            for topic in topics
+        ]
 
-            if strength == "insufficient":
-                priority = (
-                    weightage_norm
-                    * AdaptiveRoadmapService.CONFIG["INSUFFICIENT_MULTIPLIER"]
-                )
+        return AdaptiveRoadmapService._sort_results(results)
 
-            elif strength == "weak":
-                priority = (
-                    weakness
-                    * weightage_norm
-                    * AdaptiveRoadmapService.CONFIG["WEAK_MULTIPLIER"]
-                    + AdaptiveRoadmapService.CONFIG["WEAK_BOOST"]
-                )
+    @staticmethod
+    def _calculate_priority(accuracy, strength, weightage_norm):
+        config = AdaptiveRoadmapService.CONFIG
+        weakness = 1 - accuracy
 
-            elif strength == "moderate":
-                priority = (
-                    weakness
-                    * weightage_norm
-                    * AdaptiveRoadmapService.CONFIG["MODERATE_MULTIPLIER"]
-                )
+        if strength == "insufficient":
+            return weightage_norm * config["INSUFFICIENT_MULTIPLIER"]
 
-            else:
-                priority = (
-                    weakness
-                    * weightage_norm
-                    * AdaptiveRoadmapService.CONFIG["STRONG_MULTIPLIER"]
-                )
-
-            results.append(
-                {
-                    "topic_id": topic.id,
-                    "topic_name": topic.name,
-                    "priority": round(priority, 4),
-                    "accuracy": round(accuracy, 2),
-                    "strength": strength,
-                    "weightage": weightage,
-                }
+        if strength == "weak":
+            return (
+                weakness * weightage_norm * config["WEAK_MULTIPLIER"]
+                + config["WEAK_BOOST"]
             )
 
-        results.sort(key=lambda x: (-x["priority"], x["topic_id"]))
-        return results
+        if strength == "moderate":
+            return weakness * weightage_norm * config["MODERATE_MULTIPLIER"]
+
+        return weakness * weightage_norm * config["STRONG_MULTIPLIER"]
+
+    @staticmethod
+    def _build_priority_item(perf, max_weight):
+        topic = perf.topic
+        weightage = topic.weightage or 1.0
+        weightage_norm = weightage / max_weight if max_weight > 0 else 0
+
+        priority = AdaptiveRoadmapService._calculate_priority(
+            perf.accuracy, perf.strength, weightage_norm
+        )
+
+        return {
+            "topic_id": topic.id,
+            "topic_name": topic.name,
+            "priority": round(priority, 4),
+            "accuracy": round(perf.accuracy, 2),
+            "strength": perf.strength,
+            "weightage": weightage,
+        }
+
+    @staticmethod
+    def _sort_results(results):
+        return sorted(results, key=lambda x: (-x["priority"], x["topic_id"]))
 
     @staticmethod
     def get_revision_map(user):
         """
-        Returns topic_id → adaptive metadata
+        Returns topic_id -> adaptive metadata
         """
 
         priority_topics = AdaptiveRoadmapService.generate_priority(user)
@@ -124,9 +112,6 @@ class AdaptiveRoadmapService:
         Returns top weak topics NOT in today's learning topics
         """
 
-        from apps.roadmap.models import RoadmapTopic
-
-        # 1. Get priority topics
         priority_topics = AdaptiveRoadmapService.generate_priority(user)
 
         # 2. Get today's topics

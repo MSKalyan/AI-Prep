@@ -2,15 +2,19 @@ import json
 import re
 import os
 import secrets
+import logging
 from django.utils import timezone
 from django.db import transaction
+from django.db.models import Q
 
 from .models import Question, MockTest, TestAttempt, Answer
 from apps.roadmap.models import PYQ, Topic
 from groq import Groq
 from django.conf import settings
+from common.utils.retry_utils import safe_llm_call
 
 _SECURE_RNG = secrets.SystemRandom()
+logger = logging.getLogger(__name__)
 
 
 class MockTestService:
@@ -22,16 +26,18 @@ class MockTestService:
     ):
         topic_ids = sorted([t.id for t in topics])
 
-        print("\n=== MOCKTEST DEBUG ===")
-        print(f"Day: {day}")
-        print(f"Topics: {[t.name for t in topics]}")
-        print(f"Num questions requested: {num_questions}")
+        logger.debug("=== MOCKTEST DEBUG ===")
+        logger.debug("Day: %s", day)
+        logger.debug("Topics: %s", [t.name for t in topics])
+        logger.debug("Num questions requested: %s", num_questions)
 
         # PRIMARY SOURCE: Get PYQs from roadmap.PYQ table - search ALL day topics
         main_topic = topics[0] if topics else None
         pyq_questions = MockTestService._get_pyq_questions(topics, num_questions) if topics else []
 
-        print(f"PYQ questions found in {len(topics)} day topics: {len(pyq_questions)}")
+        logger.debug(
+            "PYQ questions found in %s day topics: %s", len(topics), len(pyq_questions)
+        )
 
         selected_questions = list(pyq_questions)  # Copy list
         remaining = num_questions - len(selected_questions)
@@ -41,7 +47,7 @@ class MockTestService:
             bank_questions = MockTestService._get_question_bank_questions(
                 topics=topics, count=remaining, exclude_ids=[q.id for q in selected_questions]
             )
-            print(f"Question-bank fallback found: {len(bank_questions)}")
+            logger.debug("Question-bank fallback found: %s", len(bank_questions))
             selected_questions.extend(bank_questions)
             remaining = num_questions - len(selected_questions)
 
@@ -50,11 +56,15 @@ class MockTestService:
         if remaining > 0:
             # Use day topics for LLM to keep relevance
             llm_topics = topics if len(topics) <= 3 else topics[:3]
-            print(f"Generating {remaining} questions via LLM for day topics: {[t.name for t in llm_topics]}")
+            logger.info(
+                "Generating %s questions via LLM for day topics: %s",
+                remaining,
+                [t.name for t in llm_topics],
+            )
             llm_questions = MockTestService._generate_llm_questions_with_retry(
                 topics=llm_topics, count=remaining
             )
-            print(f"LLM questions generated: {len(llm_questions)}")
+            logger.debug("LLM questions generated: %s", len(llm_questions))
             selected_questions.extend(llm_questions)
 
         # Last resort: generate all from day topics only
@@ -64,8 +74,8 @@ class MockTestService:
                 topics=llm_topics, count=num_questions
             )
 
-        print(f"Total questions: {len(selected_questions)}")
-        print("====================\n")
+        logger.debug("Total questions: %s", len(selected_questions))
+        logger.debug("====================")
 
         if not selected_questions:
             raise ValueError(f"No questions available. PYQs: {len(pyq_questions)}, LLM failed. Please add PYQs or try a different topic.")
@@ -121,10 +131,10 @@ class MockTestService:
     @staticmethod
     def _get_pyq_questions(topics, count):
         if not topics:
-            print("  [PYQ] No topics provided")
+            logger.warning("[PYQ] No topics provided")
             return []
 
-        print(f"  [PYQ] Searching for PYQs in {len(topics)} topics")
+        logger.debug("[PYQ] Searching for PYQs in %s topics", len(topics))
 
         subject_ids, topic_keywords = MockTestService._extract_subject_keywords(topics)
         all_pyqs = MockTestService._search_topic_matched_pyqs(topics, count)
@@ -151,8 +161,8 @@ class MockTestService:
             if t.name:
                 keywords = t.name.lower().replace("-", " ").replace("_", " ").split()
                 topic_keywords.update([k for k in keywords if len(k) > 3])
-        print(f"  [PYQ] Topic keywords: {list(topic_keywords)[:10]}")
-        print(f"  [PYQ] Subject IDs: {subject_ids}")
+        logger.debug("[PYQ] Topic keywords: %s", list(topic_keywords)[:10])
+        logger.debug("[PYQ] Subject IDs: %s", subject_ids)
         return subject_ids, topic_keywords
 
     @staticmethod
@@ -165,14 +175,13 @@ class MockTestService:
                 "?"
             )[: count * 2]
         )
-        print(f"  [PYQ] Topic-exact match: {len(pyqs)} PYQs")
+        logger.debug("[PYQ] Topic-exact match: %s PYQs", len(pyqs))
         return list(pyqs)
 
     @staticmethod
     def _search_subject_keyword_pyqs(subject_ids, topic_keywords, count, existing_pyqs):
         if not subject_ids or not topic_keywords:
             return existing_pyqs
-        from django.db.models import Q
 
         keyword_query = Q()
         for kw in list(topic_keywords)[:10]:
@@ -186,7 +195,7 @@ class MockTestService:
             .exclude(id__in=[p.id for p in existing_pyqs])
             .order_by("?")[:count]
         )
-        print(f"  [PYQ] Subject+keyword match: {len(pyqs)} PYQs")
+        logger.debug("[PYQ] Subject+keyword match: %s PYQs", len(pyqs))
         existing_pyqs.extend(pyqs)
         return existing_pyqs
 
@@ -199,7 +208,7 @@ class MockTestService:
             .exclude(id__in=[p.id for p in existing_pyqs])
             .order_by("?")[:count]
         )
-        print(f"  [PYQ] Subject fallback: {len(pyqs)} PYQs")
+        logger.debug("[PYQ] Subject fallback: %s PYQs", len(pyqs))
         existing_pyqs.extend(pyqs)
         return existing_pyqs
 
@@ -237,14 +246,18 @@ class MockTestService:
         for pyq in pyqs:
             options = MockTestService._normalize_options(pyq.options)
             if not options or len(options) < 2:
-                print(f"  [PYQ] Skipping PYQ {pyq.id} - insufficient options: {options}")
+                logger.warning(
+                    "[PYQ] Skipping PYQ %s - insufficient options: %s", pyq.id, options
+                )
                 continue
             correct_answer = MockTestService._extract_correct_answer(
                 pyq.correct_answer, options
             )
             if not correct_answer:
-                print(
-                    f"  [PYQ] Skipping PYQ {pyq.id} - invalid correct_answer: {pyq.correct_answer}"
+                logger.warning(
+                    "[PYQ] Skipping PYQ %s - invalid correct_answer: %s",
+                    pyq.id,
+                    pyq.correct_answer,
                 )
                 continue
             question = Question.objects.create(
@@ -262,7 +275,7 @@ class MockTestService:
                 year=pyq.year,
             )
             questions.append(question)
-        print(f"  [PYQ] Converted: {len(questions)} questions")
+        logger.info("[PYQ] Converted: %s questions", len(questions))
         return questions
 
     @staticmethod
@@ -429,25 +442,25 @@ class MockTestService:
     @staticmethod
     def _call_llm_api(client, prompt):
         try:
-            response = client.chat.completions.create(
+            response = safe_llm_call(
+                client,
                 model=settings.LLM_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 temperature=0.7,
                 max_tokens=5000,
             )
             content = response.choices[0].message.content
-            print("  [LLM] Response length: {}".format(len(content) if content else 0))
+            logger.debug("[LLM] Response length: %s", len(content) if content else 0)
             return content if content else ""
-        except Exception as e:
-            print("LLM question generation error: {}".format(e))
-            return ""
+        except (TimeoutError, ValueError, TypeError, AttributeError):
+            logger.error("LLM question generation failed", exc_info=True)
+            raise
 
     @staticmethod
     def _process_llm_response(content, topics):
         if not content:
             return []
 
-        import re
         content = content.strip()
 
         # Handle markdown and find JSON array
@@ -468,7 +481,6 @@ class MockTestService:
     @staticmethod
     def _clean_markdown(content):
         """Clean markdown code blocks from content."""
-        import re
         if "```json" in content:
             content = content.split("```json")[1].split("```")[0]
         elif "```" in content:
@@ -503,7 +515,7 @@ class MockTestService:
 
         if not isinstance(data, list):
             return []
-        print("  [LLM] Parsed {} questions".format(len(data)))
+        logger.debug("[LLM] Parsed %s questions", len(data))
         return data
 
     @staticmethod
@@ -522,7 +534,7 @@ class MockTestService:
         try:
             opts = MockTestService._normalize_options(q_data.get("options", {}))
             if not opts or len(opts) < 2:
-                print("    Skipping - insufficient options: {}".format(opts))
+                logger.warning("Skipping generated question - insufficient options: %s", opts)
                 return None
 
             correct_answer = MockTestService._extract_correct_answer(
@@ -530,15 +542,18 @@ class MockTestService:
                 opts,
             )
             if not correct_answer:
-                print(
-                    "    Skipping - invalid correct_answer: {}".format(
-                        q_data.get("correct_answer", "")
-                    )
+                logger.warning(
+                    "Skipping generated question - invalid correct_answer: %s",
+                    q_data.get("correct_answer", ""),
                 )
                 return None
 
-            print("  [LLM] Creating question {}/{}: {}...".format(
-                idx+1, total, q_data.get("question", "")[:50]))
+            logger.debug(
+                "[LLM] Creating question %s/%s: %s...",
+                idx + 1,
+                total,
+                q_data.get("question", "")[:50],
+            )
 
             return Question.objects.create(
                 topic=topics[0] if topics else None,
@@ -552,14 +567,18 @@ class MockTestService:
                 negative_marks=0.0,
                 source="llm",
             )
-        except Exception as e:
-            print("    Error creating question: {}".format(e))
+        except (TypeError, ValueError, KeyError):
+            logger.warning("Skipping invalid generated question payload", exc_info=True)
             return None
 
     @staticmethod
     def _generate_llm_questions_with_retry(topics, count, max_retries=2):
         for _ in range(max_retries):
-            questions = MockTestService._generate_llm_questions(topics, count)
+            try:
+                questions = MockTestService._generate_llm_questions(topics, count)
+            except (TimeoutError, ValueError, TypeError, AttributeError):
+                logger.error("Retry attempt for LLM question generation failed", exc_info=True)
+                continue
             if questions:
                 return questions
         return []
@@ -567,7 +586,6 @@ class MockTestService:
     @staticmethod
     def _extract_json_objects(content):
         """Extract valid question objects from JSON content using regex."""
-        import re
         questions_list = []
 
         # Try regex extraction
@@ -581,37 +599,41 @@ class MockTestService:
                 continue
 
         if not questions_list:
-            print("  [LLM] No valid question objects found via regex")
+            logger.warning("[LLM] No valid question objects found via regex")
         return questions_list
 
     @staticmethod
     def submit_answer(user, attempt_id, question_id, user_answer, time_taken_seconds=0):
         """Submit a single answer during test"""
-        print("\n=== SUBMIT ANSWER DEBUG ===")
-        print(f"user: {user}, attempt_id: {attempt_id}, question_id: {question_id}")
-        print(f"user_answer: {user_answer}")
+        logger.debug("=== SUBMIT ANSWER DEBUG ===")
+        logger.debug(
+            "user: %s, attempt_id: %s, question_id: %s", user, attempt_id, question_id
+        )
+        logger.debug("user_answer: %s", user_answer)
 
         try:
             attempt = TestAttempt.objects.get(id=attempt_id, user=user)
-            print(f"Attempt found: {attempt.id}")
+            logger.debug("Attempt found: %s", attempt.id)
         except TestAttempt.DoesNotExist:
-            print("Attempt not found!")
+            logger.warning("TestAttempt not found for attempt_id=%s and user_id=%s", attempt_id, getattr(user, "id", None))
             return None, None
 
         try:
             question = Question.objects.get(id=question_id)
-            print(
-                f"Question found: {question.id}, correct_answer: {question.correct_answer}"
+            logger.debug(
+                "Question found: %s, correct_answer: %s",
+                question.id,
+                question.correct_answer,
             )
         except Question.DoesNotExist:
-            print("Question not found!")
+            logger.warning("Question not found for question_id=%s", question_id)
             return None, attempt
 
         normalized_user_answer, _, is_correct = MockTestService._resolve_answer_values(
             question, user_answer
         )
 
-        print(f"is_correct: {is_correct}")
+        logger.debug("is_correct: %s", is_correct)
 
         answer, created = Answer.objects.update_or_create(
             attempt=attempt,
@@ -624,8 +646,8 @@ class MockTestService:
             },
         )
 
-        print(f"Answer saved: {answer.id}, created: {created}")
-        print("===========================\n")
+        logger.info("Answer saved: %s, created: %s", answer.id, created)
+        logger.debug("===========================")
 
         return answer, attempt
 

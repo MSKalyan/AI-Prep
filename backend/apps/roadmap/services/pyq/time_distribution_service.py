@@ -24,8 +24,6 @@ class TimeDistributionService:
 
     @staticmethod
     def _group_topics_by_subject(topics):
-        from collections import deque
-
         subj_map = defaultdict(deque)
         for t in topics:
             s_id = t.subject_id if t.subject_id else 0
@@ -105,31 +103,37 @@ class DayDistributionService:
         remaining_day_hours = float(daily_limit)
 
         for item in week_items:
-            topic = item["topic"]
-            hours = float(item["hours"])
-            hours = round(hours, 2)
-            remaining_day_hours = round(remaining_day_hours, 2)
-            while hours > 0:
-                if current_day > 5:  # Study only 5 days
-                    break
-
-                allocate = round(min(hours, remaining_day_hours), 2)
-
-                if allocate > 0:
-                    days.append(
-                        {
-                            "day": current_day,
-                            "topic": topic,
-                            "hours": round(allocate, 1),
-                        }
-                    )
-
-                hours -= allocate
-                remaining_day_hours -= allocate
-
-                # Move to next day if this one is full
-                if remaining_day_hours <= 0.1:
-                    current_day += 1
-                    remaining_day_hours = float(daily_limit)
+            current_day, remaining_day_hours = DayDistributionService._process_item(
+                days, item, current_day, remaining_day_hours, daily_limit
+            )
 
         return days
+
+    @staticmethod
+    def _process_item(days, item, current_day, remaining_day_hours, daily_limit):
+        topic = item["topic"]
+        hours = round(float(item["hours"]), 2)
+        remaining_day_hours = round(remaining_day_hours, 2)
+
+        while hours > 0:
+            if current_day > 5:
+                break
+            allocate = round(min(hours, remaining_day_hours), 2)
+            if allocate > 0:
+                DayDistributionService._append_day_entry(days, current_day, topic, allocate)
+            hours -= allocate
+            remaining_day_hours -= allocate
+            current_day, remaining_day_hours = DayDistributionService._advance_day_if_full(
+                current_day, remaining_day_hours, daily_limit
+            )
+        return current_day, remaining_day_hours
+
+    @staticmethod
+    def _append_day_entry(days, current_day, topic, allocate):
+        days.append({"day": current_day, "topic": topic, "hours": round(allocate, 1)})
+
+    @staticmethod
+    def _advance_day_if_full(current_day, remaining_day_hours, daily_limit):
+        if remaining_day_hours <= 0.1:
+            return current_day + 1, float(daily_limit)
+        return current_day, remaining_day_hours

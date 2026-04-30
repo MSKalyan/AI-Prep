@@ -229,10 +229,9 @@ export default function MockTestAttemptPage() {
   const testId = Number(params.id);
   const router = useRouter();
 
-  const { data, isLoading, isError, error } = useMockTestDetail(testId);
+  const { data, isLoading, isError } = useMockTestDetail(testId);
 
   if (isError) {
-    console.error('Failed to load mock test detail', error);
     return (
       <div className="p-6 space-y-3">
         <div className="text-lg font-semibold">Unable to load mock test</div>

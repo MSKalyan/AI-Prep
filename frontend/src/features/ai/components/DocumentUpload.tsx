@@ -40,10 +40,9 @@ export default function DocumentUpload({ compact = false }: Readonly<{ compact?:
         }
       );
 
-      console.log(processRes.data);
+      void processRes;
       alert('Uploaded & processed successfully');
-    } catch (err) {
-      console.error(err);
+    } catch {
     } finally {
       setLoading(false);
     }

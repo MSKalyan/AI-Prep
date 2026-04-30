@@ -11,7 +11,9 @@ from ..models import (
 )
 
 from django.db.models import Count, Sum, Case, When, IntegerField
-from apps.mocktest.models import Answer, MockTest
+from apps.mocktest.models import Answer, MockTest, TestAttempt
+from apps.ai_service.models import Message
+from apps.roadmap.models import RoadmapTopic
 
 
 class AttemptAggregationService:
@@ -51,87 +53,79 @@ class AnalyticsService:
 
     @staticmethod
     def get_user_analytics(user):
-        """Get comprehensive analytics for a user"""
+        return {
+            "overall_stats": AnalyticsService._calculate_overall_stats(user),
+            "subject_performance": AnalyticsService._get_subject_performance(user),
+            "weak_areas": AnalyticsService._get_weak_areas(user),
+            "recent_progress": AnalyticsService._get_recent_progress(user),
+            "study_streak": AnalyticsService._calculate_study_streak(user),
+            "total_study_time": AnalyticsService._get_total_study_time(user),
+            "total_mocktests": AnalyticsService._get_total_mocktests(user),
+            "total_questions_attempted": AnalyticsService._get_total_questions(user),
+        }
+    @staticmethod
+    def _get_subject_performance(user):
+        return PerformanceMetrics.objects.filter(user=user)
 
-        # Overall statistics
-        overall_stats = AnalyticsService._calculate_overall_stats(user)
+    @staticmethod
+    def _get_total_mocktests(user):
+        return MockTest.objects.filter(user=user).count()
 
-        # Subject-wise performance
-        subject_performance = PerformanceMetrics.objects.filter(user=user)
-        total_mocktests = MockTest.objects.filter(user=user).count()
-        total_questions = TopicPerformance.objects.filter(user=user).aggregate(
+    @staticmethod
+    def _get_total_questions(user):
+        return TopicPerformance.objects.filter(user=user).aggregate(
             total=Sum("total_attempts")
         )["total"]
-        # Weak areas
-        weak_areas = WeakArea.objects.filter(user=user)[:10]
 
-        # Recent progress (last 30 days)
+    @staticmethod
+    def _get_weak_areas(user):
+        return WeakArea.objects.filter(user=user)[:10]
+
+    @staticmethod
+    def _get_recent_progress(user):
         thirty_days_ago = timezone.now().date() - timedelta(days=30)
-        recent_progress = DailyProgress.objects.filter(
+        return DailyProgress.objects.filter(
             user=user, date__gte=thirty_days_ago
         ).order_by("-date")
 
-        # Study streak
-        study_streak = AnalyticsService._calculate_study_streak(user)
-
-        # Total study time
-        total_study_time = (
+    @staticmethod
+    def _get_total_study_time(user):
+        return (
             StudySession.objects.filter(user=user).aggregate(
                 total=Sum("duration_minutes")
             )["total"]
             or 0
         )
-
-        return {
-            "overall_stats": overall_stats,
-            "subject_performance": subject_performance,
-            "weak_areas": weak_areas,
-            "recent_progress": recent_progress,
-            "study_streak": study_streak,
-            "total_study_time": total_study_time,
-            "total_mocktests": total_mocktests,
-            "total_questions_attempted": total_questions,
-        }
-
+    
     @staticmethod
     def _calculate_overall_stats(user):
-        """Calculate overall performance statistics"""
+        test_attempts = AnalyticsService._get_test_attempts(user)
 
-        from apps.mocktest.models import TestAttempt
+        stats = AnalyticsService._get_test_stats(test_attempts)
+        ai_queries = AnalyticsService._get_ai_queries(user)
+        completed_topics = AnalyticsService._get_completed_topics(user)
 
-        # Test statistics
-        test_attempts = TestAttempt.objects.filter(
-            user=user, submitted_at__isnull=False
-        )
+        return {
+            **stats,
+            "ai_queries": ai_queries,
+            "completed_topics": completed_topics,
+        }
+    @staticmethod
+    def _get_test_attempts(user):
+        return TestAttempt.objects.filter(user=user, submitted_at__isnull=False)
 
+
+    @staticmethod
+    def _get_test_stats(test_attempts):
         total_tests = test_attempts.count()
+
         avg_score = test_attempts.aggregate(Avg("percentage"))["percentage__avg"] or 0
 
-        # Question statistics
-        total_correct = (
-            test_attempts.aggregate(Sum("correct_answers"))["correct_answers__sum"] or 0
-        )
-        total_incorrect = (
-            test_attempts.aggregate(Sum("incorrect_answers"))["incorrect_answers__sum"]
-            or 0
-        )
+        total_correct = test_attempts.aggregate(Sum("correct_answers"))["correct_answers__sum"] or 0
+        total_incorrect = test_attempts.aggregate(Sum("incorrect_answers"))["incorrect_answers__sum"] or 0
+
         total_questions = total_correct + total_incorrect
-
-        accuracy = (total_correct / total_questions * 100) if total_questions > 0 else 0
-
-        # AI usage
-        from apps.ai_service.models import Message
-
-        ai_queries = Message.objects.filter(
-            conversation__user=user, role="user"
-        ).count()
-
-        # Roadmap progress
-        from apps.roadmap.models import RoadmapTopic
-
-        completed_topics = RoadmapTopic.objects.filter(
-            roadmap__user=user, is_completed=True
-        ).count()
+        accuracy = (total_correct / total_questions * 100) if total_questions else 0
 
         return {
             "total_tests": total_tests,
@@ -140,10 +134,20 @@ class AnalyticsService:
             "correct_answers": total_correct,
             "incorrect_answers": total_incorrect,
             "accuracy": round(accuracy, 2),
-            "ai_queries": ai_queries,
-            "completed_topics": completed_topics,
         }
 
+
+    @staticmethod
+    def _get_ai_queries(user):
+        return Message.objects.filter(conversation__user=user, role="user").count()
+
+
+    @staticmethod
+    def _get_completed_topics(user):
+        return RoadmapTopic.objects.filter(
+            roadmap__user=user, is_completed=True
+        ).count()
+    
     @staticmethod
     def _calculate_study_streak(user):
         """Calculate current study streak in days"""
@@ -162,8 +166,6 @@ class AnalyticsService:
                 current_date -= timedelta(days=1)
             else:
                 break
-
-            # Limit to 365 days
             if streak >= 365:
                 break
 
@@ -171,9 +173,20 @@ class AnalyticsService:
 
     @staticmethod
     def update_performance_metrics(user, subject, test_attempt):
-        """Update performance metrics after a test"""
+        metrics = AnalyticsService._get_or_create_metrics(user, subject)
 
-        metrics, _ = PerformanceMetrics.objects.get_or_create(
+        AnalyticsService._update_basic_metrics(metrics, test_attempt)
+        AnalyticsService._update_accuracy(metrics)
+        AnalyticsService._update_average_score(metrics, user, test_attempt)
+        AnalyticsService._update_time_metrics(metrics, test_attempt)
+
+        metrics.last_activity = timezone.now()
+        metrics.save()
+
+        return metrics
+    @staticmethod
+    def _get_or_create_metrics(user, subject):
+        return PerformanceMetrics.objects.get_or_create(
             user=user,
             subject=subject,
             defaults={
@@ -182,9 +195,11 @@ class AnalyticsService:
                 "correct_answers": 0,
                 "incorrect_answers": 0,
             },
-        )
+        )[0]
 
-        # Update counts
+
+    @staticmethod
+    def _update_basic_metrics(metrics, test_attempt):
         metrics.total_attempts += 1
         metrics.total_questions += (
             test_attempt.correct_answers
@@ -194,35 +209,36 @@ class AnalyticsService:
         metrics.correct_answers += test_attempt.correct_answers
         metrics.incorrect_answers += test_attempt.incorrect_answers
 
-        # Calculate accuracy
+
+    @staticmethod
+    def _update_accuracy(metrics):
         total_answered = metrics.correct_answers + metrics.incorrect_answers
         metrics.accuracy_percentage = (
             (metrics.correct_answers / total_answered * 100)
-            if total_answered > 0
-            else 0
+            if total_answered else 0
         )
 
-        # Calculate average score
+
+    @staticmethod
+    def _update_average_score(metrics, user, test_attempt):
         from apps.mocktest.models import TestAttempt
 
         all_attempts = TestAttempt.objects.filter(
-            user=user, mock_test__exam_type=test_attempt.mock_test.exam_type
+            user=user,
+            mock_test__exam_type=test_attempt.mock_test.exam_type
         )
+
         metrics.average_score = all_attempts.aggregate(Avg("score"))["score__avg"] or 0
 
-        # Update time statistics
+
+    @staticmethod
+    def _update_time_metrics(metrics, test_attempt):
         metrics.total_time_minutes += test_attempt.time_taken_minutes
+
         metrics.average_time_per_question = (
             (metrics.total_time_minutes * 60) / metrics.total_questions
-            if metrics.total_questions > 0
-            else 0
+            if metrics.total_questions else 0
         )
-
-        metrics.last_activity = timezone.now()
-        metrics.save()
-
-        return metrics
-
     @staticmethod
     def update_weak_areas(user, test_attempt):
         """Identify and update weak areas based on test performance"""
@@ -293,9 +309,7 @@ class AnalyticsService:
     @staticmethod
     def update_daily_progress(user, activity_data):
         """Update daily progress tracking"""
-
         today = timezone.now().date()
-
         progress, _ = DailyProgress.objects.get_or_create(
             user=user,
             date=today,
@@ -308,36 +322,23 @@ class AnalyticsService:
                 "topics_covered": [],
             },
         )
-
-        # Update fields
         if "study_time" in activity_data:
             progress.study_time_minutes += activity_data["study_time"]
-
         if "questions_attempted" in activity_data:
             progress.questions_attempted += activity_data["questions_attempted"]
-
         if "questions_correct" in activity_data:
             progress.questions_correct += activity_data["questions_correct"]
-
         if "mock_test" in activity_data and activity_data["mock_test"]:
             progress.mock_tests_taken += 1
-
         if "ai_query" in activity_data and activity_data["ai_query"]:
             progress.ai_queries += 1
-
         if "topic" in activity_data and activity_data["topic"]:
             if activity_data["topic"] not in progress.topics_covered:
                 progress.topics_covered.append(activity_data["topic"])
-
-        # Calculate streak
         progress.streak_days = AnalyticsService._calculate_study_streak(user)
-
-        # Check if goals met (e.g., study time >= target)
         target_minutes = user.study_hours_per_day * 60
         progress.goals_met = progress.study_time_minutes >= target_minutes
-
         progress.save()
-
         return progress
 
     @staticmethod
@@ -394,23 +395,18 @@ class AnalyticsService:
                 "accuracy": accuracy,
             },
         )
-
         AnalyticsService.rebuild_performance_metrics(user, subject)
-
         return snapshot
 
     @staticmethod
     def get_weak_subject(user):
-
         weak = (
             PerformanceMetrics.objects.filter(user=user, total_attempts__gt=0)
             .order_by("accuracy_percentage")
             .first()
         )
-
         if not weak:
             return None
-
         return {
             "subject": weak.subject,
             "accuracy": round(weak.accuracy_percentage, 2),

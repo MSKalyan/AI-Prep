@@ -11,9 +11,7 @@ export function useGenerateRoadmap() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roadmaps'] });
     },
-    onError: (error) => {
-      console.error('Roadmap generation failed:', error);
-    },
+    onError: () => {},
   });
 
   return {
@@ -32,8 +30,6 @@ export function useDeleteRoadmap() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['roadmaps'] });
     },
-    onError: (error) => {
-      console.error('Failed to delete roadmap:', error);
-    },
+    onError: () => {},
   });
 }

@@ -28,9 +28,7 @@ export function useAuth() {
 
   const loginMutation = useMutation<unknown, ApiError, LoginPayload>({
     mutationFn: login,
-    onError: (error) => {
-      console.error('Login failed:', error.message);
-    },
+    onError: () => {},
   });
 
   const registerMutation = useMutation<unknown, ApiError, RegisterPayload>({
@@ -38,9 +36,7 @@ export function useAuth() {
     onSuccess: async () => {
       await queryClient.refetchQueries({ queryKey: ['profile'] });
     },
-    onError: (error) => {
-      console.error('Registration failed:', error.message);
-    },
+    onError: () => {},
   });
 
   const logoutMutation = useMutation({

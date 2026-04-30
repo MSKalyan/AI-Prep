@@ -1,5 +1,6 @@
 from pydoc_data.topics import topics
 import re
+import logging
 
 from django.utils import timezone
 
@@ -26,6 +27,8 @@ from .serializers import (
     DeterministicRoadmapGenerateSerializer,
 )
 from .services.roadmap_service import RoadmapService
+
+logger = logging.getLogger(__name__)
 
 
 class ExamListView(APIView):
@@ -134,7 +137,7 @@ class DeterministicRoadmapGenerateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        print("DETERMINISTIC VIEW HIT")
+        logger.info("DETERMINISTIC VIEW HIT")
         serializer = DeterministicRoadmapGenerateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 

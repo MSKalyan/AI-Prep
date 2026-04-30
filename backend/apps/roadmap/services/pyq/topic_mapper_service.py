@@ -170,57 +170,59 @@ class TopicMapperService:
 
     @staticmethod
     def map_topic(question_text, exam=None):
-
         if not question_text or exam is None:
             return None
 
         text = TopicMapperService.normalize(question_text)
-
-        scores = defaultdict(int)
-
-        # keyword matching
-        for keyword, subject_name in TopicMapperService.MAP.items():
-            if keyword in text:
-                scores[subject_name] += len(keyword)
-
-        # topic name matching - more specific
         topic_map = TopicMapperService.load_topics_for_exam(exam)
-
-        topic_scores = {}
-        for normalized_topic, topic_obj in topic_map.items():
-            if normalized_topic in text:
-                # Score by topic name length (longer = more specific)
-                topic_scores[topic_obj.id] = len(normalized_topic)
-
+        topic_scores = TopicMapperService._build_topic_scores(text, topic_map)
         if topic_scores:
-            # Return the most specific topic match
-            best_topic_id = max(topic_scores, key=topic_scores.get)
-            best_topic = Topic.objects.get(id=best_topic_id)
-            return best_topic
+            return TopicMapperService._get_best_topic_from_scores(topic_scores)
 
+        scores = TopicMapperService._build_keyword_scores(text)
         if not scores:
             return None
 
         best_topic_name = max(scores, key=scores.get)
-
-        # Try to find the topic with this name
-        matching_topic = Topic.objects.filter(
-            name=best_topic_name, subject__exam=exam
-        ).first()
-
+        matching_topic = TopicMapperService._find_topic_by_name(exam, best_topic_name)
         if matching_topic:
             return matching_topic
 
-        # Try partial match
+        return TopicMapperService._get_engineering_math_fallback(exam)
+
+    @staticmethod
+    def _build_keyword_scores(text):
+        scores = defaultdict(int)
+        for keyword, subject_name in TopicMapperService.MAP.items():
+            if keyword in text:
+                scores[subject_name] += len(keyword)
+        return scores
+
+    @staticmethod
+    def _build_topic_scores(text, topic_map):
+        topic_scores = {}
+        for normalized_topic, topic_obj in topic_map.items():
+            if normalized_topic in text:
+                topic_scores[topic_obj.id] = len(normalized_topic)
+        return topic_scores
+
+    @staticmethod
+    def _get_best_topic_from_scores(topic_scores):
+        best_topic_id = max(topic_scores, key=topic_scores.get)
+        return Topic.objects.get(id=best_topic_id)
+
+    @staticmethod
+    def _find_topic_by_name(exam, best_topic_name):
+        matching_topic = Topic.objects.filter(name=best_topic_name, subject__exam=exam).first()
+        if matching_topic:
+            return matching_topic
         matching_topic = Topic.objects.filter(
             subject__exam=exam, name__icontains=best_topic_name.split()[0]
         ).first()
+        return matching_topic
 
-        if matching_topic:
-            return matching_topic
-
-        topic = Topic.objects.filter(
+    @staticmethod
+    def _get_engineering_math_fallback(exam):
+        return Topic.objects.filter(
             subject__exam=exam, subject__name="Engineering Mathematics"
         ).first()
-
-        return topic

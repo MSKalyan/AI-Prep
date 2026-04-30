@@ -1,6 +1,9 @@
 from django.db.models import Count, Sum
+import logging
 
 from apps.roadmap.models import PYQ, Topic
+
+logger = logging.getLogger(__name__)
 
 
 class WeightageService:
@@ -55,7 +58,7 @@ class WeightageService:
         total_exam_marks = WeightageService._get_total_exam_marks(exam)
 
         if total_exam_marks == 0:
-            print("No PYQs found for weightage computation")
+            logger.warning("No PYQs found for weightage computation")
             return
 
         agg_map = WeightageService._get_agg_map(exam)
@@ -73,10 +76,11 @@ class WeightageService:
                 total_exam_marks=total_exam_marks,
             )
 
-            print(
-                f"{topic.name} -> "
-                f"{topic.pyq_count} PYQs -> "
-                f"{round(topic.weightage, 2)}%"
+            logger.info(
+                "%s -> %s PYQs -> %s%%",
+                topic.name,
+                topic.pyq_count,
+                round(topic.weightage, 2),
             )
 
             children = subtopics_map.get(topic.id, [])

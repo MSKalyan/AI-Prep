@@ -1,4 +1,8 @@
 from django.db.models import Sum
+import logging
+from django.db import DatabaseError
+from datetime import timedelta
+from django.utils import timezone
 
 from apps.analytics.services.performance_service import PerformanceService
 from apps.analytics.services.adaptive_service import AdaptiveRoadmapService
@@ -21,6 +25,7 @@ from .models import PerformanceMetrics, TopicPerformance, WeakArea, DailyProgres
 
 from .services.services import AttemptAggregationService
 
+logger = logging.getLogger(__name__)
 
 class TopicAggregationView(APIView):
     """
@@ -29,7 +34,7 @@ class TopicAggregationView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request) -> Response:
         data = AttemptAggregationService.get_topic_wise_aggregation(request.user)
         return Response({
             "status": "success",
@@ -41,7 +46,7 @@ class TopicAggregationView(APIView):
 class TopicPerformanceView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request) -> Response:
         user = request.user
 
         # Existing logic
@@ -68,7 +73,7 @@ class TopicPerformanceView(APIView):
 class AdaptiveRoadmapView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request) -> Response:
         data = AdaptiveRoadmapService.generate_priority(request.user)
 
         return Response({
@@ -81,7 +86,7 @@ class AdaptiveRoadmapView(APIView):
 class AdaptiveStudyPlanView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request) -> Response:
         data = RoadmapService.generate_adaptive_roadmap(request.user)
 
         return Response({
@@ -92,7 +97,7 @@ class AdaptiveStudyPlanView(APIView):
 class TodayStudyPlanView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request) -> Response:
         data = RoadmapService.get_today_plan(request.user)
 
         return Response({
@@ -103,7 +108,7 @@ class TodayStudyPlanView(APIView):
 class StudyContentView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request) -> Response:
         topic_name = request.query_params.get("topic_name")
         if not topic_name:
             return Response({"error": "topic_name is required"}, status=400)
@@ -126,7 +131,7 @@ class UserAnalyticsView(APIView):
     """
     permission_classes = [IsAuthenticated]
     
-    def get(self, request):
+    def get(self, request) -> Response:
         try:
             analytics_data = AnalyticsService.get_user_analytics(request.user)
             total_mocktests = MockTest.objects.filter(user=request.user).count()
@@ -158,7 +163,8 @@ class UserAnalyticsView(APIView):
             
             return Response(response_data, status=status.HTTP_200_OK)
         
-        except Exception as e:
+        except (DatabaseError, ValueError, TypeError, KeyError, AttributeError) as e:
+            logger.error("Failed to fetch user analytics", exc_info=True)
             return Response(
                 {'error': f'Failed to fetch analytics: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -176,9 +182,12 @@ class PerformanceStatsView(APIView):
     """
     permission_classes = [IsAuthenticated]
     
-    def get(self, request):
+    def get(self, request) -> Response:
         subject = request.query_params.get('subject')
-        days = int(request.query_params.get('days', 30))
+        try:
+            days = int(request.query_params.get('days', 30))
+        except (ValueError, TypeError):
+            days = 30
         
         try:
             # Performance metrics
@@ -192,9 +201,6 @@ class PerformanceStatsView(APIView):
                 weak_areas = weak_areas.filter(subject=subject)
             
             # Daily progress for the period
-            from datetime import timedelta
-            from django.utils import timezone
-            
             start_date = timezone.now().date() - timedelta(days=days)
             daily_progress = DailyProgress.objects.filter(
                 user=request.user,
@@ -217,7 +223,8 @@ class PerformanceStatsView(APIView):
                 'period_days': days
             }, status=status.HTTP_200_OK)
         
-        except Exception as e:
+        except (DatabaseError, ValueError, TypeError, KeyError, AttributeError) as e:
+            logger.error("Failed to fetch performance stats", exc_info=True)
             return Response(
                 {'error': f'Failed to fetch performance stats: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -227,7 +234,7 @@ class PerformanceStatsView(APIView):
 class AdaptiveRevisionView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request) -> Response:
         data = AdaptiveRoadmapService.get_revision_map(request.user)
 
         return Response({

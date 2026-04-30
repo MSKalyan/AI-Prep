@@ -1,10 +1,14 @@
-from groq import Groq
 import os
+from typing import Optional, List, Dict, Any
+
+from groq import Groq
+from common.utils.retry_utils import safe_llm_call
 
 MODEL = os.getenv("LLM_MODEL", "llama-3.1-8b-instant")
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
-def generate_answer(query, context):
+
+def generate_answer(query: str, context: str) -> str:
     prompt = f"""
 Answer strictly based on the provided context.
 If answer is not in context, say "Not found".
@@ -16,7 +20,8 @@ Question:
 {query}
 """
 
-    response = client.chat.completions.create(
+    response = safe_llm_call(
+        client,
         model=MODEL,
         messages=[
             {"role": "system", "content": "You are a precise exam assistant."},
@@ -28,7 +33,7 @@ Question:
     return response.choices[0].message.content
 
 
-def generate_summary(text, query=None):
+def generate_summary(text: str, query: Optional[str] = None) -> str:
     question_block = f"\nQuestion:\n{query}" if query else ""
     prompt = f"""
 Summarize the excerpt below with a focus on the information relevant to the question.
@@ -41,7 +46,8 @@ Excerpt:
 Summary:
 """
 
-    response = client.chat.completions.create(
+    response = safe_llm_call(
+        client,
         model=MODEL,
         messages=[
             {"role": "system", "content": "You are a concise summarization assistant."},

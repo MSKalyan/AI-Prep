@@ -10,8 +10,7 @@ export function useMockTestController(testId: number) {
     const startTest = async () => {
       try {
         await apiClient.post(`/mocktest/start/${testId}/`);
-      } catch (err) {
-        console.error('Failed to start test', err);
+      } catch {
       }
     };
 

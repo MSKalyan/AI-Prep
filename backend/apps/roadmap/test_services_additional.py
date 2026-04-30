@@ -130,24 +130,8 @@ def test_compute_weightage_updates_parent_and_projects_children(exam):
     child1 = Topic.objects.create(name="Vectors", subject=subject, parent=parent)
     child2 = Topic.objects.create(name="Matrices", subject=subject, parent=parent)
 
-    PYQ.objects.create(
-        exam=exam,
-        topic=parent,
-        year=date.today().year - 1,
-        marks=10,
-        question_type="mcq",
-        question_text="q1",
-        source_url="https://example.com/1",
-    )
-    PYQ.objects.create(
-        exam=exam,
-        topic=parent,
-        year=date.today().year - 2,
-        marks=10,
-        question_type="mcq",
-        question_text="q2",
-        source_url="https://example.com/2",
-    )
+    _create_pyq(exam, parent, date.today().year - 1, 10, "q1", "https://example.com/1")
+    _create_pyq(exam, parent, date.today().year - 2, 10, "q2", "https://example.com/2")
 
     WeightageService.compute_weightage(exam)
     parent.refresh_from_db()
@@ -166,3 +150,15 @@ def test_project_children_weightage_no_children_no_bulk_update(monkeypatch):
     monkeypatch.setattr("apps.roadmap.services.pyq.weightage_service.Topic.objects.bulk_update", bulk_update)
     WeightageService._project_children_weightage(SimpleNamespace(weightage=80), [])
     bulk_update.assert_not_called()
+
+
+def _create_pyq(exam, topic, year, marks, question_text, source_url):
+    PYQ.objects.create(
+        exam=exam,
+        topic=topic,
+        year=year,
+        marks=marks,
+        question_type="mcq",
+        question_text=question_text,
+        source_url=source_url,
+    )

@@ -1,8 +1,11 @@
 import uuid
+from typing import Dict, List, Any
+
 from ..db.chroma_client import get_collection
 from .embedder import get_embeddings
 
-def store_chunks(chunks, metadata):
+
+def store_chunks(chunks: List[str], metadata: Dict[str, Any]) -> None:
     collection = get_collection()
 
     ids = []
@@ -18,7 +21,7 @@ def store_chunks(chunks, metadata):
             "exam_type": metadata.get("exam_type", ""),
             "topic": metadata.get("topic", ""),
             "chunk_index": i,
-            "text": chunk[:500]  # IMPORTANT for keyword search
+            "text": chunk[:500]
         })
 
     embeddings = get_embeddings(chunks)
