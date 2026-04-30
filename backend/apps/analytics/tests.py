@@ -692,7 +692,12 @@ class TestStudyContentService(BaseTestCase):
     def test_fetch_youtube_videos_no_key(self):
         from apps.analytics.services.study_content_service import StudyContentService
 
-        videos = StudyContentService.fetch_youtube_videos(["test query"])
+        async def _fake_scrape(_queries):
+            return []
+
+        with patch.object(StudyContentService, "_scrape_youtube_video_links_async", side_effect=_fake_scrape):
+            with patch("apps.analytics.services.study_content_service.YOUTUBE_API_KEY", None):
+                videos = StudyContentService.fetch_youtube_videos(["test query"])
         self.assertEqual(videos, [])
 
     def test_fetch_youtube_videos_handles_http_403_gracefully(self):

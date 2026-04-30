@@ -1,7 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
-import requests
+import httpx
 
 from apps.roadmap.services.pyq.question_parser_service import QuestionParserService
 
@@ -47,7 +47,13 @@ def test_parse_question_success_with_filters_and_year(monkeypatch):
       <div>this is a two mark problem</div>
     </body></html>
     """
-    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: _mock_response(200, html))
+    async def _mock_safe_get_async(*args, **kwargs):
+        return _mock_response(200, html)
+
+    monkeypatch.setattr(
+        "apps.roadmap.services.pyq.question_parser_service.safe_get_async",
+        _mock_safe_get_async,
+    )
 
     question, topics, year, marks = QuestionParserService.parse_question(
         "https://example.com/gate-cse-2024/question/1"
@@ -60,15 +66,24 @@ def test_parse_question_success_with_filters_and_year(monkeypatch):
 
 
 def test_parse_question_returns_empty_on_non_200(monkeypatch):
-    monkeypatch.setattr(requests, "get", lambda *args, **kwargs: _mock_response(404, ""))
+    async def _mock_safe_get_async(*args, **kwargs):
+        return _mock_response(404, "")
+
+    monkeypatch.setattr(
+        "apps.roadmap.services.pyq.question_parser_service.safe_get_async",
+        _mock_safe_get_async,
+    )
     assert QuestionParserService.parse_question("https://example.com/x") == ("", [], None, None)
 
 
 def test_parse_question_returns_empty_on_request_exception(monkeypatch):
-    def _raise(*args, **kwargs):
-        raise requests.RequestException("network down")
+    async def _raise(*args, **kwargs):
+        raise httpx.RequestError("network down")
 
-    monkeypatch.setattr(requests, "get", _raise)
+    monkeypatch.setattr(
+        "apps.roadmap.services.pyq.question_parser_service.safe_get_async",
+        _raise,
+    )
     assert QuestionParserService.parse_question("https://example.com/x") == ("", [], None, None)
 
 
