@@ -1,8 +1,16 @@
 [run]
 omit =
+    */migrations/*
+    */tests.py
+    */test_*.py
+    *_tests.py
+    conftest.py
+    config/*
+    manage.py
+    ml_utils.py
+    */rag/*
     apps/roadmap/management/commands/generate_gate_pyqs.py
     apps/roadmap/management/commands/import_gate_pyq.py
     apps/roadmap/management/commands/import_gate_syllabus.py
     apps/roadmap/management/commands/seed_exam_syllabus.py
     apps/roadmap/services/adaptive_service.py
-
