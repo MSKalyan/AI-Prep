@@ -45,6 +45,7 @@ class DashboardService:
             roadmaps,
             test_stats,
             roadmap_stats,
+            active_roadmap,
         )
     @staticmethod
     def _get_test_stats(user):
@@ -99,6 +100,21 @@ class DashboardService:
         }
 
     @staticmethod
+    def _get_continue_studying(active_roadmap):
+        next_topic = (
+            RoadmapTopic.objects.filter(roadmap=active_roadmap, is_completed=False)
+            .select_related("topic")
+            .order_by("week_number", "day_number", "priority", "id")
+            .first()
+        )
+        if not next_topic:
+            return None
+        return {
+            "topic_id": next_topic.id,
+            "topic_name": next_topic.topic.name,
+        }
+
+    @staticmethod
     def _build_no_roadmap_response(study_streak, roadmaps, test_stats):
         return {
             "study_streak": study_streak,
@@ -109,14 +125,18 @@ class DashboardService:
             "average_score": test_stats["average_score"],
             "total_topics": 0,
             "completed_topics": 0,
+            "topics_completed": 0,
             "pending_topics": 0,
             "progress_percentage": 0,
+            "roadmap_progress": 0,
+            "continue_studying": None,
         }
 
     @staticmethod
     def _build_dashboard_response(
-        study_streak, weak_subject, roadmaps, test_stats, roadmap_stats
+        study_streak, weak_subject, roadmaps, test_stats, roadmap_stats, active_roadmap
     ):
+        continue_studying = DashboardService._get_continue_studying(active_roadmap)
         return {
             "study_streak": study_streak,
             "weak_subject": weak_subject,
@@ -126,6 +146,9 @@ class DashboardService:
             "average_score": test_stats["average_score"],
             "total_topics": roadmap_stats["total_topics"],
             "completed_topics": roadmap_stats["completed_topics"],
+            "topics_completed": roadmap_stats["completed_topics"],
             "pending_topics": roadmap_stats["pending_topics"],
             "progress_percentage": roadmap_stats["progress_percentage"],
+            "roadmap_progress": roadmap_stats["progress_percentage"],
+            "continue_studying": continue_studying,
         }

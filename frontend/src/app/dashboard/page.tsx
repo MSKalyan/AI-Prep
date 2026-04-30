@@ -66,6 +66,10 @@ export default function DashboardPage() {
 
   const performance = Array.isArray(performanceData?.topics) ? performanceData.topics : [];
   const weakTopics = performance.filter((t: TopicPerformance) => t.strength === 'weak');
+  const roadmapProgress = Number.isFinite(data?.roadmap_progress)
+    ? Number(data.roadmap_progress)
+    : 0;
+  const averageScore = Number.isFinite(data?.average_score) ? Number(data.average_score) : 0;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -89,8 +93,8 @@ export default function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard title="Study Streak" value={`${data.study_streak} days`} />
           <StatCard title="Topics Completed" value={data.topics_completed} />
-          <StatCard title="Progress" value={`${data.roadmap_progress}%`} />
-          <StatCard title="Avg Score" value={`${data.average_score}%`} />
+          <StatCard title="Progress" value={`${roadmapProgress.toFixed(2)}%`} />
+          <StatCard title="Avg Score" value={`${averageScore.toFixed(2)}%`} />
         </div>
 
         {/* MAIN GRID */}

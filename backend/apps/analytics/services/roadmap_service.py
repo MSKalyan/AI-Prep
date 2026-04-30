@@ -65,7 +65,7 @@ class RoadmapService:
         if not roadmap.exists():
             return {}
         day_map = RoadmapService._group_by_day(roadmap)
-        today_key = min(day_map.keys())[0]
+        today_key = min(day_map.keys())
         week, day = today_key
         topics_today = day_map[today_key]
         weak_topics = RoadmapService._get_weak_topics(user)

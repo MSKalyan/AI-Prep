@@ -375,4 +375,4 @@ Answer:
             )
         except DatabaseError:
             logger.error("Failed to persist AI usage log", exc_info=True)
-            raise
+            return

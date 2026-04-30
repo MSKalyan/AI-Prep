@@ -1,6 +1,7 @@
 from types import SimpleNamespace
 
 import pytest
+from django.db import DatabaseError
 
 from apps.ai_service.services.services import AIService
 
@@ -206,7 +207,7 @@ def test_log_usage_ignores_internal_create_errors(monkeypatch):
     svc = _mk_ai_service(monkeypatch)
     monkeypatch.setattr(
         "apps.ai_service.services.services.AIUsageLog",
-        SimpleNamespace(objects=SimpleNamespace(create=lambda **_k: (_ for _ in ()).throw(Exception("db")))),
+        SimpleNamespace(objects=SimpleNamespace(create=lambda **_k: (_ for _ in ()).throw(DatabaseError("db")))),
     )
     svc._log_usage(
         user=object(),

@@ -117,10 +117,9 @@ def test_day_distribution_splits_hours_across_days_and_stops_after_day5():
 
 
 @pytest.mark.django_db
-def test_compute_weightage_zero_total_marks_exits_early_with_message(exam, capsys):
+def test_compute_weightage_zero_total_marks_exits_early_with_message(exam, caplog):
     WeightageService.compute_weightage(exam)
-    out = capsys.readouterr().out
-    assert "No PYQs found for weightage computation" in out
+    assert "No PYQs found for weightage computation" in caplog.text
 
 
 @pytest.mark.django_db

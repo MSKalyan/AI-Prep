@@ -245,12 +245,6 @@ LLM_MAX_TOKENS = _get_env_int("LLM_MAX_TOKENS", 2000)
 
 AI_MODE = os.environ.get("AI_MODE", "groq")
 
-# Celery
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
-CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_TASK_ALWAYS_EAGER", "False") == "True"
-CELERY_TASK_EAGER_PROPAGATES = True
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 

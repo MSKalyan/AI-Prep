@@ -15,6 +15,7 @@ from .serializers import (
 from .services.services import AIService
 from .models import Conversation, Message, Document
 from django.db import DatabaseError
+from django.core.exceptions import ValidationError as DjangoValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -197,7 +198,7 @@ class ProcessDocumentView(APIView):
                 {"error": "Document not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
-        except (DatabaseError, ValueError, TypeError, AttributeError, TimeoutError) as e:
+        except (DatabaseError, DjangoValidationError, OSError, ValueError, TypeError) as e:
             logger.error("Document processing failed", exc_info=True)
             return Response(
                 {"error": str(e)},

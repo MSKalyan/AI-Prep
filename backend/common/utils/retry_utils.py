@@ -1,7 +1,9 @@
 import logging
 from typing import Any
 
+import httpx
 import requests
+from groq import APIConnectionError, APIStatusError, RateLimitError
 from tenacity import (
     RetryCallState,
     retry,
@@ -42,7 +44,7 @@ def _is_retryable_status(status_code: int | None) -> bool:
 
 
 def _is_non_retryable_status(status_code: int | None) -> bool:
-    return status_code in {400, 401, 403}
+    return status_code in {400, 401, 403, 404}
 
 
 def _before_sleep_log(retry_state: RetryCallState) -> None:
@@ -91,6 +93,31 @@ def safe_get(url: str, **kwargs):
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=1, max=8),
+    retry=retry_if_exception_type((httpx.RequestError, TimeoutError, RetryableExternalAPIError)),
+    before_sleep=_before_sleep_log,
+    retry_error_callback=_log_final_failure,
+    reraise=True,
+)
+async def safe_get_async(url: str, **kwargs):
+    timeout = kwargs.pop("timeout", DEFAULT_GET_TIMEOUT_SECONDS)
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        response = await client.get(url, **kwargs)
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        status_code = _extract_status_code(exc)
+        if _is_non_retryable_status(status_code):
+            raise
+        if _is_retryable_status(status_code):
+            raise RetryableExternalAPIError(str(exc)) from exc
+        raise
+
+    return response
+
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=8),
     retry=retry_if_exception_type((requests.exceptions.RequestException, TimeoutError, RetryableExternalAPIError)),
     before_sleep=_before_sleep_log,
     retry_error_callback=_log_final_failure,
@@ -100,7 +127,7 @@ def safe_llm_call(client, **kwargs):
     kwargs.setdefault("timeout", DEFAULT_LLM_TIMEOUT_SECONDS)
     try:
         return client.chat.completions.create(**kwargs)
-    except Exception as exc:
+    except (APIStatusError, APIConnectionError, RateLimitError, requests.exceptions.RequestException, TimeoutError) as exc:
         status_code = _extract_status_code(exc)
         if _is_non_retryable_status(status_code):
             raise

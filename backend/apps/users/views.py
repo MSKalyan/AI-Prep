@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
 from rest_framework.views import APIView
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import User
@@ -143,5 +144,5 @@ class RefreshAccessTokenView(APIView):
 
             return response
 
-        except Exception:
+        except TokenError:
             return Response({"detail": "Invalid refresh token"}, status=401)

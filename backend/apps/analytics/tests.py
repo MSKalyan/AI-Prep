@@ -4,6 +4,8 @@ from django.utils import timezone
 from rest_framework.test import APIClient
 from django.db import IntegrityError, transaction
 import os
+import httpx
+from unittest.mock import patch
 
 from apps.users.models import User
 from apps.roadmap.models import Exam, Subject, Topic
@@ -665,10 +667,49 @@ class TestStudyContentService(BaseTestCase):
         self.assertFalse(StudyContentService.is_good_video("Arrays in Tamil"))
         self.assertFalse(StudyContentService.is_good_video("Arrays", "Tamil Channel"))
 
+    def test_is_good_video_rejects_irrelevant_topic_title(self):
+        from apps.analytics.services.study_content_service import StudyContentService
+
+        self.assertFalse(
+            StudyContentService.is_good_video(
+                "Operating System deadlock full tutorial",
+                "GATE Academy",
+                expected_keywords=["arrays"],
+            )
+        )
+
+    def test_is_good_video_accepts_relevant_topic_title(self):
+        from apps.analytics.services.study_content_service import StudyContentService
+
+        self.assertTrue(
+            StudyContentService.is_good_video(
+                "Arrays in C++ | GATE PYQ practice session",
+                "GATE Academy",
+                expected_keywords=["arrays"],
+            )
+        )
+
     def test_fetch_youtube_videos_no_key(self):
         from apps.analytics.services.study_content_service import StudyContentService
 
         videos = StudyContentService.fetch_youtube_videos(["test query"])
+        self.assertEqual(videos, [])
+
+    def test_fetch_youtube_videos_handles_http_403_gracefully(self):
+        from apps.analytics.services.study_content_service import StudyContentService
+
+        async def _raise_403(*args, **kwargs):
+            request = httpx.Request("GET", "https://www.googleapis.com/youtube/v3/search")
+            response = httpx.Response(403, request=request)
+            raise httpx.HTTPStatusError("forbidden", request=request, response=response)
+
+        async def _fake_scrape(_queries):
+            return []
+
+        with patch.object(StudyContentService, "_fetch_videos_for_language_async", side_effect=_raise_403):
+            with patch.object(StudyContentService, "_scrape_youtube_video_links_async", side_effect=_fake_scrape):
+                with patch("apps.analytics.services.study_content_service.YOUTUBE_API_KEY", "dummy-key"):
+                    videos = StudyContentService.fetch_youtube_videos(["arrays gate tutorial"])
         self.assertEqual(videos, [])
 
     def test_get_study_content_topic_not_found(self):

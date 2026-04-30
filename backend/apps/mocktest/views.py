@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from .models import Question, MockTest, TestAttempt
-from apps.roadmap.models import Roadmap, Topic
+from apps.roadmap.models import Roadmap, Topic, RoadmapTopic
 from .serializers import (
     QuestionSerializer,
     MockTestSerializer,
@@ -372,7 +372,7 @@ class GenerateMockTestView(APIView):
             return data
         try:
             roadmap = self._get_roadmap(data["roadmap_id"])
-            topics = self._get_day_topics(roadmap, data["day"])
+            topics = self._get_day_topics(roadmap, data["day"], data.get("topic_id"))
             if not topics:
                 return Response({"error": "No topics found"}, status=400)
             result = self._create_test(request.user, roadmap, data, topics)
@@ -390,17 +390,42 @@ class GenerateMockTestView(APIView):
         return {
             "roadmap_id": roadmap_id,
             "day": day,
+            "topic_id": request.data.get("topic_id"),
             "num_questions": request.data.get("num_questions", 10),
         }
     def _get_roadmap(self, roadmap_id):
         return Roadmap.objects.get(id=roadmap_id)
-    def _get_day_topics(self, roadmap, day):
-        return list(
-            Topic.objects.filter(
-                roadmap_entries__roadmap=roadmap,
-                roadmap_entries__day_number=day
-            ).distinct()
+    def _get_day_topics(self, roadmap, day, topic_id=None):
+        queryset = Topic.objects.filter(
+            roadmap_entries__roadmap=roadmap,
+            roadmap_entries__day_number=day
         )
+        if topic_id:
+            # Frontend currently passes roadmap_topic id (`RoadmapTopic.id`) as `topic_id`.
+            # Accept both:
+            # 1) direct Topic.id
+            # 2) RoadmapTopic.id belonging to this roadmap/day
+            topic_match = queryset.filter(id=topic_id).distinct()
+            if topic_match.exists():
+                return list(topic_match)
+
+            roadmap_entry = (
+                RoadmapTopic.objects.filter(
+                    id=topic_id,
+                    roadmap=roadmap,
+                )
+                .select_related("topic")
+                .first()
+            )
+            if roadmap_entry and roadmap_entry.topic_id:
+                return list(
+                    Topic.objects.filter(
+                        id=roadmap_entry.topic_id,
+                        roadmap_entries__roadmap=roadmap,
+                    ).distinct()
+                )
+            return []
+        return list(queryset.distinct())
     def _create_test(self, user, roadmap, data, topics):
         result = MockTestService.create_mock_test(
             user=user,

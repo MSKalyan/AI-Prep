@@ -72,6 +72,7 @@ export default function WeekPlanner({ roadmapId, week, studyMode = false, onSele
     queryKey: ['week-progress', roadmapId, week],
     queryFn: () => getWeekProgress(roadmapId, week),
   });
+  const weekProgress = Number.isFinite(progress?.progress) ? Number(progress?.progress) : 0;
 
   const grouped: Record<number, WeekTopic[]> = {};
   topics.forEach((t: WeekTopic) => {
@@ -142,11 +143,11 @@ export default function WeekPlanner({ roadmapId, week, studyMode = false, onSele
         <div className="flex items-center gap-4">
           {progress && (
             <div className="flex flex-col items-end">
-              <span className="text-sm font-semibold text-blue-600">{progress.progress}%</span>
+              <span className="text-sm font-semibold text-blue-600">{weekProgress.toFixed(2)}%</span>
               <div className="w-24 h-1.5 bg-gray-200 rounded-full mt-1">
                 <div
                   className="h-full bg-blue-500 rounded-full"
-                  style={{ width: `${progress.progress}%` }}
+                  style={{ width: `${weekProgress}%` }}
                 />
               </div>
             </div>

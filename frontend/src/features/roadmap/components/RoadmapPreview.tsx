@@ -21,6 +21,7 @@ export default function RoadmapPreview({ roadmap }: Readonly<Props>) {
     queryKey: ['roadmap-progress', roadmap.id],
     queryFn: () => getRoadmapProgress(roadmap.id),
   });
+  const progressValue = Number.isFinite(progress?.progress) ? Number(progress?.progress) : 0;
 
   return (
     <div className="rounded-lg border bg-white p-6 shadow-sm">
@@ -46,10 +47,10 @@ export default function RoadmapPreview({ roadmap }: Readonly<Props>) {
         <div className="mt-4 space-y-1">
           <div className="flex justify-between text-sm text-gray-600">
             <span>Overall Progress</span>
-            <span>{progress.progress}%</span>
+            <span>{progressValue.toFixed(2)}%</span>
           </div>
           <div className="h-2 bg-gray-200 rounded">
-            <div className="h-2 bg-green-500 rounded" style={{ width: `${progress.progress}%` }} />
+            <div className="h-2 bg-green-500 rounded" style={{ width: `${progressValue}%` }} />
           </div>
           <div className="text-xs text-gray-500">
             {progress.completed_topics} / {progress.total_topics} topics completed

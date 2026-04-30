@@ -1,7 +1,8 @@
 import re
-import requests
+from asgiref.sync import async_to_sync
+import httpx
 from bs4 import BeautifulSoup
-from common.utils.retry_utils import safe_get
+from common.utils.retry_utils import safe_get_async
 
 
 class QuestionParserService:
@@ -52,13 +53,20 @@ class QuestionParserService:
 
     @staticmethod
     def parse_question(url):
+        return async_to_sync(QuestionParserService.parse_question_async)(url)
+
+    @staticmethod
+    async def parse_question_async(url):
 
         try:
-            response = safe_get(
+            response = await safe_get_async(
                 url, headers=QuestionParserService.HEADERS, timeout=10
             )
 
-        except requests.RequestException:
+        except httpx.RequestError:
+            return "", [], None, None
+
+        if response.status_code != 200:
             return "", [], None, None
 
         soup = BeautifulSoup(response.text, "html.parser")

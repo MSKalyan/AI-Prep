@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.core.files.base import ContentFile
 from django.conf import settings
+from django.db import DatabaseError
 from rest_framework.test import APIClient
 
 from apps.ai_service.models import Document, Conversation, Message, AIUsageLog
@@ -452,7 +453,7 @@ class TestAskAIViewErrorHandling(TestCase):
         from unittest.mock import patch
         self.client.force_authenticate(user=self.user)
         with patch("apps.ai_service.services.services.AIService.ask_ai") as mock_ask:
-            mock_ask.side_effect = Exception("Some error")
+            mock_ask.side_effect = ValueError("Some error")
             response = self.client.post(
                 "/api/ask-ai/",
                 {"question": "test"},
@@ -509,7 +510,7 @@ class TestProcessDocumentViewErrorHandling(TestCase):
         doc = Document.objects.create(user=self.user, title="Test", processed=False)
         self.client.force_authenticate(user=self.user)
         with patch("apps.ai_service.views.RAGService.ingest_document") as mock_ingest:
-            mock_ingest.side_effect = Exception("RAG error")
+            mock_ingest.side_effect = DatabaseError("RAG error")
             response = self.client.post(
                 "/api/documents/process/",
                 {"document_id": doc.id},

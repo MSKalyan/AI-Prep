@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 
 class MockTestService:
     _OPTION_KEYS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    _TOPIC_STOPWORDS = {
+        "and", "the", "for", "with", "from", "into", "using", "use", "based",
+        "introduction", "basics", "advanced", "concepts", "theory", "problems"
+    }
 
     @staticmethod
     def create_mock_test(
@@ -146,7 +150,7 @@ class MockTestService:
 
         if len(all_pyqs) < count:
             all_pyqs = MockTestService._search_subject_fallback_pyqs(
-                subject_ids, count, all_pyqs
+                subject_ids, topic_keywords, count, all_pyqs
             )
 
         return MockTestService._convert_pyqs_to_questions(all_pyqs[:count])
@@ -195,12 +199,13 @@ class MockTestService:
             .exclude(id__in=[p.id for p in existing_pyqs])
             .order_by("?")[:count]
         )
-        logger.debug("[PYQ] Subject+keyword match: %s PYQs", len(pyqs))
-        existing_pyqs.extend(pyqs)
+        filtered = [p for p in pyqs if MockTestService._is_relevant_to_keywords(p.question_text, topic_keywords)]
+        logger.debug("[PYQ] Subject+keyword match: %s PYQs (filtered %s)", len(pyqs), len(filtered))
+        existing_pyqs.extend(filtered)
         return existing_pyqs
 
     @staticmethod
-    def _search_subject_fallback_pyqs(subject_ids, count, existing_pyqs):
+    def _search_subject_fallback_pyqs(subject_ids, topic_keywords, count, existing_pyqs):
         if not subject_ids:
             return existing_pyqs
         pyqs = list(
@@ -208,9 +213,34 @@ class MockTestService:
             .exclude(id__in=[p.id for p in existing_pyqs])
             .order_by("?")[:count]
         )
-        logger.debug("[PYQ] Subject fallback: %s PYQs", len(pyqs))
-        existing_pyqs.extend(pyqs)
+        filtered = [p for p in pyqs if MockTestService._is_relevant_to_keywords(p.question_text, topic_keywords)]
+        logger.debug("[PYQ] Subject fallback: %s PYQs (filtered %s)", len(pyqs), len(filtered))
+        existing_pyqs.extend(filtered)
         return existing_pyqs
+
+    @staticmethod
+    def _keywords_from_topics(topics):
+        keywords = set()
+        for t in topics or []:
+            if not t or not t.name:
+                continue
+            words = re.findall(r"[a-z0-9]+", t.name.lower())
+            for w in words:
+                if len(w) >= 4 and w not in MockTestService._TOPIC_STOPWORDS:
+                    keywords.add(w)
+        return keywords
+
+    @staticmethod
+    def _is_relevant_to_keywords(text, keywords):
+        if not text:
+            return False
+        if not keywords:
+            return True
+        words = set(re.findall(r"[a-z0-9]+", text.lower()))
+        if not words:
+            return False
+        overlap = len(words.intersection(set(keywords)))
+        return overlap >= 1
 
     @staticmethod
     def _get_question_bank_questions(topics, count, exclude_ids=None):
@@ -548,6 +578,14 @@ class MockTestService:
                 )
                 return None
 
+            topic_keywords = MockTestService._keywords_from_topics(topics)
+            if not MockTestService._is_relevant_to_keywords(
+                q_data.get("question", ""),
+                topic_keywords,
+            ):
+                logger.warning("Skipping generated question - not relevant to selected topic keywords")
+                return None
+
             logger.debug(
                 "[LLM] Creating question %s/%s: %s...",
                 idx + 1,
@@ -573,6 +611,9 @@ class MockTestService:
 
     @staticmethod
     def _generate_llm_questions_with_retry(topics, count, max_retries=2):
+        if not topics or count <= 0:
+            return []
+
         for _ in range(max_retries):
             try:
                 questions = MockTestService._generate_llm_questions(topics, count)
