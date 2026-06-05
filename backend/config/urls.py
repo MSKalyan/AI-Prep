@@ -5,9 +5,9 @@ from django.conf.urls.static import static
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('apps.users.urls')),
-    path('api/', include('apps.roadmap.urls')),
-    path('api/', include('apps.mocktest.urls')),
-    path('api/', include('apps.ai_service.urls')),
+    path('api/roadmap/', include('apps.roadmap.urls')),
+    path('api/mocktest/', include('apps.mocktest.urls')),
+    path('api/ai/', include('apps.ai_service.urls')),
     path('api/analytics/', include('apps.analytics.urls')),
 ]
 

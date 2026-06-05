@@ -1,9 +1,6 @@
-from typing import Any
-
 import chromadb
 from chromadb.api.client import Client as ChromaClient
 from chromadb.api.client import Collection as ChromaCollection
-
 
 def get_chroma_client() -> ChromaClient:
     return chromadb.Client(
@@ -12,7 +9,6 @@ def get_chroma_client() -> ChromaClient:
             persist_directory="./chroma_db"
         )
     )
-
 
 def get_collection(name: str = "documents") -> ChromaCollection:
     client = get_chroma_client()

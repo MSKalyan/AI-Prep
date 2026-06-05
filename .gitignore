@@ -73,6 +73,7 @@ backend/chroma_db/
 backend/media/
 backend/pyqs.json
 backend/data/
+backend/coverage.xml
 
 # Dumps / misc
 *.dump

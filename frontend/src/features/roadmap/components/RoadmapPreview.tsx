@@ -36,9 +36,7 @@ export default function RoadmapPreview({ roadmap }: Readonly<Props>) {
         <p>
           <strong>Total Weeks:</strong> {roadmap.total_weeks}
         </p>
-        <p>
-          <strong>Difficulty:</strong> {roadmap.difficulty_level}
-        </p>
+  
       </div>
 
       {roadmap.description && <p className="mt-4 text-sm text-gray-700">{roadmap.description}</p>}

@@ -4,7 +4,7 @@ from django.conf import settings
 from django.db import DatabaseError
 from rest_framework.test import APIClient
 
-from apps.ai_service.models import Document, Conversation, Message, AIUsageLog
+from apps.ai_service.models import Document, Conversation, Message
 from apps.ai_service.services.llm_service import LLMService
 from apps.ai_service.serializers import (
     AskAISerializer,
@@ -146,40 +146,6 @@ class TestMessageModel(TestCase):
         self.assertIsNone(message.confidence_score)
 
 
-class TestAIUsageLogModel(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(email=TEST_EMAIL, password=TEST_PASSWORD)
-
-    def test_create_usage_log(self):
-        log = AIUsageLog.objects.create(
-            user=self.user,
-            endpoint="topic-explanation",
-            model_used="llama",
-            total_tokens=300,
-        )
-        self.assertEqual(log.user, self.user)
-
-    def test_usage_log_default_values(self):
-        log = AIUsageLog.objects.create(
-            user=self.user, endpoint="test", model_used="test-model"
-        )
-        self.assertEqual(log.total_tokens, 0)
-        self.assertTrue(log.success)
-
-    def test_usage_log_with_error(self):
-        log = AIUsageLog.objects.create(
-            user=self.user,
-            endpoint="test",
-            model_used="test-model",
-            success=False,
-            error_message="Something went wrong",
-            response_time_ms=1500,
-        )
-        self.assertFalse(log.success)
-        self.assertEqual(log.error_message, "Something went wrong")
-        self.assertEqual(log.response_time_ms, 1500)
-
-
 class TestLLMService(TestCase):
     def test_generate_response_safe(self):
         service = LLMService()
@@ -314,21 +280,6 @@ class TestAskAIView(TestCase):
     def test_authenticated_post_invalid_data(self):
         self.client.force_authenticate(user=self.user)
         response = self.client.post("/api/ask-ai/", {}, format="json")
-        self.assertEqual(response.status_code, 400)
-
-
-class TestGenerateQuestionsView(TestCase):
-    def setUp(self):
-        self.client = APIClient()
-        self.user = User.objects.create_user(email=TEST_EMAIL, password=TEST_PASSWORD)
-
-    def test_generate_questions_unauthenticated(self):
-        response = self.client.post("/api/generate-questions/", {}, format="json")
-        self.assertEqual(response.status_code, 401)
-
-    def test_generate_questions_invalid_data(self):
-        self.client.force_authenticate(user=self.user)
-        response = self.client.post("/api/generate-questions/", {}, format="json")
         self.assertEqual(response.status_code, 400)
 
 

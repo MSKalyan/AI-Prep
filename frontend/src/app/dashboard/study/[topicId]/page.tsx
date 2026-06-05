@@ -31,6 +31,8 @@ export default function StudyPage() {
     refetchOnReconnect: false,
   });
 
+  
+
   useEffect(() => {
     if (!Number.isNaN(dayFromUrl)) {
       setSelectedDay(dayFromUrl);
@@ -140,7 +142,11 @@ export default function StudyPage() {
 
         {/* YOUTUBE */}
         <div className="mt-3">
-          <YouTubeResources topicName={data.topic} youtubeLinks={data.youtube_links || []} />
+          {(() => {
+            const seen = new Set<string>();
+            const unique = (data.youtube_resources || []).filter((v: any) => seen.has(v.video_id) ? false : seen.add(v.video_id)).slice(0, 3);
+            return <YouTubeResources topicName={data.topic} youtubeLinks={unique} />;
+          })()}
         </div>
 
         {/* CTA */}

@@ -1,11 +1,5 @@
 from rest_framework import serializers
-from django.contrib.auth import authenticate
 from .models import User
-
-
-# =====================================
-# User Registration
-# =====================================
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, min_length=8)
@@ -42,42 +36,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         user.save()
 
         return user
-
-
-# =====================================
-# User Login
-# =====================================
-
-class UserLoginSerializer(serializers.Serializer):
-    email = serializers.EmailField()
-    password = serializers.CharField(write_only=True)
-
-    def validate(self, attrs):
-        email = attrs.get('email')
-        password = attrs.get('password')
-
-        if not email or not password:
-            raise serializers.ValidationError(
-                'Must include "email" and "password"'
-            )
-
-        # IMPORTANT:
-        # Works only if USERNAME_FIELD = 'email'
-        user = authenticate(username=email, password=password)
-
-        if not user:
-            raise serializers.ValidationError('Invalid credentials')
-
-        if not user.is_active:
-            raise serializers.ValidationError('User account is disabled')
-
-        attrs['user'] = user
-        return attrs
-
-
-# =====================================
-# User Profile Serializer
-# =====================================
 
 class UserProfileSerializer(serializers.ModelSerializer):
     password = serializers.CharField(

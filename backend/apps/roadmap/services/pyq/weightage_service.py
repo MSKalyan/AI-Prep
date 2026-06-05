@@ -59,7 +59,7 @@ class WeightageService:
 
         if total_exam_marks == 0:
             msg = "No PYQs found for weightage computation"
-            logger.warning(msg)
+            logger.info(msg)
             return
 
         agg_map = WeightageService._get_agg_map(exam)

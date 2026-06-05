@@ -1,17 +1,14 @@
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
+
 class CookieJWTAuthentication(JWTAuthentication):
 
     def authenticate(self, request):
-
-        # First try Authorization header
         header = self.get_header(request)
 
         if header is not None:
             raw_token = self.get_raw_token(header)
-
         else:
-            # fallback to cookie
             raw_token = request.COOKIES.get("auth_token")
 
         if raw_token is None:

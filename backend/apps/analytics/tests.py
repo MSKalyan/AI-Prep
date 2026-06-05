@@ -692,10 +692,10 @@ class TestStudyContentService(BaseTestCase):
     def test_fetch_youtube_videos_no_key(self):
         from apps.analytics.services.study_content_service import StudyContentService
 
-        async def _fake_scrape(_queries):
+        def _fake_scrape(_queries):
             return []
 
-        with patch.object(StudyContentService, "_scrape_youtube_video_links_async", side_effect=_fake_scrape):
+        with patch.object(StudyContentService, "_scrape_youtube_video_links", side_effect=_fake_scrape):
             with patch("apps.analytics.services.study_content_service.YOUTUBE_API_KEY", None):
                 videos = StudyContentService.fetch_youtube_videos(["test query"])
         self.assertEqual(videos, [])
@@ -703,16 +703,14 @@ class TestStudyContentService(BaseTestCase):
     def test_fetch_youtube_videos_handles_http_403_gracefully(self):
         from apps.analytics.services.study_content_service import StudyContentService
 
-        async def _raise_403(*args, **kwargs):
-            request = httpx.Request("GET", "https://www.googleapis.com/youtube/v3/search")
-            response = httpx.Response(403, request=request)
-            raise httpx.HTTPStatusError("forbidden", request=request, response=response)
+        def _raise_403(*args, **kwargs):
+            raise requests.exceptions.HTTPError("forbidden")
 
-        async def _fake_scrape(_queries):
+        def _fake_scrape(_queries):
             return []
 
-        with patch.object(StudyContentService, "_fetch_videos_for_language_async", side_effect=_raise_403):
-            with patch.object(StudyContentService, "_scrape_youtube_video_links_async", side_effect=_fake_scrape):
+        with patch.object(StudyContentService, "_fetch_videos_for_language", side_effect=_raise_403):
+            with patch.object(StudyContentService, "_scrape_youtube_video_links", side_effect=_fake_scrape):
                 with patch("apps.analytics.services.study_content_service.YOUTUBE_API_KEY", "dummy-key"):
                     videos = StudyContentService.fetch_youtube_videos(["arrays gate tutorial"])
         self.assertEqual(videos, [])

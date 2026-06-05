@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import PYQ, Exam, Roadmap, RoadmapTopic, RoadmapGenerationJob, Subject, Topic, Subtopic
+from .models import PYQ, Exam, Roadmap, RoadmapTopic, Subject, Topic, Subtopic
 
 
 class RoadmapTopicInline(admin.TabularInline):
@@ -13,11 +13,6 @@ class ExamAdmin(admin.ModelAdmin):
     list_display = ('name', 'category', 'total_marks')
     search_fields = ('name', 'category')
 
-@admin.register(RoadmapGenerationJob)
-class RoadmapGenerationJobAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'status', 'created_at')
-    list_filter = ('status',)
-    search_fields = ('user__email',)
 
 @admin.register(Roadmap)
 class RoadmapAdmin(admin.ModelAdmin):

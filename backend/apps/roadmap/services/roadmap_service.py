@@ -47,53 +47,36 @@ class RoadmapService:
     def _create_week_topics(roadmap, week_data, global_fallback, daily_limit):
         w_num = week_data["week_number"]
         items = week_data["items"]
-        RoadmapService._create_revision_topic(
-            roadmap, w_num, items, global_fallback, daily_limit
-        )
-        RoadmapService._create_practice_topic(
-            roadmap, w_num, items, global_fallback, daily_limit
-        )
-        RoadmapService._create_study_topics(roadmap, w_num, items, daily_limit)
+        RoadmapService._create_study_topics_7_days(roadmap, w_num, items, daily_limit)
 
     @staticmethod
-    def _create_revision_topic(roadmap, w_num, items, global_fallback, daily_limit):
-        rev_topic = items[-1]["topic"] if items else global_fallback
-        RoadmapTopic.objects.create(
-            roadmap=roadmap,
-            week_number=w_num,
-            day_number=6,
-            topic=rev_topic,
-            estimated_hours=daily_limit,
-            phase="revision",
-            priority=1,
-        )
-
-    @staticmethod
-    def _create_practice_topic(roadmap, w_num, items, global_fallback, daily_limit):
-        mock_topic = items[0]["topic"] if items else global_fallback
-        RoadmapTopic.objects.create(
-            roadmap=roadmap,
-            week_number=w_num,
-            day_number=7,
-            topic=mock_topic,
-            estimated_hours=daily_limit,
-            phase="practice",
-            priority=1,
-        )
-
-    @staticmethod
-    def _create_study_topics(roadmap, w_num, items, daily_limit):
+    def _create_study_topics_7_days(roadmap, w_num, items, daily_limit):
         curr_day = 1
         day_rem_h = daily_limit
         for item in items:
             curr_day, day_rem_h = RoadmapService._allocate_topic_hours(
                 roadmap, w_num, item, curr_day, day_rem_h, daily_limit
             )
+        if day_rem_h < daily_limit:
+            curr_day += 1
+            day_rem_h = daily_limit
+        while curr_day <= 7 and items:
+            topic = items[0]["topic"]
+            RoadmapTopic.objects.create(
+                roadmap=roadmap,
+                week_number=w_num,
+                day_number=curr_day,
+                topic=topic,
+                estimated_hours=round(day_rem_h, 1),
+                phase="study",
+            )
+            curr_day += 1
+            day_rem_h = daily_limit
 
     @staticmethod
     def _allocate_topic_hours(roadmap, w_num, item, curr_day, day_rem_h, daily_limit):
         topic_h = float(item["hours"])
-        while topic_h > 0.1 and curr_day <= 5:
+        while topic_h > 0.1 and curr_day <= 7:
             allocated = min(topic_h, day_rem_h)
             if allocated > 0.1:
                 RoadmapService._create_study_topic_row(

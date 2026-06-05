@@ -4,10 +4,6 @@ from rest_framework import serializers
 from .models import Roadmap, RoadmapTopic, Exam
 
 
-# =====================================================
-# EXAM SERIALIZER (Dropdown API)
-# =====================================================
-
 
 class ExamSerializer(serializers.ModelSerializer):
     class Meta:
@@ -19,11 +15,6 @@ class ExamSerializer(serializers.ModelSerializer):
             "total_marks",
             "exam_date",
         )
-
-
-# =====================================================
-# ROADMAP TOPIC SERIALIZER
-# =====================================================
 
 
 class RoadmapTopicSerializer(serializers.ModelSerializer):
@@ -57,15 +48,9 @@ class RoadmapTopicSerializer(serializers.ModelSerializer):
         )
 
 
-# =====================================================
-# ROADMAP SERIALIZER (MAIN RESPONSE)
-# =====================================================
-
-
 class RoadmapSerializer(serializers.ModelSerializer):
     topics = RoadmapTopicSerializer(many=True, read_only=True)
 
-    # Show exam details instead of raw FK
     exam = ExamSerializer(read_only=True)
 
     class Meta:
@@ -88,39 +73,27 @@ class RoadmapSerializer(serializers.ModelSerializer):
         )
 
 
-# =====================================================
-# DETERMINISTIC ROADMAP GENERATE SERIALIZER (SPRINT 3)
-# =====================================================
-
 
 class DeterministicRoadmapGenerateSerializer(serializers.Serializer):
     exam_id = serializers.IntegerField()
     target_date = serializers.DateField()
     study_hours_per_day = serializers.IntegerField(min_value=1, max_value=24)
 
-    # Field-level validation
     def validate_target_date(self, value):
         if value <= date.today():
             raise serializers.ValidationError("Target date must be a future date.")
+        if value > date(2027, 3, 1):
+            raise serializers.ValidationError("Target date must be on or before 01 March 2027.")
         return value
 
-    # Object-level validation
     def validate(self, data):
         exam_id = data.get("exam_id")
-        target_date = data.get("target_date")
         try:
             exam = Exam.objects.get(id=exam_id)
         except Exam.DoesNotExist:
             raise serializers.ValidationError({"exam_id": "Invalid exam selected."})
 
-        if exam.exam_date and target_date > exam.exam_date:
-            raise serializers.ValidationError(
-                {"target_date": "Target date cannot exceed the official exam date."}
-            )
-
-        # Store exam instance for later use
         data["exam"] = exam
-
         return data
 
     class StudyTopicSerializer(serializers.Serializer):

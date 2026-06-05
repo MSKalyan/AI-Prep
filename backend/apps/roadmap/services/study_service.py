@@ -25,6 +25,44 @@ class StudyService:
             f"Quick Revision:\n"
             f"- Focus on concept clarity first, then solve PYQs and timed questions."
         )
+
+    @staticmethod
+    def _generate_ai_explanation(topic_name: str, subject: str) -> str:
+        from django.conf import settings
+        try:
+            api_key = settings.GROQ_API_KEY
+            if not api_key:
+                logger.warning("GROQ_API_KEY not configured, using fallback")
+                return StudyService._fallback_explanation(topic_name)
+
+            prompt = f"""You are an expert tutor helping students prepare for competitive exams like GATE.
+
+Topic: {topic_name}
+Subject: {subject}
+
+Provide a concise explanation in this exact format:
+1. Overview: A brief 2-3 sentence introduction to {topic_name}
+2. Key Concepts: 4-5 important points students must know
+3. Common Pitfalls: 2-3 mistakes students make
+4. Quick Tips: 2-3 memory aids or shortcuts
+
+Keep total under 150 words. Use simple language."""
+
+            llm = LLMService()
+            explanation = llm.generate_response(prompt, endpoint="topic-explanation")
+
+            if explanation:
+                explanation = StudyService.clean_ai_output(explanation)
+                logger.info(f"Generated AI explanation for topic: {topic_name}")
+                return explanation
+
+            logger.warning(f"LLM returned empty explanation for {topic_name}, using fallback")
+            return StudyService._fallback_explanation(topic_name)
+
+        except Exception as e:
+            logger.error(f"Failed to generate AI explanation for {topic_name}: {e}")
+            return StudyService._fallback_explanation(topic_name)
+
     @staticmethod
     def clean_ai_output(text: str) -> str:
         # Remove markdown bullets (*, -, etc.)
@@ -89,9 +127,14 @@ class StudyService:
         ).get(id=topic_id)
 
         subject = topic.topic.parent.name if topic.topic.parent else topic.topic.name
-        if not topic.ai_explanation or len(topic.ai_explanation.strip()) < 80:
-            # Keep study page responsive: avoid blocking first-load on external LLM latency.
-            topic.ai_explanation = StudyService._fallback_explanation(topic.topic.name)
+        needs_regeneration = (
+            not topic.ai_explanation or
+            len(topic.ai_explanation.strip()) < 80 or
+            "Definition:" in topic.ai_explanation
+        )
+        if needs_regeneration:
+            explanation = StudyService._generate_ai_explanation(topic.topic.name, subject)
+            topic.ai_explanation = explanation
             topic.save(update_fields=["ai_explanation"])
         pyqs = PYQ.objects.filter(topic=topic.topic).values("year", "marks")
         youtube_data = StudyContentService.get_study_content(topic.topic.name)
@@ -105,7 +148,7 @@ class StudyService:
             "estimated_hours": topic.estimated_hours,
             "ai_explanation": topic.ai_explanation,
             "pyqs": list(pyqs),
-            "youtube_resources": youtube_data.get("youtube_links", [])
+            "youtube_resources": youtube_data.get("youtube_videos", [])
             if youtube_data
             else [],
             "mock_tests": [],

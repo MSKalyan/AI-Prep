@@ -178,52 +178,6 @@ class RoadmapTopic(models.Model):
         return f"Week {self.week_number}: {self.topic.name}"
 
 
-class RoadmapGenerationJob(models.Model):
-    """
-    Tracks async roadmap generation status
-    """
-
-    STATUS_CHOICES = [
-        ("pending", "Pending"),
-        ("processing", "Processing"),
-        ("completed", "Completed"),
-        ("failed", "Failed"),
-    ]
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name="roadmap_jobs",
-    )
-
-    status = models.CharField(
-        max_length=20,
-        choices=STATUS_CHOICES,
-        default="pending",
-        db_index=True,
-    )
-
-    roadmap = models.ForeignKey(
-        Roadmap,
-        null=True,
-        blank=True,
-        on_delete=models.SET_NULL,
-        related_name="generation_jobs",
-    )
-
-    error_message = models.TextField(blank=True)
-
-    created_at = models.DateTimeField(auto_now_add=True)
-    input_payload = models.JSONField(default=dict, blank=True)
-
-    class Meta:
-        db_table = "roadmap_generation_jobs"
-        ordering = ["-created_at"]
-
-    def __str__(self):
-        return f"Job {self.id} - {self.status}"
-
-
 class PYQ(models.Model):
     QUESTION_TYPES = [
         ("mcq", "Single Correct MCQ"),

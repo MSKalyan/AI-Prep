@@ -24,11 +24,6 @@ interface GeneratePracticePayload {
   num_questions?: number;
 }
 
-export const getQuestions = async () => {
-  const { data } = await apiClient.get('/questions/');
-  return data;
-};
-
 export const createMockTest = async (payload: CreateMockTestPayload) => {
   const { data } = await apiClient.post('/mocktest/generate/', payload);
   return data;

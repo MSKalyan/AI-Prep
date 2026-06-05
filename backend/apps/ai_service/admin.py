@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Document, Conversation, Message, AIUsageLog
+from .models import Document, Conversation, Message
 
 
 @admin.register(Document)
@@ -39,11 +39,3 @@ class MessageAdmin(admin.ModelAdmin):
     content_preview.short_description = 'Content'
 
 
-@admin.register(AIUsageLog)
-class AIUsageLogAdmin(admin.ModelAdmin):
-    list_display = ('user', 'endpoint', 'model_used', 'total_tokens', 
-                   'success', 'response_time_ms', 'created_at')
-    list_filter = ('success', 'endpoint', 'model_used', 'created_at')
-    search_fields = ('user__email', 'endpoint')
-    readonly_fields = ('created_at',)
-    date_hierarchy = 'created_at'

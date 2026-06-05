@@ -59,7 +59,7 @@ export default function AskAIChat({
 
     const loadMessages = async () => {
       try {
-        const res = await apiClient.get(`/conversations/${conversationId}/messages/`);
+        const res = await apiClient.get(`/ai/conversations/${conversationId}/messages/`);
         const formatted: ChatMessage[] = res.data.map((m: ApiMessage) => ({
           id: m.created_at || `${m.role}-${m.content}`,
           role: m.role,
@@ -132,7 +132,7 @@ export default function AskAIChat({
         payload.conversation_id = conversationId;
       }
 
-      const response = await apiClient.post('/ask-ai/', payload);
+      const response = await apiClient.post('/ai/ask-ai/', payload);
       const answer = response.data.answer;
       const newId = response.data.conversation_id;
       const sources: Source[] = response.data.retrieved_documents || [];

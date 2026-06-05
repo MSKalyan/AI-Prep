@@ -154,10 +154,7 @@ def test_ask_ai_no_docs_path_creates_conversation_and_messages(monkeypatch):
         SimpleNamespace(objects=SimpleNamespace(create=lambda **kwargs: created_messages.append(kwargs))),
     )
     usage_logs = []
-    monkeypatch.setattr(
-        "apps.ai_service.services.services.AIUsageLog",
-        SimpleNamespace(objects=SimpleNamespace(create=lambda **kwargs: usage_logs.append(kwargs))),
-    )
+   
     svc.rag = SimpleNamespace(query=lambda **_kwargs: {"documents": [], "answer": ""})
     monkeypatch.setattr(svc, "_call_with_fallback", lambda *_a, **_k: ("fallback", {"total_tokens": 11}))
 
@@ -181,10 +178,7 @@ def test_ask_ai_docs_found_no_fallback(monkeypatch):
         "apps.ai_service.services.services.Message",
         SimpleNamespace(objects=SimpleNamespace(create=lambda **_k: None)),
     )
-    monkeypatch.setattr(
-        "apps.ai_service.services.services.AIUsageLog",
-        SimpleNamespace(objects=SimpleNamespace(create=lambda **_k: None)),
-    )
+  
     svc.rag = SimpleNamespace(query=lambda **_kwargs: {"documents": ["d1", "d2", "d3", "d4"], "answer": "x" * 60})
     out = svc.ask_ai(user=object(), question="Explain", context="", exam_type="")
     assert out["confidence"] == 1.0
@@ -203,17 +197,3 @@ def test_ask_ai_exception_logs_and_reraises(monkeypatch):
         svc.ask_ai(user=object(), question="x")
 
 
-def test_log_usage_ignores_internal_create_errors(monkeypatch):
-    svc = _mk_ai_service(monkeypatch)
-    monkeypatch.setattr(
-        "apps.ai_service.services.services.AIUsageLog",
-        SimpleNamespace(objects=SimpleNamespace(create=lambda **_k: (_ for _ in ()).throw(DatabaseError("db")))),
-    )
-    svc._log_usage(
-        user=object(),
-        endpoint="ask-ai",
-        usage={},
-        response_time=1,
-        success=False,
-        error_message="e",
-    )

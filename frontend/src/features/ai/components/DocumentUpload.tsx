@@ -22,16 +22,14 @@ export default function DocumentUpload({ compact = false }: Readonly<{ compact?:
     try {
       setLoading(true);
 
-      // STEP 1: Upload
-      const uploadRes = await apiClient.post('/documents/', formData, {
+      const uploadRes = await apiClient.post('/ai/documents/', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
       const documentId = uploadRes.data.id;
 
-      // STEP 2: Process (RAG ingestion)
       const processRes = await apiClient.post(
-        '/documents/process/',
+        '/ai/documents/process/',
         {
           document_id: documentId,
         },

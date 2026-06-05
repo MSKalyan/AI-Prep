@@ -2,7 +2,6 @@ from rest_framework import serializers
 from .models import Question, MockTest, TestAttempt, Answer
 
 
-# -------------------- QUESTION --------------------
 
 class QuestionSerializer(serializers.ModelSerializer):
     topic=serializers.CharField(source='topic.name', read_only=True)
@@ -19,7 +18,6 @@ class QuestionSerializer(serializers.ModelSerializer):
             'negative_marks',
             'tags'
         )
-        # correct_answer & explanation intentionally excluded
 
 class MockTestQuestionSerializer(serializers.Serializer):
     id = serializers.IntegerField()
@@ -33,7 +31,6 @@ class QuestionDetailSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-# -------------------- MOCK TEST --------------------
 
 class MockTestSerializer(serializers.ModelSerializer):
     questions_count = serializers.SerializerMethodField()
@@ -79,8 +76,6 @@ class MockTestDetailSerializer(serializers.ModelSerializer):
         )
 
 
-# -------------------- ANSWERS --------------------
-
 class AnswerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Answer
@@ -94,7 +89,6 @@ class AnswerSerializer(serializers.ModelSerializer):
         read_only_fields = ('is_correct', 'marks_obtained')
 
 
-# -------------------- TEST ATTEMPT --------------------
 
 class TestAttemptSerializer(serializers.ModelSerializer):
     mock_test_title = serializers.CharField(source='mock_test.title', read_only=True)
@@ -120,7 +114,6 @@ class TestAttemptSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'started_at', 'score', 'percentage')
 
 
-# -------------------- INPUT SERIALIZERS --------------------
 
 class SubmitAnswerSerializer(serializers.Serializer):
     attempt_id = serializers.IntegerField()

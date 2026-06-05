@@ -24,7 +24,7 @@ class TimeDistributionService:
 
     @staticmethod
     def _group_topics_by_subject(topics):
-        subj_map = defaultdict(deque)
+        subj_map = defaultdict(list)
         for t in topics:
             s_id = t.subject_id if t.subject_id else 0
             subj_map[s_id].append(t)
@@ -57,24 +57,31 @@ class TimeDistributionService:
             active_ids.append(subj_ids[s2_idx])
 
         for s_id in active_ids:
-            q = subj_map[s_id]
+            topic_list = subj_map[s_id]
             target_h = weekly_study_h / len(active_ids)
-            items, _ = TimeDistributionService._allocate_from_topic(q, target_h)
+            items, _ = TimeDistributionService._allocate_from_topic(topic_list, target_h)
             week_items.extend(items)
 
         return week_items
 
     @staticmethod
-    def _allocate_from_topic(queue, target_h):
+    def _allocate_from_topic(topic_list, target_h):
         week_items = []
         current_sub_h = 0
-        while current_sub_h < target_h and queue:
-            topic = queue.popleft()
+        if not topic_list:
+            return week_items, 0
+        topic_list_len = len(topic_list)
+        idx = 0
+        while current_sub_h < target_h:
+            topic = topic_list[idx % topic_list_len]
             h = max(2.0, min(8.0, 2.0 + (float(topic.weightage or 0) * 0.8)))
             h = min(h, target_h - current_sub_h)
             if h >= 0.5:
                 week_items.append({"topic": topic, "hours": round(h, 1)})
                 current_sub_h += h
+            idx += 1
+            if idx > topic_list_len * 3:
+                break
         return week_items, current_sub_h
 
     @staticmethod
@@ -82,12 +89,19 @@ class TimeDistributionService:
         rem_h = sum(item["hours"] for item in week_items)
         if rem_h > 0.5:
             for s_id in subj_ids:
-                q = subj_map[s_id]
-                while rem_h > 0.5 and q:
-                    topic = q.popleft()
+                topic_list = subj_map[s_id]
+                if not topic_list:
+                    continue
+                topic_len = len(topic_list)
+                idx = 0
+                while rem_h > 0.5:
+                    topic = topic_list[idx % topic_len]
                     h = min(rem_h, 4.0)
                     week_items.append({"topic": topic, "hours": round(h, 1)})
                     rem_h -= h
+                    idx += 1
+                    if idx > topic_len * 3:
+                        break
         return week_items
 
 

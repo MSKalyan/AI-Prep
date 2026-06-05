@@ -50,7 +50,7 @@ export interface RoadmapListItem {
 }
 
 export const getExams = async () => {
-  const { data } = await apiClient.get('/exams/');
+  const { data } = await apiClient.get('/roadmap/exams/');
   return data;
 };
 
@@ -62,7 +62,7 @@ export const generateRoadmap = async (
 };
 
 export const getRoadmaps = async () => {
-  const { data } = await apiClient.get('/roadmaps/');
+  const { data } = await apiClient.get('/roadmap/roadmaps/');
   return data;
 };
 

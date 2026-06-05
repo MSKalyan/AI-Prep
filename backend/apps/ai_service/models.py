@@ -124,37 +124,3 @@ class Message(models.Model):
     def __str__(self):
         return f"{self.role}: {self.content[:50]}..."
 
-
-class AIUsageLog(models.Model):
-    """Track AI API usage for billing and monitoring"""
-
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="ai_usage_logs"
-    )
-
-    endpoint = models.CharField(max_length=100)  # ask-ai, generate-questions, etc.
-    model_used = models.CharField(max_length=100)
-
-    prompt_tokens = models.IntegerField(default=0)
-    completion_tokens = models.IntegerField(default=0)
-    total_tokens = models.IntegerField(default=0)
-
-    cost = models.DecimalField(max_digits=10, decimal_places=6, default=0)
-
-    success = models.BooleanField(default=True)
-    error_message = models.TextField(blank=True)
-
-    response_time_ms = models.IntegerField(default=0)
-
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
-
-    class Meta:
-        db_table = "ai_usage_logs"
-        ordering = ["-created_at"]
-        indexes = [
-            models.Index(fields=["user", "created_at"]),
-            models.Index(fields=["endpoint"]),
-        ]
-
-    def __str__(self):
-        return f"{self.user.email} - {self.endpoint} - {self.total_tokens} tokens"
